@@ -1,0 +1,344 @@
+\input{configuration}
+
+\title{Lecture 2 --- Review of Computer Architecture}
+
+\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+  University of Waterloo}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+
+ \end{frame}
+
+\begin{frame}
+\frametitle{Computer Organization}
+
+A regular program like a word processor need not be concerned with the underlying hardware of the computer.
+
+The OS must be aware of the details and manage them.
+
+What is a program? Instructions and data.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{To Execute a Program}
+
+To execute a program we need:
+
+\begin{enumerate}
+	\item \textbf{Main Memory}
+	\item \textbf{System Bus}
+	\item \textbf{Processor}
+\end{enumerate}
+
+Of course, this is the minimal set.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Modern Personal Computer}
+
+\begin{center}
+\includegraphics[width=0.8\textwidth]{images/modernpc.png}
+\end{center}
+
+A fourth element: \textbf{Input/Output} (I/O). Not strictly necessary, but a computer without it is not very useful...
+\end{frame}
+
+\begin{frame}
+\frametitle{Main Memory}
+Ideally, memory would be:
+
+\begin{itemize}
+	\item Fast enough that the processor never has to wait;
+	\item Large enough to hold all the data;
+	\item Inexpensive.
+\end{itemize}
+
+The \alert{Iron Triangle}: ``fast, good, cheap; pick two.''
+
+Good news: we can have different levels of memory.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Main Memory}
+
+Different levels of memory at different sizes, speed, and cost.\\
+\quad So what we end up with is a hierarchy of memory.
+
+Let us compare the various levels I might have in my laptop from 2013:
+
+\begin{center}
+	\begin{tabular}{l|l|l}
+	\textbf{Memory Level} & \textbf{Access Time} & \textbf{Total Capacity} \\ \hline
+	Register & 1 ns & < 1 KB \\
+	Cache & 2 ns & 6 MB \\
+	Main Memory (RAM) & 10 ns & 16 GB \\
+	Magnetic Hard Disk & 10 ms & 500 GB \\
+	\end{tabular}
+\end{center}
+
+Fast memory is expensive!
+
+The difference in access time is often quite dramatic.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Memory Access Analogy}
+I am the CPU and a particular book is the piece of data needed.
+
+If the data is in the cache: the book is on a bookshelf in my office.
+
+If the data for the CPU on a magnetic hard disk, I have to get the book from Library and Archives Canada in Ottawa (550 km away).\\
+\quad And I would have to walk.
+
+The CPU doesn't go get the data; instead it must wait for it to arrive.
+
+What might I do in the meantime...?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{System Buses}
+
+\begin{quote}
+	\textit{The bits on the bus go up and down, up and down, up and down...}
+\end{quote}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{System Buses}
+
+Every sort of communication using the same bus.\\
+\quad Contention for this resource is a limiting factor. 
+
+The original IBM PC did work like that.\\
+\quad A modern system has numerous buses.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Central Processing Unit (CPU)}
+
+The processor (CPU) is the brain of the computer.
+
+Fetch instructions, decode them, execute them.
+
+Fetch-decode-execute cycle repeated until the program finishes.
+
+Different steps may be completed in parallel (\alert{pipeline}).
+
+Processors' largest unit is the \alert{word}.\\
+\quad 32-bit computer $\rightarrow$ 32-bit word. 64-bit computer $\rightarrow$ 64-bit word.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Central Processing Unit (CPU)}
+CPU instructions are specific to the processor.
+
+Written assembly? You know the books.
+
+Some operations only available in supervisor mode.\\
+\quad Attempting to run it in user mode is an error.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Central Processing Unit (CPU)}
+CPUs have storage locations: \alert{registers}.
+
+They may store data or instructions.
+
+Management of registers is partly the role of the OS.
+
+Let us examine a few of the critical registers.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{CPU Registers}
+
+A few of the registers in a typical CPU:
+
+\begin{itemize}
+	\item \textbf{Program Counter} -- Next instruction.
+	\item \textbf{Status Register} -- Array of bits to indicate flags.
+	\item \textbf{Instruction Register} -- Instruction most recently fetched.
+	\item \textbf{Stack Pointer} -- Top of the stack.
+	\item \textbf{General Purpose Registers} -- Store data, addresses, etc.
+\end{itemize}
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Program Execution}
+
+Program is a sequence of instructions. We can categorize them as:
+
+\begin{enumerate}
+	\item \textbf{Processor-Memory}
+	\item \textbf{Processor-I/O}
+	\item \textbf{Data Processing}
+	\item \textbf{Control} 
+\end{enumerate}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Interrupts}
+
+If I ordered a book from Ottawa, it takes a long time to arrive.
+
+In the meantime, I should do something else.
+
+Polling: check periodically if the book has arrived.
+
+Interrupts: get a notification when the book is here.
+
+If someone knocks on my door, I pause what I'm doing and get the book.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Sources of Interrupts}
+
+We can put interrupts into four categories, based on their origin:
+
+\begin{enumerate}
+	\item \textbf{Program.}
+	\item \textbf{Timer.}
+	\item \textbf{Input/Output.}
+	\item \textbf{Hardware Failure.}
+\end{enumerate}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Interrupts}
+Interrupts are a way to improve processor utilization.
+
+CPU time is valuable!
+
+When an interrupt take place, the CPU might ignore it (rarely).
+
+More commonly: we need to \alert{handle} it in some way.
+
+Analogy: professor in a lecture; student has a question.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Interrupts}
+The OS: stores the state, handles the interrupt, and restores the state.
+
+Sometimes the CPU is in the middle of something uninterruptible.\\
+\quad Interrupts may be disabled (temporarily).
+
+Interrupts can have different priorities.
+\end{frame}
+
+\begin{frame}
+\frametitle{Interrupts}
+
+We may also have multiple interrupts in a short period of time:
+
+\begin{center}
+\includegraphics[width=0.45\textwidth]{images/interrupts-sequential.png}
+\includegraphics[width=0.45\textwidth]{images/interrupts-nested.png}
+\end{center}
+
+They may be sequential (left) or nested (right).
+
+A combination may be used.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Storing and Restoring State}
+
+The OS must store the program state when an interrupt occurs.
+
+The state must be stored.
+
+State: values of registers.
+
+Push them onto the stack.
+
+Interrupt finished: restore the state (pop off the stack).
+
+Then execution continues.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Multiprogramming}
+That is saving and restoring the same program.
+
+Why not restore a different program?
+
+We will come to this in scheduling.
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{I/O Communication}
+
+Three major strategies for communication: 
+
+\begin{enumerate}
+	\item \textbf{Programmed I/O.} -- Polling.
+	\item \textbf{Interrupt Driven I/O.} -- Interrupts.
+	\item \textbf{Direct Memory Access (DMA).} -- CPU does setup.
+\end{enumerate}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Direct Memory Access}
+
+The CPU will do some set up, indicating:
+
+\begin{enumerate}
+	\item The operation to perform (read or write)
+	\item The source
+	\item The destination
+	\item How much data is to be transferred
+\end{enumerate}
+
+This data is sent to the DMA module (a delegate). 
+
+After that, the CPU can go on to do other work.
+
+The I/O device will interact directly with memory.
+
+
+\end{frame}
+
+
+
+
+
+\end{document}
+

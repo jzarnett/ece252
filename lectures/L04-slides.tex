@@ -1,0 +1,467 @@
+\input{configuration}
+
+\title{Lecture 4 --- Processes }
+
+\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+  University of Waterloo}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+
+ \end{frame}
+
+\begin{frame}
+\frametitle{Processes}
+
+
+Early computers did exactly one thing. 
+
+Or at least, exactly one thing at a time.
+
+Now the OS supports multiple programs running concurrently.
+
+To manage this complexity, we have the \alert{process}.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{The Process}
+
+A process is a program in execution.
+
+\begin{enumerate}
+	\item The instructions and data.
+	\item The current state.
+	\item Any resources that are needed to execute.
+\end{enumerate}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{The Process}
+
+The process is a very important concept in operating systems. 
+
+Practically everything the OS does involves one or more processes.
+
+All other concepts we will examine in the future depend on this subject. 
+
+When we discuss scheduling, the problem is scheduling of processes.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{The Process}
+
+\begin{quote}
+\textit{The concept of process is fundamental to the structure of modern computer operating systems. Its evolution in analyzing problems of synchronization, deadlock, and scheduling in operating systems has been a major intellectual contribution of computer science.}
+\end{quote}\vspace{-1.5em}
+\hfill - What Can Be Automated?: The Computer Science and Engineering Research Study, MIT Press, 1980
+
+\end{frame}
+
+\begin{frame}
+\frametitle{OS Requirements}
+
+Most requirements of an operating system revolve around processes.
+
+Some examples: 
+\begin{itemize}
+	\item \textbf{Scheduling} 
+	\item \textbf{Resource Allocation}
+	\item \textbf{Inter-Process Communication}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Processes vs. Programs}
+
+Note: two instances of the same program running equals two processes. 
+
+You may have two windows open for Microsoft Word, and even though they are the same program, they are separate processes. 
+
+Similarly, two users who both use Firefox at the same time on a terminal server are interacting with two different processes.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Control Block}
+
+Data structure for managing processes: \alert{Process Control Block} (PCB). 
+
+It contains everything the OS needs to know about the program. 
+
+It is created and updated by the OS for each running process.
+
+It can be thrown away when the program has finished executing and cleaned everything up. 
+
+The blocks are held in memory and maintained in some container (e.g., a list) by the kernel.
+
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Control Block}
+
+The process control block will (usually) have:
+\begin{itemize}
+	\item \textbf{Identifier.} 
+	\item \textbf{State.} 
+	\item \textbf{Priority.} 
+	\item \textbf{Program Counter.}
+	\item \textbf{Register Data.} 
+	\item \textbf{Memory Pointers.}
+	\item \textbf{I/O Status Information.} 
+	\item \textbf{Accounting Information.} 
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Control Block (Simplified)}
+
+\begin{center}
+\includegraphics[width=0.35\textwidth]{images/pcb.png}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Control Block}
+
+This data is kept up to date constantly as the process executes.  
+
+The program counter and the register data are asterisked. 
+
+When the program is running, these values do not need to be updated. 
+
+They are needed when a system call (trap) or process switch occurs.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{PCB: Asterisked Fields}
+We will need a way to restore the state of the program. 
+
+Save the state of the process into the PCB. 
+
+1. Save the state into the Program Counter variable. 
+
+2. Save the Register variables.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Switch}
+
+A switch between the execution of process $P_{0}$ and process $P_{1}$:
+
+\begin{center}
+\includegraphics[width=0.75\textwidth]{images/process-switch.png}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{The Circle of Life}
+
+
+Unlike energy, processes may be created and destroyed. 
+
+Upon creation, the OS will create a new PCB for the process.\\
+\quad Also initialize the data in that block. 
+
+Set: variables to their initial values.\\
+\quad the initial program state.\\
+\quad the instruction pointer to the first instruction in \texttt{Main}
+
+Add the PCB to the set.
+
+After the program is terminated and cleaned up:\\
+\quad Collect some data (like a summary of accounting information).\\
+\quad Remove the PCB from its list of active processes and carry on.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Creation}
+
+Three main events that may lead to the creation of a process:
+
+\begin{enumerate}
+	\item System boot up.
+	\item User request.
+	\item One process spawns another.
+\end{enumerate}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Creation: At Boot Up}
+
+When the computer boots up, the OS starts and creates processes.
+
+An embedded system might have all the processes it will ever run.
+
+General-purpose operating systems: allow one (both) of the other ways.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Creation: At Boot Up}
+
+Some processes will be in the foreground; some in the background. 
+
+A user-visible process: log in screen.
+
+Background process: server that shares media on the local network. 
+
+UNIX term for a background process is \alert{Daemon}.
+
+Example: \texttt{ssh} (Secure Shell) command to log into a Linux system.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Creation: Users}
+
+Users are well known for starting up processes whenever they feel like it.\\
+\quad Much to the chagrin of system designers everywhere. 
+
+Every time you double-click an icon or enter a command line command (like \texttt{ssh} above) that will result in the creation of a process. 
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Creation: Spawning}
+
+An already-executing process may spawn another. 
+
+E-mail with a link? Click it; the e-mail program starts the web browser.
+
+A program may break its work up into different logical parts.\\
+\quad To promote parallelism or fault tolerance. 
+
+The spawning process is the \alert{parent} and the one spawned is the \alert{child}. 
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Destruction}
+
+Eventually, most processes die. 
+
+This is sad, but it can happen in one of four ways:
+\begin{enumerate}
+	\item Normal exit (voluntary) 
+	\item Error exit (voluntary)
+	\item Fatal Error (involuntary)
+	\item Killed by another process (involuntary)
+\end{enumerate}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Destruction: Normal}
+
+Most of the time, the process finishes because they are finished.\\
+\quad Or the user asks them to. 
+
+Compiler: when compilation is finished, it terminates normally. 
+
+You finish writing a document in a text editor, click the close button.
+
+Both examples of normal, voluntary termination.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Destruction: Error}
+
+Sometimes there is voluntary exit, but with an error. 
+
+Required write access to the temporary directory \& no permission.
+
+Compiler: exit with an error if you ask it to compile a non-existent file.
+
+The program has chosen to terminate because of the error.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Destruction: Fatality}
+
+The third reason for termination is a fatal error.\\
+\quad Examples: stack overflow, or division by zero. 
+
+The OS will detect this error and send it to the program. 
+
+Often, this results in involuntary termination of the offending program. 
+
+A process may tell the OS it wishes to handle some kinds of errors.
+
+If it can handle it, the process can continue.
+
+Otherwise, unhandled exceptions result in involuntary termination.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Destruction: Killed}
+
+The last reason for termination: one process might be killed by another.\\
+\quad (Yes, processes can murder one another. Is no-one safe?!). 
+
+Typically this is a user request:\\
+\quad a program is stuck or consuming too much CPU...\\
+\quad the user opens task manager (Windows) or \texttt{ps} (UNIX)
+
+Programs can, without user intervention, theoretically kill other processes. 
+
+Example: a parent process killing a child it believes to be stuck.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Destruction: Killed}
+
+There are restrictions on killing process.\\
+\quad A user or process must have the rights to execute the victim. 
+
+Typically a user may only kill a process he or she has created.
+
+Exception: system administrator. 
+
+While killing processes may be fun, it is something that should be reserved for when it is needed.
+
+Maybe when a process is killed, all processes it spawned are killed too.
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Process Family Tree}
+In UNIX, but not in Windows, the relationship between the parent process and child process(es), if any, is maintained, forming a hierarchy.
+
+A process, unlike most plants and animals, reproduces asexually.
+
+A process has one parent; zero or more children.
+
+A process and all its descendants form a \alert{process group}.
+
+Certain operations like sending a signal can be sent to a whole group.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Family Tree: UNIX}
+UNIX the first process created is called \texttt{init}.
+
+It is the parent of all processes (eventually).\\
+\quad Like the \texttt{Object} class in Java is the superclass of all classes.
+
+Thus in UNIX we may represent all processes as a tree structure.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Family Tree: Windows}
+
+In Windows, a parent process gets a reference to its child.
+
+This allows it to exercise some measure of control over the child. 
+
+This reference may be given to another process (adoption).
+
+No real hierarchy. A process in UNIX cannot disinherit a child.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Process Return Codes}
+
+When a process terminates, it does so with a return code.\\
+\quad  Just as a function often returns a value. 
+
+On the command line or double clicking an icon, return value is ignored.
+
+In UNIX, a parent can get the code that process returns.
+
+Usually, a return value of zero indicates success.\\
+\quad Other values indicate an error of some sort. 
+
+Normally there is some sort of understanding between the parent and child processes about what a particular code means. 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Aaah! Zombies! Run!}
+
+When a child process finishes, until the parent collects the return value, the child continues in a state of ``undeath'' we call a \alert{zombie}.
+
+This does not mean that the process then shuffles around the system attempting to eat the brains of other processes.
+
+It just means that the process is dead but not gone.
+
+There is still an entry in the PCB list.\\
+\quad And the process holds on to its allocated resources.
+
+Only after the return value is collected can it be cleaned up. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Getting Rid of Zombies}
+
+Usually, a child process's result is eagerly awaited by its parent. 
+
+The \texttt{wait} call collects the value right away.
+
+This allows the child to be cleaned up (or, more grimly, ``reaped''). 
+
+If there is some delay for some reason, the process is considered a zombie until that value is collected.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Orphans}
+
+If a parent dies before the child does, the child is called an \alert{orphan}. 
+
+In UNIX any orphan is automatically adopted by the \texttt{init} process.\\
+\quad ...making sure all processes have a good home. 
+
+By default, \texttt{init} will just \texttt{wait} on all its child processes\\
+\quad And do nothing with the return values.
+
+A program can be intentionally orphaned: to run in the background.
+
+
+This would be cruel, except that processes, as far as anyone knows, do not have feelings.
+
+
+\end{frame}
+
+
+\end{document}
+
