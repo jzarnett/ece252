@@ -13,6 +13,7 @@
 \usepackage{relsize}
 \usepackage{amsmath}
 \usepackage{fancyvrb}
+\usepackage[yyyymmdd]{datetime}
 \usepackage{amsmath,amssymb,amsthm,graphicx,xspace}
 \usepackage[titlenotnumbered,noend,noline]{algorithm2e}
 \usepackage[compact]{titlesec}
@@ -27,6 +28,8 @@
 
 \definecolor{namerow}{cmyk}{.40,.40,.40,.40}
 \definecolor{namecol}{cmyk}{.40,.40,.40,.40}
+\renewcommand{\dateseparator}{-}
+
 
 \let\LaTeXtitle\title
 \renewcommand{\title}[1]{\LaTeXtitle{\textsf{#1}}}
@@ -41,14 +44,14 @@
       \vspace{4mm}
       \hbox to 5.78in { {\Large \hfill #4  \hfill} }
       \vspace{2mm}
-      \hbox to 5.78in { {\em #3 \hfill} }
+      \hbox to 5.78in { {\em #3 \hfill \today } }
     }
   }
   \end{center}
   \vspace*{4mm}
 }
 
-\newcommand{\lecture}[3]{\handout{#1}{#2}{#3}{Lecture #1}}
+\newcommand{\lecture}[3]{\handout{#1}{#2}{#3}{Lecture #1}}{
 \newcommand{\tuple}[1]{\ensuremath{\left\langle #1 \right\rangle}\xspace}
 
 \addtolength{\oddsidemargin}{-1.000in}
