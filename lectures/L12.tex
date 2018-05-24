@@ -171,7 +171,7 @@ It gets worse: if we have multiple processors the disabling interrupts will not 
 \subsection*{Test-and-Set}
 The Test-and-Set instruction is a special machine instruction that is performed in a single instruction cycle and is therefore not interruptible. It is therefore an atomic read and write. The idea is that the Test-and-Set instruction returns a boolean value. When run, it will examine the flag variable (in this example, \texttt{i}) and if it is zero, it will set it to 1 and return true. If \texttt{i} is currently set to 1, it will return false. The meaning of the return value is clear: if it is true, it is the current thread's turn to enter the critical section. The Test-and-Set instruction is not actually implemented like this, but a description of its functionality in C is:
 
-\begin{verbatim}
+\begin{lstlisting}[language=C]
 boolean test_and_set( int* i ) {
   if ( *i == 0 ) {
     *i = 1;
@@ -180,17 +180,17 @@ boolean test_and_set( int* i ) {
     return false;
   }
 }
-\end{verbatim}
+\end{lstlisting}
 
 Now, to make use of the \texttt{test\_and\_set} routine. Let us assume we have an integer variable called \texttt{busy} that is initialized at program startup to 0. The implementation is the same for both threads so there is no need to show them side by side.
 
-\begin{verbatim}
+\begin{lstlisting}[language=C]
 while ( !test_and_set( busy ) ) {
    /* Wait for my turn */
 }
 /* critical section */
 busy = 0;
-\end{verbatim}
+\end{lstlisting}
 
 Finally, we have something that will provide mutual exclusion without the risk that the threads will all get stuck because each thinks another is in the critical section. This is good, but can be improved. The \texttt{while} loop that is constantly checking the value with the Test-and-Set instruction is an example of \textit{busy-waiting}. A given thread is constantly checking and checking and checking the instruction, and this is a waste of time and effort. Thread $A$ will not get into the critical section while thread $B$ is in there and asking constantly does not make $B$ get the job done any faster, just as a child asking ``are we there yet?'' does not improve the speed at which he or she gets to his or her destination.
 
