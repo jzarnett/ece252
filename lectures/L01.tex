@@ -193,7 +193,7 @@ In C, heap memory is allocated in a very simple way: you ask for the amount of m
 
 You may think the answer is 4 bytes, but a quick look at the C standard says that while there are are exact sizes for some types, other types have only a minimum size. The rest is implementation specific. That is, it can vary from one system to another. Yikes! Fortunately we have \texttt{sizeof}, which ask the compiler to help us out here and substitute in the correct size where it is needed. So we would call \texttt{malloc()} with the argument \texttt{sizeof( int )}. At run time, the correct amount of memory will be requested.
 
-This is also very helpful for when you want to allocate a structure. Instead of needing to work out the size yourself (well, this is three \texttt{double}s, and a \texttt{double} is 8 bytes...), \texttt{sizeof( point\_t )} will allocate the correct size... as a nice bonus, if ever the definition of the structure is changed the amount of memory requested is used automatically.
+This is also very helpful for when you want to allocate a structure. Instead of needing to work out the size yourself (well, this is three \texttt{double}s, and a \texttt{double} is 8 bytes...), \texttt{sizeof( point\_t )} will allocate the correct size... as a nice bonus, if ever the definition of the structure is changed the amount of memory requested is updated automatically.
 
 The return value of \texttt{malloc()} is a pointer to the memory that is allocated. Unlike \Cpp, the value does not need to be cast (and probably shouldn't be). 
 Consider the following allocation:
