@@ -1,0 +1,472 @@
+\input{configuration}
+
+\title{Lecture 2 --- Interrupts \& System Calls }
+
+\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+  University of Waterloo}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+
+ \end{frame}
+
+\begin{frame}
+\frametitle{Computer Organization}
+
+A regular program like a word processor need not be concerned with the underlying hardware of the computer.
+
+The OS must be aware of the details and manage them.
+
+What is a program? Instructions and data.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{To Execute a Program}
+
+To execute a program we need:
+
+\begin{enumerate}
+	\item \textbf{Main Memory}
+	\item \textbf{System Bus}
+	\item \textbf{Processor}
+\end{enumerate}
+
+Of course, this is the minimal set.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Central Processing Unit (CPU)}
+
+The processor (CPU) is the brain of the computer.
+
+Fetch instructions, decode them, execute them.
+
+Fetch-decode-execute cycle repeated until the program finishes.
+
+Different steps may be completed in parallel (\alert{pipeline}).
+
+Processors' largest unit is the \alert{word}.\\
+\quad 32-bit computer $\rightarrow$ 32-bit word. 64-bit computer $\rightarrow$ 64-bit word.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Central Processing Unit (CPU)}
+CPU instructions are specific to the processor.
+
+Written assembly? You know the books.
+
+Some operations only available in supervisor mode.\\
+\quad Attempting to run it in user mode is an error.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Central Processing Unit (CPU)}
+CPUs have storage locations: \alert{registers}.
+
+They may store data or instructions.
+
+Management of registers is partly the role of the OS.
+
+Let us examine a few of the critical registers.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{CPU Registers}
+
+A few of the registers in a typical CPU:
+
+\begin{itemize}
+	\item \textbf{Program Counter} -- Next instruction.
+	\item \textbf{Status Register} -- Array of bits to indicate flags.
+	\item \textbf{Instruction Register} -- Instruction most recently fetched.
+	\item \textbf{Stack Pointer} -- Top of the stack.
+	\item \textbf{General Purpose Registers} -- Store data, addresses, etc.
+\end{itemize}
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Interrupts}
+The CPU needs data, but it takes a variable amount of time to get it.\\
+\quad Sometimes this means the equivalent of walking a book from Ottawa.
+
+In the meantime, I should do something else.
+
+Polling: check periodically if the book has arrived.
+
+Interrupts: get a notification when the book is here.
+
+If someone knocks on my door, I pause what I'm doing and get the book.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Sources of Interrupts}
+
+We can put interrupts into four categories, based on their origin:
+
+\begin{enumerate}
+	\item \textbf{Program.}
+	\item \textbf{Timer.}
+	\item \textbf{Input/Output.}
+	\item \textbf{Hardware Failure.}
+\end{enumerate}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Interrupts}
+Interrupts are a way to improve processor utilization.
+
+CPU time is valuable!
+
+When an interrupt take place, the CPU might ignore it (rarely).
+
+More commonly: we need to \alert{handle} it in some way.
+
+Analogy: professor in a lecture; student has a question.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Interrupts}
+The OS: stores the state, handles the interrupt, and restores the state.
+
+Sometimes the CPU is in the middle of something uninterruptible.\\
+\quad Interrupts may be disabled (temporarily).
+
+Interrupts can have different priorities.
+\end{frame}
+
+\begin{frame}
+\frametitle{Interrupts}
+
+We may also have multiple interrupts in a short period of time:
+
+\begin{center}
+\includegraphics[width=0.8\textwidth]{images/interrupts-seq.png}
+\end{center}
+
+They may be sequential...
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Interrupts}
+
+\begin{center}
+\includegraphics[width=0.8\textwidth]{images/interrupts-nest.png}
+\end{center}
+
+Or nested. Or a combination.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Storing and Restoring State}
+
+The OS must store the program state when an interrupt occurs.
+
+The state must be stored.
+
+State: values of registers.
+
+Push them onto the stack.
+
+Interrupt finished: restore the state (pop off the stack).
+
+Then execution continues.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Multiprogramming}
+That is saving and restoring the same program.
+
+Why not restore a different program?
+
+The Operating System might! It's not up to us.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Invoking System Calls}
+
+Some services run automatically, without user intervention.
+
+In other cases, we want specifically to invoke them. How?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Admiral Ackbar Says:}
+
+\begin{center}
+\includegraphics[width=0.8\textwidth]{images/itsatrap.jpg}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Trap}
+
+Operating systems run on the basis of interrupts.
+
+A \alert{trap} is a software-generated interrupt.
+
+Generated by an error (invalid instruction) or user program request.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Trap}
+
+If it is an error, the OS will decide what to do.\\
+\quad Usual strategy: give the error to the program.
+
+The program can decide what to do if it can handle it.\\
+\quad Often times, the program doesn't handle it and just dies.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{User Mode and Kernel Mode}
+
+Already we saw user mode vs. supervisor (kernel) mode instructions.
+
+Supervisor mode allows all instructions and operations.
+
+Even something seemingly simple like reading from disk or writing to console output requires privileged instructions. 
+
+These are common operations, but they involve the OS every time.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{User Mode and Kernel Mode}
+
+Modern processors track what mode they are in with the mode bit. 
+
+At boot up, the computer starts up in kernel mode as the operating system is started and loaded. 
+
+User programs are always started in user mode. 
+
+When a trap or interrupt occurs, and the operating system takes over, the mode bit is set to kernel mode. 
+
+When it is finished the system goes back to user mode before the user program resumes.
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Example: Text Editor Printing}
+
+Suppose a text editor wants to output data to a printer.
+
+\begin{center}
+	\includegraphics[width=0.9\textwidth]{images/trap.png}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{User Mode and Kernel Mode: Motivation}
+
+Why do we have user and supervisor modes, anyway? 
+
+Uncle Ben to Spiderman: ``with great power comes great responsibility''. 
+
+Same as why we have user accounts and administrator accounts. 
+
+To protect the system \& its integrity against errant and malicious users.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{User Mode and Kernel Mode: Motivation}
+
+Multiple programs might be trying to use the same I/O device at once.
+
+Program~1 tries to read from disk. This takes some time.
+
+If Program~2 wants to read from the same disk, the operating system forces Program~2 to wait its turn.
+
+Without the OS, it would be up to the author(s) of Program~2 to check and wait patiently for it to become available. 
+
+Works if everyone plays nicely.
+
+Without enforcement of the rules, a program will do something nasty.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{User Mode and Kernel Mode: Motivation}
+
+There is a definite performance trade-off.
+
+Switching from user to kernel mode takes time.
+
+The performance hit is worth it for the security.
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Example: Reading from Disk}
+C code to perform a read on a UNIX system.
+
+\texttt{read} takes three parameters: 
+\begin{enumerate}
+	\item the file (a file descriptor, from a previous call 
+to \texttt{open}); 
+	\item where to read the data to; and
+	\item how many bytes to read.
+\end{enumerate} 
+
+\begin{lstlisting}[language=C]
+int bytesRead = read( file, buffer, numBytes );
+\end{lstlisting}
+
+Note that \texttt{read} returns the number of bytes successfully read.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Example: Reading from Disk}
+
+In preparation for a call to \texttt{read} the parameters are pushed on the stack.\\
+\quad This is the normal way in which a procedure is called in C(++). 
+
+\texttt{read} is called; the normal instruction to enter another function.
+
+The \texttt{read} function will put its identifier in a predefined location.
+
+Then it executes the \texttt{trap} instruction, activating the OS.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Example: Reading from Disk}
+
+
+The OS takes over and control switches to kernel mode. 
+
+Control transfers to a predefined memory location within the kernel. 
+
+The trap handler examines the request: it checks the identifier. 
+
+Now it knows what system call request handler should execute: read. 
+
+That routine executes. 
+
+When it is finished, control will be returned to the \texttt{read} function.\\
+\quad Exit the kernel and return to user mode.
+
+\texttt{read} finishes and returns, and control goes back to the user program.
+
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{System Call Complex Example}
+
+\begin{lstlisting}[language=C]
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+void readfile( FILE* file );
+
+int main( int argc, char** argv ) {
+    if ( argc != 2 ) {
+        printf("Usage: %s <filename>\n", argv[0]);
+        return -1;
+    }
+    FILE* f = fopen( argv[1], "r");
+    if ( f == NULL ) {
+        printf("Unable to open file! %s is invalid name?\n", argv[1] );
+        return -1;
+    }
+    readfile( f );
+    fclose( f );
+    return 0;
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{System Call Complex Example}
+
+\begin{lstlisting}[language=C]
+void readfile( FILE* file ) {
+    char** line = malloc( sizeof( char* ) );
+    ssize_t* length = malloc( sizeof( ssize_t ) );
+    
+    while ( 1 ) {
+        int read = getline(line, length, file);
+        if (read == -1 ) {
+            break;
+        }
+        printf("%s", *line);
+    }
+    printf("\nEnd of File.\n");
+    free( length );
+    free( line );
+}
+\end{lstlisting}
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{System Call Summary}
+
+The steps, arranged chronologically, when invoking a system call are:
+\begin{enumerate}
+	\item The user program pushes arguments onto the stack.
+	\item The user program invokes the system call.
+	\item The system call puts its identifier in the designated location.
+	\item The system call issues the \texttt{trap} instruction.
+	\item The OS responds to the interrupt and examines the identifier in the designated location.
+	\item The OS runs the system call handler that matches the identifier.
+	\item When the handler is finished, control exits the kernel and goes back to the system call (in user mode).
+	\item The system call returns control to the user program.
+
+\end{enumerate}
+
+
+\end{frame}
+
+
+
+
+
+\end{document}
+

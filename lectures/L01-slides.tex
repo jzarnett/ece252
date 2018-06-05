@@ -1,0 +1,195 @@
+\input{configuration}
+
+\title{Lecture 1 ---Introduction and Our C Toolkit }
+
+\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
+  University of Waterloo}
+\date{\today}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+
+ \end{frame}
+
+\begin{frame}
+\frametitle{Course Syllabus}
+
+As our first order of business, let's go over the course syllabus.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Collaborative Course}
+
+The source material for the ECE~252 notes and slides is open-sourced via Github. 
+
+If you find an error in the notes/slides, or have an improvement, go to \url{https://github.com/jzarnett/ece252} and open an issue. 
+
+If you know how to use \texttt{git} and \LaTeX, then you can go to the URL and submit a pull request (changes) for me to look at and incorporate!
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Some Background on Operating Systems}
+
+An operating system (OS) sits between the hardware and programs.
+
+It does many different things.
+
+It has many often-conflicting goals.
+
+You might think of the OS as the ``secretary'' of the system.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{OS: Resource Manager}
+
+The OS is responsible for resource management and allocation.
+
+Resources like CPU time or memory space are limited.
+
+The OS must decide how to allocate \& to keep track of system resources.
+
+In the event of conflicting requests, choose the winner.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{OS: Environment Provider}
+
+The OS enables useful programs like Photoshop or Microsoft Word to run. 
+
+The OS is responsible for abstracting away the details of hardware.
+
+This is so program authors do not have to worry about the specifics.
+
+Imagine Hello World had to be written differently for different hardware.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{OS: Multitasking}
+Multiple programs means some resources are shared.\\
+\quad $\rightarrow$ A source of conflicts!
+
+OS creates and enforces the rules so all can get along.
+
+Sometimes processes want to co-operate and not compete.\\
+\quad The OS can help them to do so.
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Systems Programming}
+
+Some examples of systems programming:
+
+\begin{itemize}
+	\item \textbf{File Manipulation}
+	\item \textbf{Communication}
+	\item \textbf{Processes and Thread Management}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Systems Programming}
+
+Programming at this level is more difficult than regular programs. 
+
+It may require knowledge of the hardware, or perhaps programming facilities like debugging are limited. 
+
+Systems programs must take concurrency into account.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Ask for Help}
+
+We want to do certain operations that involve the operating system. 
+
+There are things that the operating system does not allow programs to do. 
+
+What they have to do instead is ask the operating system to do it instead. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Concurrency}
+A program is said to be concurrent if it can support two or more actions in progress at the same time. 
+
+It is parallel if it can have two or more actions executing simultaneously.
+
+Soon enough we will spend a great deal of time examining the differences between parallelism and concurrency in the program.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Concurrency}
+
+It is already the case that many programs you use are to a greater or smaller degree concurrent. 
+
+Depending on your level of programming experience, you may have already written a concurrent program, intentionally or without knowing it. 
+
+We will learn about how to take a program and make it concurrent, as well as how to write it with concurrency in mind from the ground up.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Concurrency Problems}
+
+Consider a program that performs a simple calculation given some input. 
+
+If the program has a concurrency problem,  then the answer could be:
+
+\begin{enumerate} 
+\item Consistently the wrong answer every single time
+\item Different on consecutive runs with the same input, or 
+\item Correct some of the time but incorrect some of the time. 
+\end{enumerate}
+
+As you can imagine, none of these options are acceptable.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Our C Toolkit}
+
+We will need some introduction to the conventions and tools of C:
+\begin{itemize}
+	\item Functions
+	\item Header files
+	\item Comments
+	\item Structures
+	\item Type Names
+	\item Memory Allocation, Deallocation, and Pointers
+	\item Dereferencing, Address-Of, The Arrow
+	\item Arrays
+	\item Strings
+	\item Calling Conventions
+	\item Printing
+	\item Constants
+	\item \texttt{main} and its arguments
+	\item \texttt{void*}
+\end{itemize}
+
+
+\end{frame}
+
+
+
+
+\end{document}
+

@@ -2,38 +2,25 @@
 \documentclass[letterpaper,hide notes,xcolor={table,svgnames},pdftex,10pt]{beamer}
 \def\showexamples{t}
 
-
-%\usepackage[svgnames]{xcolor}
-
-%% Demo talk
-%\documentclass[letterpaper,notes=show]{beamer}
-
 \usecolortheme{crane}
 \setbeamertemplate{navigation symbols}{}
 
 \usetheme{MyPittsburgh}
-%\usetheme{Frankfurt}
-
-%\usepackage{tipa}
-
 \usepackage{hyperref}
 \usepackage{graphicx,xspace}
 \usepackage[normalem]{ulem}
 \usepackage{multicol}
-
+\usepackage{amsmath,amssymb,amsthm,graphicx,xspace}
 \newcommand\SF[1]{$\bigstar$\footnote{SF: #1}}
 
-\usepackage[default]{sourcesanspro}
+\usepackage[sfdefault,lf]{carlito}
 \usepackage[T1]{fontenc}
+\usepackage[scaled]{beramono}
+\usepackage{tikzpagenodes}
+
 
 \newcounter{tmpnumSlide}
 \newcounter{tmpnumNote}
-
-% old question code
-%\newcommand\question[1]{{$\bigstar$ \small \onlySlide{2}{#1}}}
-% \newcommand\nquestion[1]{\ifdefined \presentationonly \textcircled{?} \fi \note{\par{\Large \textbf{?}} #1}}
-% \newcommand\nanswer[1]{\note{\par{\Large \textbf{A}} #1}}
-
 
  \newcommand\mnote[1]{%
    \addtocounter{tmpnumSlide}{1}
@@ -42,10 +29,6 @@
 
 \newcommand\mmnote[1]{\note{\setlength{\parskip}{1ex}#1\par}}
 
-%\newcommand\mnote[2][]{\ifdefined\handoutwithnotes {~\tiny\fbox{#1}}\fi
-% \note{\setlength{\parskip}{1ex}\textbf{\Large #1:} #2\par}}
-
-%\newcommand\mnote[2][]{{\tiny\fbox{#1}} \note{\setlength{\parskip}{1ex}\textbf{\Large #1:} #2\par}}
 
 \newcommand\mquestion[2]{{~\color{red}\fbox{?}}\note{\setlength{\parskip}{1ex}\par{\Large \textbf{?}} #1} \note{\setlength{\parskip}{1ex}\par{\Large \textbf{A}} #2\par}\ifdefined \presentationonly \pause \fi}
 
@@ -59,11 +42,6 @@
          \fi%
 }
 
-
-
-%\newcommand\q{\tikz \node[thick,color=black,shape=circle]{?};}
-%\newcommand\q{\ifdefined \presentationonly \textcircled{?} \fi}
-
 \usepackage{listings}
 \lstset{%
   keywordstyle=\bfseries,
@@ -71,8 +49,6 @@
   belowskip=15pt,
   captionpos=b,
   identifierstyle=\ttfamily,
-  escapeinside={(*@}{@*)},
-  stringstyle=\ttfamiliy,
   frame=lines,
   numbers=left, basicstyle=\scriptsize, numberstyle=\tiny, stepnumber=0, numbersep=2pt}
 
