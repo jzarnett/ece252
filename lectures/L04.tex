@@ -6,9 +6,9 @@
 
 \section*{Processes}
 
-Early computers, as well as many modern embedded systems, did exactly one thing, or at least, exactly one thing at a time. At that time, the program had access to all the resources available in the system. Now, we expect that the OS supports multiple programs running concurrently. For that to work reliably, we need a way to manage the complexity and this has resulted in the notion of a \textit{process}.
+Early computers, as well as many modern embedded systems, did exactly one thing, or at least, exactly one thing at a time. At that time, the program had access to all the resources available in the system. Now, we expect that the OS supports multiple programs running concurrently. For that to work reliably, the operating system needs a way to manage the complexity and this has resulted in the notion of a \textit{process}. We've already worked with processes, but most likely we didn't know it at the time.
 
-A process is a program in execution. It is more than just the compiled instructions, though that is an important part. A process has three things:
+A process is a program in execution. It is composed of three things:
 
 \begin{enumerate}
 	\item The instructions and data of the program (the compiled executable).
@@ -16,24 +16,10 @@ A process is a program in execution. It is more than just the compiled instructi
 	\item Any resources that are needed to execute the program.
 \end{enumerate}
 
-The process is a very important concept in operating systems. Practically everything the OS does involves one or more processes and all the other concepts we will examine in the future will depend on this subject. When we discuss scheduling, for example, the problem is scheduling of processes. How important are they? 
-
-\begin{quote}
-\textit{The concept of process is fundamental to the structure of modern computer operating systems. Its evolution in analyzing problems of synchronization, deadlock, and scheduling in operating systems has been a major intellectual contribution of computer science.}
-\end{quote}\vspace{-1.5em}
-\hfill - What Can Be Automated?: The Computer Science and Engineering Research Study, MIT Press, 1980
-
-Most requirements of an operating system revolve around processes. Some examples from~\cite{osi}:
-\begin{itemize}
-	\item \textbf{Scheduling:} The OS must choose which processes run at what time, to maximize processor utilization and/or minimize response time.
-	\item \textbf{Resource Allocation:} The OS must allocate resources to processes, keeping track of what resources are owned by which process.
-	\item \textbf{Inter-Process Communication:} The OS must support inter-process communication: the transfer of data from one process to another (by whatever means).
-\end{itemize}
-
-Note that having two instances of the same program running counts as two separate processes. Thus, you may have two windows open for Microsoft Word, and even though they are the same program, they are separate processes. Similarly, two users who both use Firefox at the same time on a terminal server are interacting with two different processes.
+Having two instances of the same program running counts as two separate processes. Thus, you may have two windows open for Microsoft Word, and even though they are the same program, they are separate processes. Similarly, two users who both use Firefox at the same time on a terminal server are interacting with two different processes.
 
 \subsection*{The Process Control Block}
-The operating system's data structure for managing processes is the \textit{Process Control Block} (PCB). This is a data structure containing everything the OS needs to know about the program. It is created and updated by the OS for each running process and can be thrown away when the program has finished executing and cleaned everything up. The blocks are held in memory and maintained in some container (e.g., a list) by the kernel.
+We will take a slight detour to the behind-the-scenes view of how the operating system manages a process, so that we can have a mental model of what may happen when a program is executing. The operating system's data structure for managing processes is the \textit{Process Control Block} (PCB). This is a data structure containing what the OS needs to know about the program. It is created and updated by the OS for each running process and can be thrown away when the program has finished executing and cleaned everything up. The blocks are held in memory and maintained in some container (e.g., a list) by the kernel.
 
 The process control block will (usually) have~\cite{osi}:
 \begin{itemize}
@@ -50,20 +36,20 @@ The process control block will (usually) have~\cite{osi}:
 To represent this visually:
 
 \begin{center}
-\includegraphics[width=0.25\textwidth]{images/pcb.png}\\
+\includegraphics[width=0.24\textwidth]{images/pcb.png}\\
 A simplified Process Control Block~\cite{osi}.
 \end{center}
 
-Almost all of the above will be kept up to date constantly as the process executes.  Two of the items, notably the program counter and the register data are asterisked with the words ``when needed''. When the program is running, these values do not need to be updated. However, when an system call (trap) or process switch occurs, and the execution of that process is suspended, we will need a way to restore the state of the program back to what it was. So what we will do is save the state of the process into the PCB. We save the state into the Program Counter variable (so we can remember what instruction was next) and the Register variables (so everything goes back to how it was). The diagram below shows the sequence as the OS switches between the execution of process $P_{0}$ and process $P_{1}$.
+Almost all of the above will be kept up to date constantly as the process executes.  Two of the items, notably the program counter and the register data are asterisked with the words ``when needed''. When the program is running, these values do not need to be updated. However, when a system call (trap) or process switch occurs, and the execution of that process is suspended, the OS will save the state of the process into the PCB. This includes the Program Counter variable (so the program can resume from exactly where it left off) and the Register variables (so the state of the CPU goes back to how it was). The diagram below shows the sequence as the OS switches between the execution of process $P_{0}$ and process $P_{1}$.
 
 \begin{center}
-\includegraphics[width=0.75\textwidth]{images/process-switch.png}\\
+\includegraphics[width=0.65\textwidth]{images/process-switch.png}\\
 A process switch from $P_{0}$ to $P_{1}$ and back again~\cite{osc}.
 \end{center}
 
 \subsection*{The Circle of Life}
 
-Unlike energy, processes may be created and destroyed. Upon creation, the OS will create a new PCB for the process and initialize the data in that block. This means setting the variables to their initial values: setting the initial program state, setting the instruction pointer to the first instruction in \texttt{Main}, and so on.  The PCB will then be added to the set of PCBs the OS maintains. After the program is terminated and cleaned up, the OS may collect some data (like a summary of accounting information) and then it can remove the PCB from its list of active processes and carry on.
+Unlike energy, processes may be created and destroyed. Upon creation, the OS will create a new PCB for the process and initialize the data in that block. This means setting the variables to their initial values: setting the initial program state, setting the instruction pointer to the first instruction in \texttt{main}, and so on.  The PCB will then be added to the set of PCBs the OS maintains. After the program is terminated and cleaned up, the OS may collect some data (like a summary of accounting information) and then it can remove the PCB from its list of active processes and carry on.
 
 \subsubsection*{Process Creation}
 There are, generally speaking, three main events that may lead to the creation of a process~\cite{mos}:
@@ -113,10 +99,52 @@ In Windows, a process that spawns another process gets a reference to its child,
 
 When a process terminates, voluntarily or otherwise, it does so with a return code, just as a function often returns a value. If the command is issued on the command line (e.g., \texttt{cat /var/log/syslog}) or from double clicking an icon, the return value is generally ignored (or at least, not presented to the user). In UNIX, when a parent process spawns a child, it can get the code that process returns. Usually, a return value of zero indicates success and other values indicate an error of some sort. Normally there is some sort of understanding between the parent and child processes about what a particular code means. 
 
-
 When a child process finishes execution, until such time as the parent comes by to collect the return value, the child continues in a state of ``undeath'' we call a \textit{zombie}. This does not mean that the process then shuffles around the system attempting to eat the brains of other processes; it just means that the process is dead but not gone. The program has finished executing, there is still an entry in the PCB list, and the process holds on to its allocated resources until such time as the return value is collected. Only after the return value is collected can it be cleaned up. Usually, a child process's result is eagerly awaited by its parent and the \texttt{wait} call collects the value right away, allowing the child to be cleaned up (or, more grimly, ``reaped''). If there is some delay for some reason, the process is considered a zombie until that value is collected.
 
 If a child process's parent should die before the child does, the process is called an \textit{orphan}. In UNIX any orphan process is automatically adopted by the \texttt{init} process, making sure all processes have a good home. By default, \texttt{init} will just \texttt{wait} on all its child processes (and do nothing with the return values), ensuring that when they are finished, they do not become zombies. Sometimes a program is intentionally orphaned: it is spawned to run in the background (e.g., when starting up a service or daemon on the system). This would be cruel, except that processes, as far as anyone knows, do not have feelings.
+
+\subsection*{The Five-State Model}
+
+As you might imagine, at any given time, a process is running or not running. The first two states of the model are therefore ``Running'' and ``Ready''.
+
+A program that requests a resource like I/O or memory may not get it right away. This is not to say the program will never get it, just that it does not have it right now. Sometimes the program needs user input, and as far as the computer is concerned, the user moves at glacial speed. In any case, the program wants to continue but cannot until it gets what it is waiting for.  If the scheduler picks a process that is waiting for user input, nothing will be happening while the program is waiting for input, so the CPU's time would be wasted. Thus, we should be able to mark a process as ``not ready to proceed'', which gives us our ``Blocked'' state.
+
+Earlier we discussed that a UNIX process may be finished but a zombie, because its parent has not (yet) come by to collect its return value. The process is not ready to run (it has finished running) and it is not waiting for a resource, so it does not qualify for Ready or Blocked. Thus, we need a state to represent that it is finished but not yet cleaned up: Terminated.
+
+The fifth and final state will be the ``New'' state: a process that has just been defined. Suppose a user wants to run a new process. The OS will first perform the necessary administrative tasks: define an identifier for the process, instantiate the PCB object, and put the process in the New state. The OS has created the process but has not committed itself to execution thereof. This may be because the system limits the number of concurrent processes for performance reasons. When the process is in the New state is is typically not in memory, but on disk instead~\cite{osi}.
+
+Thus, with the two new states added, the five states of a process in the system are:
+
+\begin{enumerate}
+ \item \textbf{Running:} Actively executing right now.
+ \item \textbf{Ready:} Not running, but ready to execute if selected by the scheduler.
+ \item \textbf{Blocked:} Not running, and not able to run until some event happens.
+ \item \textbf{New:} Just created but not yet added to the list of processes ready to run.
+ \item \textbf{Terminated:} Finished executing, but not yet cleaned up (reaped).
+\end{enumerate}
+
+With five states, we will have significantly more transitions between the states. The diagram below shows the five-state model:
+
+\begin{center}
+\includegraphics[width=0.85\textwidth]{images/5-state-model.png}\\
+State diagram for the five-state model.
+\end{center}
+
+There are now eight transitions, most of which are similar to what we have seen before:
+
+\begin{itemize}
+	\item \textbf{Create:} The process is created and enters the New state.
+	\item \textbf{Admit:} A process in the New state is added to the list of processes ready to start, in the Ready state.
+	\item \textbf{Dispatch:} A process that is not currently running begins executing and moves to the Running state.
+	\item \textbf{Suspend:} A running program pauses execution, but can still run if allowed, and moves to the Ready state.
+	\item \textbf{Exit:} A running program finishes and moves to the Terminated state; its return value is available.
+	\item \textbf{Block:} A running program requests a resource, does not get it right away, and cannot proceed.
+	\item \textbf{Unblock:} A program, currently blocked, receives the resource it was waiting for; it moves to the Ready state.
+	\item \textbf{Reap:} A terminated program's return value is collected by a \texttt{wait} and its resources can be released.
+\end{itemize}
+
+There are two additional ``Exit'' transitions that may happen but are not shown. In theory, a process that is in the Ready or Blocked state might transition directly to the Terminated state. This can happen if a process is killed, by the user or by its parent (recall that parent processes can generally kill their children at any time, something the law thankfully does not permit). It may also happen that the system has a policy of killing all the children of a parent process when the parent process dies.
+
 
 \input{bibliography.tex}
 

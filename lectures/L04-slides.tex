@@ -25,7 +25,7 @@ Or at least, exactly one thing at a time.
 
 Now the OS supports multiple programs running concurrently.
 
-To manage this complexity, we have the \alert{process}.
+To manage this complexity, the OS uses the \alert{process}.
 
 \end{frame}
 
@@ -42,43 +42,6 @@ A process is a program in execution.
 
 \end{frame}
 
-\begin{frame}
-\frametitle{The Process}
-
-The process is a very important concept in operating systems. 
-
-Practically everything the OS does involves one or more processes.
-
-All other concepts we will examine in the future depend on this subject. 
-
-When we discuss scheduling, the problem is scheduling of processes.
-
-
-\end{frame}
-
-\begin{frame}
-\frametitle{The Process}
-
-\begin{quote}
-\textit{The concept of process is fundamental to the structure of modern computer operating systems. Its evolution in analyzing problems of synchronization, deadlock, and scheduling in operating systems has been a major intellectual contribution of computer science.}
-\end{quote}\vspace{-1.5em}
-\hfill - What Can Be Automated?: The Computer Science and Engineering Research Study, MIT Press, 1980
-
-\end{frame}
-
-\begin{frame}
-\frametitle{OS Requirements}
-
-Most requirements of an operating system revolve around processes.
-
-Some examples: 
-\begin{itemize}
-	\item \textbf{Scheduling} 
-	\item \textbf{Resource Allocation}
-	\item \textbf{Inter-Process Communication}
-\end{itemize}
-
-\end{frame}
 
 \begin{frame}
 \frametitle{Processes vs. Programs}
@@ -103,7 +66,6 @@ It is created and updated by the OS for each running process.
 It can be thrown away when the program has finished executing and cleaned everything up. 
 
 The blocks are held in memory and maintained in some container (e.g., a list) by the kernel.
-
 
 
 \end{frame}
@@ -182,7 +144,7 @@ Upon creation, the OS will create a new PCB for the process.\\
 
 Set: variables to their initial values.\\
 \quad the initial program state.\\
-\quad the instruction pointer to the first instruction in \texttt{Main}
+\quad the instruction pointer to the first instruction in \texttt{main}
 
 Add the PCB to the set.
 
@@ -414,6 +376,17 @@ Normally there is some sort of understanding between the parent and child proces
 
 
 \begin{frame}
+\frametitle{The Walking Dead}
+
+\begin{center}
+\includegraphics[width=0.8\textwidth]{images/walking-dead.jpg}
+\end{center}
+
+\end{frame}
+
+
+
+\begin{frame}
 \frametitle{Aaah! Zombies! Run!}
 
 When a child process finishes, until the parent collects the return value, the child continues in a state of ``undeath'' we call a \alert{zombie}.
@@ -458,6 +431,124 @@ A program can be intentionally orphaned: to run in the background.
 
 
 This would be cruel, except that processes, as far as anyone knows, do not have feelings.
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Five State Model}
+
+As you might imagine, at any given time, a process is running or not running. 
+
+The first two states of the model are therefore ``Running'' and ``Ready''.
+
+A program that requests a resource like I/O or memory may not get it right away.\\
+\quad This gives us the ``Blocked'' state.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Five State Model}
+
+But we did not cover things like zombies.\\
+\quad Life pro tip: the character who doubts that zombies are real dies first.
+
+A UNIX process may be finished but its value yet uncollected.
+
+It is not ready to run, but not waiting for a resource either.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Come with me if you want to live}
+
+\begin{center}
+\includegraphics[width=0.4\textwidth]{images/judgement-day.jpg}
+\end{center}
+
+New state: Terminated.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Five State Model}
+That accounts for four states; what about the fifth?
+
+The fifth is the ``New'' state: just created.
+
+If the user creates a process, the OS has significant work to do.\\
+\quad Define an identifier.\\
+\quad Instantiate the PCB.\\
+\quad Put the process in the New state.
+
+The process is defined, but the OS has not started it yet.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Five State Model}
+Why bother with the ``New'' state?
+
+The system may limit the number of concurrent processes.
+
+New processes are typically on disk and not in memory.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Five State Model}
+
+Thus, with the two new states added, the five states are:
+
+\begin{enumerate}
+ \item \textbf{Running}
+ \item \textbf{Ready}
+ \item \textbf{Blocked}
+ \item \textbf{New}
+ \item \textbf{Terminated}
+\end{enumerate}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Five State Model}
+
+\begin{center}
+\includegraphics[width=0.9\textwidth]{images/5-state-model.png}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Five State Model}
+
+There are now eight transitions:
+
+\begin{itemize}
+	\item \textbf{Create}
+	\item \textbf{Admit}
+	\item \textbf{Dispatch}
+	\item \textbf{Suspend}
+	\item \textbf{Exit}
+	\item \textbf{Block}
+	\item \textbf{Unblock}
+	\item \textbf{Reap}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Five State Model}
+
+There are two additional exit transitions that are not shown.
+
+A process can go directly from ``Ready'' or ``Blocked'' to ``Terminated''.
+
+This happens if a process is killed.
 
 
 \end{frame}
