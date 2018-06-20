@@ -2,7 +2,7 @@
 
 \begin{document}
 
-\lecture{ 7 --- Inter-Process Communication }{\term}{Jeff Zarnett}
+\lecture{ 6 --- Inter-Process Communication }{\term}{Jeff Zarnett}
 
 \section*{Inter-Process Communication (IPC)}
 When two or more processes on the same system would like to co-ordinate or exchange data the mechanism for doing so is called \textit{inter-process communication}, usually abbreviated as IPC. If a process shares data with another process in the system, the operating system will provide some facilities to make this possible. 
@@ -107,7 +107,7 @@ A message queue may alleviate the problem or just ``kick the can down the road''
 
 \subsubsection*{UNIX Pipes}
 
-In UNIX, we can create a \textit{pipe} to set up communication between a producer and consumer. The producer writes in one end of the pipe and the consumer receives it on the other. This is unidirectional, so if bidirectional communication is desired, two pipes must be used (going in different directions). The UNIX method for creating a pipe is \texttt{pipe} and it is constructed with the call \texttt{pipe( int fileDescriptors[])} where \texttt{fileDescriptors[0]} is the read-end and \texttt{fileDescriptors[1]} is the write-end~\cite{osc}. Yes, \texttt{fileDescriptors} means that UNIX thinks of a pipe as a file (UNIX thinks \underline{everything} is a file...) even though it is in memory.
+In UNIX, we can create a \textit{pipe} to set up communication between a producer and consumer. The producer writes in one end of the pipe and the consumer receives it on the other. This is unidirectional, so if bidirectional communication is desired, two pipes must be used (going in different directions). The UNIX method for creating a pipe is \texttt{pipe} and it is constructed with the call \texttt{pipe( int fileDescriptors[])} where \texttt{fileDescriptors[0]} is the read-end and \texttt{fileDescriptors[1]} is the write-end~\cite{osc}. Yes, \texttt{fileDescriptors} means that UNIX thinks of a pipe as a file (UNIX thinks \textit{everything} is a file...) even though it is in memory.
 
 \begin{center}
 	\includegraphics[width=0.5\textwidth]{images/unix-pipe.png}\\
@@ -124,7 +124,7 @@ You may have worked with pipes on the UNIX command line. A command like \texttt{
 
 Let's consider an example from~\cite{osc} that combines the pipe concept with what we've seen before: using \texttt{fork} to spawn a new child process and then setting up a communication pipe between the parent and child. We will send a message ``Greetings'' from the parent to the child.
 
-\begin{verbatim}
+\begin{lstlisting}[language=C]
 #include <sys/types.h> 
 #include <stdio.h> 
 #include <string.h> 
@@ -134,8 +134,7 @@ Let's consider an example from~\cite{osc} that combines the pipe concept with wh
 #define READ_END 0 
 #define WRITE_END 1
 
-int main(void)
-{
+int main( int argc, char** argv ) {
   char write_msg[BUFFER_SIZE] = "Greetings"; 
   char read_msg[BUFFER_SIZE];
   int fd[2];
@@ -146,11 +145,8 @@ int main(void)
     return 1;
   }
   
-  /* fork a child process */
   pid = fork();
-  
-  if (pid < 0) { 
-    /* error occurred */ 
+  if (pid < 0) { /* error occurred */ 
     fprintf(stderr, "Fork Failed"); 
     return 1;
   }
@@ -177,7 +173,9 @@ int main(void)
   }
   return 0;
 }
-\end{verbatim}
+\end{lstlisting}
+
+In some of the runs of this program we sometimes get a random character after the ``Greetings'' message. What gives? Remember that in C a string is NULL terminated. So a \texttt{printf} routine with a \texttt{\%s} qualifier will just keep going until it gets to a 0-byte somewhere. We are supposed to put the null terminator where it belongs, but this may not suffice. When we have a buffer (as we do here), it makes sense to initialize the buffer to 0. So, in this code, we should add a call to \texttt{memset} to initialize the \texttt{read\_msg} variable to 0s. 
 
 If we wanted to create a named pipe, the system call for that is \texttt{mkfifo} (make first-in-first-out) because sometimes a named pipe is called a FIFO. As it is a file, it can be manipulated with the usual UNIX file system calls: \texttt{open}, \texttt{read}, \texttt{write}, and \texttt{close}~\cite{osc}.
 
