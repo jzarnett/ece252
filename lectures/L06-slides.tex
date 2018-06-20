@@ -1,6 +1,6 @@
 \input{configuration}
 
-\title{Lecture 7 --- Inter-Process Communication}
+\title{Lecture 6 --- Inter-Process Communication}
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
@@ -455,10 +455,10 @@ Use \texttt{fork} to spawn a new child process and then setting up a communicati
 
 We will send a message ``Greetings'' from the parent to the child.
 
-\begin{verbatim}
+\begin{lstlisting}[language=C]
 
-  char_write msg[BUFFER_SIZE] = "Greetings"; 
-  char_read msg[BUFFER_SIZE];
+  char write_msg[BUFFER_SIZE] = "Greetings"; 
+  char read_msg[BUFFER_SIZE];
   int fd[2];
   pid_t pid;
 
@@ -467,7 +467,7 @@ We will send a message ``Greetings'' from the parent to the child.
     return 1;
   }
 
-\end{verbatim}
+\end{lstlisting}
 
 
 \end{frame}
@@ -475,7 +475,7 @@ We will send a message ``Greetings'' from the parent to the child.
 \begin{frame}[fragile]
 \frametitle{Pipe Code Example, Continued}
 
-\begin{verbatim}
+\begin{lstlisting}[language=C]
 
 /* fork a child process */
   pid = fork();
@@ -485,18 +485,6 @@ We will send a message ``Greetings'' from the parent to the child.
     fprintf(stderr, "Fork Failed"); 
     return 1;
   }
-
-\end{verbatim}
-
-
-\end{frame}
-
-\begin{frame}[fragile]
-\frametitle{Pipe Code Example, Continued}
-
-
-\begin{verbatim}
-
  if (pid > 0) { /* parent process */
     /* close the unused end of the pipe */ 
     close(fd[READ_END]);
@@ -509,10 +497,10 @@ We will send a message ``Greetings'' from the parent to the child.
     
   } 
 
-\end{verbatim}
+\end{lstlisting}
 
 \texttt{READ\_END} is defined as \texttt{0} in a \texttt{\#define} directive.\\
-\texttt{WRITE\_END} is defined as \texttt{0} in a \texttt{\#define} directive.\\
+\texttt{WRITE\_END} is defined as \texttt{1} in a \texttt{\#define} directive.
 
 \end{frame}
 
@@ -520,8 +508,7 @@ We will send a message ``Greetings'' from the parent to the child.
 \frametitle{Pipe Code Example, Continued}
 
 
-\begin{verbatim}
-
+\begin{lstlisting}[language=C]
   else { /* child process */
     /* close the unused end of the pipe */ 
     close(fd[WRITE_END]);
@@ -530,11 +517,15 @@ We will send a message ``Greetings'' from the parent to the child.
     read(fd[READ_END], read_msg, BUFFER_SIZE); 
     printf("read %s",read_msg);
      /* close the write end of the pipe */
-     close(fd[READ_END]);
+     close(fd[READ_END]); 
   }
   return 0;
 }
-\end{verbatim}
+\end{lstlisting}
+
+Does the output match what's supposed to happen? 
+
+Or are there extra characters?
 
 \end{frame}
 
