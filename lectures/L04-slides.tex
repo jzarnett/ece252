@@ -550,9 +550,101 @@ A process can go directly from ``Ready'' or ``Blocked'' to ``Terminated''.
 
 This happens if a process is killed.
 
+\end{frame}
+
+\begin{frame}
+\frametitle{More is the New More}
+
+We can expand on the five state model by considering disk.
+
+A process maybe swapped out to disk rather than in main memory.
+
+If an executing process gets blocked, maybe swap it to disk.
+
+Users often want more processes running than fit in memory.
+
+The problem is not the PCBs, but stack \& heap space of the programs.
 
 \end{frame}
 
+\begin{frame}
+\frametitle{The Last Resort: Disk}
+
+With no other place to put them, we have to put some processes on disk.
+
+This is what we know as \alert{swapping}.
+
+When the demands for memory exceed the available memory, some of the processes will be moved to disk storage to make room. 
+
+This is a notably expensive operation.
+\end{frame}
+
+\begin{frame}
+\frametitle{Swapping to Disk}
+
+Swapping a process to disk might mean transferring several hundred megabytes of data, or even a few gigabytes. 
+
+This, from the perspective of the CPU, takes about seven eternities. 
+
+Then, when that process is going to run again, we need to load it back in to memory, which will take just as much time as it took to flush it out. 
+
+So this is something to be done only when necessary.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{The Sixth Sens...State}
+
+We do not want to spend any more time swapping the process in and out of memory than is necessary.
+
+ We need to know if a particular process is in memory or on disk.
+ 
+Thus we need a new state: swapped.  
+
+Ideally, we will only swap a process to disk if it is blocked. 
+
+A process swapped to disk then enters that sixth state, swapped.\\
+\quad It is blocked and not in main memory.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Lucky Number Seven}
+
+There are two scenarios that tell us that six is not sufficient.
+
+1. What if all processes are ready, but there is a memory space shortage?
+
+2. What if the event a swapped process waited for took place?
+
+Avoid bringing in a swapped process if it is just going to be blocked.
+
+Solution: split swapped into ``Ready/Swapped''and ``Blocked/Swapped''.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Seven State Model}
+
+\begin{center}
+\includegraphics[width=0.9\textwidth]{images/7-state-model.png}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Seven State Model}
+A variant of the five state model.
+
+The ``Admit'' transition is modified: by default the new process does not start in main memory.
+
+Two new transitions: ``Swap In'' and ``Swap Out''.
+
+A second ``Unblock'' transition.
+
+As in the five state model, some additional ``Exit'' transitions.
+
+\end{frame}
 
 \end{document}
 

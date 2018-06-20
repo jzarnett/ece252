@@ -1,6 +1,6 @@
 \input{configuration}
 
-\title{Lecture 6 --- Processes in UNIX}
+\title{Lecture 5 --- Processes in UNIX}
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
@@ -48,7 +48,7 @@ I don't recommend trying to kill \texttt{init}.
 \frametitle{Linux Process Tree}
 
 \begin{center}
-\includegraphics[width=\textwidth]{images/linux-process-tree.png}
+\includegraphics[width=\textwidth]{images/linux-process-tree.pdf}
 \end{center}
 
 \end{frame}
@@ -255,9 +255,8 @@ Or the parent might want to wait for the child to finish.
 \frametitle{Putting it Together}
 
 {\scriptsize
-\begin{verbatim}
-int main()
-{
+\begin{lstlisting}[language=C]
+int main( int argc, char** argv ) {
   pid_t pid;
   int childStatus;
 
@@ -265,25 +264,25 @@ int main()
   pid = fork();
   
   if (pid < 0) { 
-  
     /* error occurred */ 
     fprintf(stderr, "Fork Failed"); 
     return 1;
-    
- } else if (pid == 0) { 
+  
+ } else if (pid == 0) {    
     /* child process */
     execlp("/bin/ls","ls",NULL);
     
-  } else { 
+  } else {    
     /* parent process */
     /* parent will wait for the child to complete */
     wait(&childStatus);
     printf("Child Complete with status: %i \n", childStatus);
     
   }
+    
   return 0;
 }
-\end{verbatim}
+\end{lstlisting}
 }
 
 \end{frame}
@@ -330,90 +329,6 @@ The \texttt{wait} function also returns the process ID of the child.
 
 \end{frame}
 
-\begin{frame}[fragile]
-\frametitle{Abnormal Return Code}
-{\scriptsize
-\begin{verbatim}
-int main()
-{
-  pid_t pid;
-  int childStatus;
-
-  /* fork a child process */
-  pid = fork();
-  
-  if (pid < 0) { 
-  
-    /* error occurred */ 
-    fprintf(stderr, "Fork Failed"); 
-    return 1;
-    
- } else if (pid == 0) {  
-    /* child process */
-    exit( 1 );
-    
-  } else {
-    /* parent process */
-    /* parent will wait for the child to complete */
-    wait(&childStatus);
-    printf("Child Complete with status: %i \n", childStatus);
-    
-  }   
-  return 0;
-}
-\end{verbatim}
-
-}
-
-\end{frame}
-
-\begin{frame}
-\frametitle{UNIX System V Process Management}
-
-UNIX divides its processes into two categories: system processes that run in kernel mode and user processes that run in user mode.
-
-There are nine different states:
-
-\begin{enumerate}
-	\item \textbf{User Running}
-	\item \textbf{Kernel Running}
-	\item \textbf{Ready to Run, in Memory}
-	\item \textbf{Asleep in Memory}
-	\item \textbf{Ready to Run, Swapped}
-	\item \textbf{Sleeping, Swapped}
-	\item \textbf{Preempted}
-	\item \textbf{Created}
-	\item \textbf{Zombie}
-\end{enumerate}
-
-
-\end{frame}
-
-\begin{frame}
-\frametitle{UNIX Process States}
-
-\begin{center}
-\includegraphics[width=0.95\textwidth]{images/unix-states.png}
-\end{center}
-
-\end{frame}
-
-\begin{frame}
-\frametitle{UNIX Process Creation}
-
-Process creation when \texttt{fork} is called means the OS does the following:
-
-\begin{enumerate}
-	\item It allocates a slot in the process table for the new process.
-	\item It assigns a unique process ID to the child process.
-	\item It makes a copy of the process image of the parent, with the exception of any shared memory.
-	\item It increments counters for any files owned by the parent (showing there is an additional process referencing those files).
-	\item The new process is in the state Ready to Run.
-	\item A return value of 0 goes to the child process, and the unique process ID of the child is returned to the parent.
-\end{enumerate}
-
-\end{frame}
-
 \begin{frame}
 \frametitle{After the \texttt{fork}}
 
@@ -426,6 +341,170 @@ Afterwards, the system will need to choose which process is going to run:
 \end{enumerate}
 
 \end{frame}
+
+
+\begin{frame}
+\frametitle{Fork Design Problem}
+
+There is a task that can be split into parts 'A' and 'B'. 
+
+Use \texttt{fork()} to create a child process. 
+
+The child process should call function \texttt{execute\_B()} and return the result to the parent. 
+
+The parent process should call \texttt{execute\_A()} and collect its result.
+
+The parent should then collect the result of the child using \texttt{wait()} and then produce the console output.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Fork Design Problem}
+If no errors occurred, \texttt{main} should return 0; otherwise it should return -1.
+
+If an error occurs, it should be reported to the console including the error number (e.g., ``Error 7 Occurred.''). 
+
+If more than one error occurs, report both errors. 
+
+If both functions return zero, it means all is well and the program should print ``Completed.'' to the console.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Fork Design Solution}
+\begin{lstlisting}[language=C]
+int main( int argc, char** argv ) {
+  int child_result;
+  int parent_result;
+
+  pid_t pid = fork();
+  if ( pid < 0 ) { /* Fork Failed */
+    return -1;
+  } else if ( pid == 0 ) { /* Child */
+    return execute_B();
+  } else { /* Parent */ 
+    parent_result = execute_A();
+    wait( &child_result );
+  }
+  
+  if ( child_result == 0 && parent_result == 0 ) {
+    printf( "Completed.\n" );
+    return 0;
+  }
+  
+  if ( child_result != 0 ) {
+    printf( "Error %d Occurred.\n", child_result);
+  }
+  if ( parent_result != 0 ) {
+    printf( "Error %d Occurred.\n", parent_result);
+  }
+  return -1;
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}
+\frametitle{Signals}
+
+UNIX systems use signals to indicate events (e.g., the \texttt{Ctrl-C} on the console)\\
+\quad A form of event-driven programming. 
+
+Signals also are things like exceptions (division by zero, segmentation fault).
+
+It is \textit{synchronous} if the signal occurs as a result of the program execution (e.g., dividing by zero); 
+
+It is \textit{asynchronous} if it comes from outside the process (e.g., the user pressing \texttt{Ctrl-C} or one process or thread sending a signal to another). 
+
+Signals are, in the end, interrupts with a certain integer ID.
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Signals}
+
+By default, the kernel will handle any signal that is sent to a process with the default handler. 
+
+The behaviour of the default handler may be to ignore the signal, but some signals (segmentation fault) will result in termination of the process. 
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{POSIX Signals}
+
+Here are some of the many signals described in the POSIX.1-1990 standard:
+
+{\scriptsize
+\begin{center}
+\begin{tabular}{l|l|l|l}
+	\textbf{Signal} & \textbf{Comment} & \textbf{Value} & \textbf{Default Action}\\ \hline
+	\texttt{SIGHUP} & Hangup detected & 1 & Terminate process \\
+	\texttt{SIGINT} & Keyboard interrupt (\texttt{Ctrl-C}) & 2 & Terminate process \\
+	\texttt{SIGQUIT} & Quit from keyboard & 3 & Terminate process, dump debug info  \\
+	\texttt{SIGILL} & Illegal instruction & 4 & Terminate process, dump debug info \\
+	\texttt{SIGKILL} & Kill signal & 9 & Terminate process \\
+	\texttt{SIGSEGV} & Segmentation fault (invalid memory reference) & 11 & Terminate process, dump debug info\\
+	\texttt{SIGTERM} & Termination signal & 15 & Terminate process \\
+	\texttt{SIGCHLD} & Child stopped or terminated & 20,17,18 & Ignore \\
+	\texttt{SIGCONT} & Continue if stopped & 19,18,25 & Continue the process if stopped \\
+	\texttt{SIGSTOP} & Stop process & 18,20,24 & Stop process \\
+\end{tabular}
+\end{center}
+}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Handling Signals}
+
+A process may inform the OS it is prepared to handle a signal itself.
+
+Example: doing some cleanup when \texttt{Ctrl-C} is received instead of just dying.
+
+In any event, a signal needs to be handled, even if the handling is to ignore it. 
+
+The signals \texttt{SIGKILL} and \texttt{SIGSTOP} cannot be caught, blocked, or ignored.
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Delivering Signals in UNIX}
+
+In UNIX, to deliver a signal to a process, the command is:
+
+\texttt{kill( pid\_t pid, int signal )}
+
+Yes, to send a signal, even if it's not a kill signal, the command is kill. 
+
+\end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Command-Line Signals}
+
+On the command line: to send a signal, \texttt{kill} followed by a process ID. 
+
+Normally a command like \texttt{kill 24601} will send \texttt{SIGHUP} to a process.
+
+This will, by default, kill the process.\\
+\quad The process has an opportunity to clean things up if it wants to. 
+
+If the process is still stuck, you can ``force'' kill the process with \texttt{SIGKILL}:\\\ \quad \texttt{kill -9 24601}. 
+
+The \texttt{-9} parameter sends signal 9 (\texttt{SIGKILL}) rather than the default 1 (\texttt{SIGHUP}). 
+
+Some users are eager to jump to \texttt{kill -9} whenever a process is stuck...
+\end{frame}
+
 
 
 \begin{frame}
