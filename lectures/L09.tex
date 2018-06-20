@@ -134,51 +134,7 @@ In this example, both threads are sharing the global variable \texttt{sum}. We h
 As discussed earlier, \texttt{fork} results in a parent process spawning a child that is a clone of the parent. We would normally expect that the \texttt{fork} call makes a duplicate of all of the threads of the parent process. This is sensible, except for the fact that the child might call \texttt{exec} and replace itself with another program (throwing away all the threads). Therefore the work that was done to duplicate all the threads of the program is wasted. Some UNIX systems approach this by having two different implementations of \texttt{fork}, one that will copy all threads and one that will copy only the executing thread~\cite{osc}.
 
 
-\subsection*{Signals} 
 
-UNIX systems use signals to indicate events (e.g., the \texttt{Ctrl-C} on the console), which is a form of event-driven programming. Signals also are things like exceptions (division by zero, segmentation fault), etc. A signal may be \textit{synchronous} if the signal occurs as a result of the program execution (e.g., dividing by zero); it is \textit{asynchronous} if it comes from outside the process (e.g., the user pressing \texttt{Ctrl-C} or one process or thread sending a signal to another). Signals are, in the end, interrupts with a certain integer ID.
-
-By default, the kernel will handle any signal that is sent to a process with the default handler. The behaviour of the default handler may be to ignore the signal, but some signals (segmentation fault) will result in termination of the process. 
-
-
-Here are some of the many signals described in the POSIX.1-1990 standard:
-
-\begin{center}
-\begin{tabular}{l|l|l|l}
-	\textbf{Signal} & \textbf{Comment} & \textbf{Value} & \textbf{Default Action}\\ \hline
-	\texttt{SIGHUP} & Hangup detected & 1 & Terminate process \\
-	\texttt{SIGINT} & Keyboard interrupt (\texttt{Ctrl-C}) & 2 & Terminate process \\
-	\texttt{SIGQUIT} & Quit from keyboard & 3 & Terminate process, dump debug info  \\
-	\texttt{SIGILL} & Illegal instruction & 4 & Terminate process, dump debug info \\
-	\texttt{SIGKILL} & Kill signal & 9 & Terminate process \\
-	\texttt{SIGSEGV} & Segmentation fault (invalid memory reference) & 11 & Terminate process, dump debug info\\
-	\texttt{SIGTERM} & Termination signal & 15 & Terminate process \\
-	\texttt{SIGCHLD} & Child stopped or terminated & 20,17,18 & Ignore \\
-	\texttt{SIGCONT} & Continue if stopped & 19,18,25 & Continue the process if stopped \\
-	\texttt{SIGSTOP} & Stop process & 18,20,24 & Stop process \\
-\end{tabular}
-\end{center}
-
-
-Alternatively, a process may inform the operating system it is prepared to handle the signal itself (such as doing some cleanup when the \texttt{Ctrl-C} is received instead of just dying). In any event, a signal needs to be handled, even if the handling is to ignore it. Note that the signals \texttt{SIGKILL} and \texttt{SIGSTOP} cannot be caught, blocked, or ignored.
-
-In a multithreaded program, the difficulty is: to which thread should the signal be sent? In general there are the following options~\cite{osc}:
-\begin{enumerate}
-	\item Deliver the signal to the thread to which the signal applies.
-	\item Deliver the signal to every thread in the process.
-	\item Deliver the signal to certain threads in the process.
-	\item Assign a specific thread to receive all signals for the process.
-\end{enumerate}
-
-Which method for distributing the signal is appropriate will depend on the signal. Synchronous signals will be sent to the thread that triggered the signal, but the process could handle asynchronous signals in any of the four ways. UNIX threads allow a thread to say what signals it will accept. If delivered to a process, the signal will be handled by the first thread found that will accept the signal. That thread can redistribute the signal to other threads if necessary.
-
-In UNIX, to deliver a signal to a process, the command is:\\
-\texttt{kill( pid\_t pid, int signal )}\\
-Yes, to send a signal, even if it's not a kill signal, the command is kill. The equivalent in POSIX pthreads is:\\
-\texttt{pthread\_kill( pthread\_t tid, int signal )}\\
-where it will deliver the signal to a specific thread.
-
-On the command line, the command to send a signal is also \texttt{kill} followed by a process ID. Normally a command like \texttt{kill 24601} will send \texttt{SIGHUP} to a process, which will, by default, kill the process. The process has an opportunity to clean things up if it wants to. If the process is still stuck, you can ``force'' kill the process by sending \texttt{SIGKILL} with the command \texttt{kill -9 24601}. The \texttt{-9} parameter says to send signal 9 (\texttt{SIGKILL}) rather than the default 1 (\texttt{SIGHUP}). Some users are eager to jump to \texttt{kill -9} whenever a process is stuck, but it's usually worthwhile to attempt a less severe killing (\texttt{SIGHUP} or \texttt{Ctrl-C}) so that the process can at least try to clean up.
 
 \subsection*{Cancellation}
 
