@@ -333,6 +333,11 @@ This is not a firm rule and there are examples that contradict this. But it is c
 
 In this same vein, many functions have integer return types. Because the first parameter structure is being modified, the return value is an integer that is the ``result code''. If everything went well this is usually zero. If there was a problem, then it's a nonzero number and the number can help you figure out what's wrong. For example, a return value of 36 might be something you can look up in the documentation and find out that the value used for the third argument is too large. 
 
+Also noteworthy: there is a header \texttt{errno.h} that defines a variable \texttt{errno}. Many functions and library calls set the value of this variable if something goes wrong during their execution. Knowing what precisely went wrong can be very valuable when debugging your program.
+
+If you want to read \texttt{errno} (or print it) then you include the header and declare \texttt{extern int errno;}  in your program. Then, when a function call that uses it has a problem, you can use \texttt{errno} by, for example, printing an error message. The header file contains definitions of numerous standard error values such as \texttt{EIO} for ``Error in Input/Output''. Check the documentation to get the full picture -- there are a lot of them. But learning that your network call is code 111, \texttt{ECONNREFUSED} (connection refused) is a lot more helpful than just getting back \texttt{-1} as a return code.
+
+
 \paragraph{Printing.}
 
 Writing to the console is done using the \texttt{printf()} function. This function formats a string and writes it to the console. In a simple example, the Hello World program would contain the following print statement:
