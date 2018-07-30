@@ -2,140 +2,257 @@
 
 \begin{document}
 
-\lecture{ 8 --- Threads }{\term}{Jeff Zarnett}
+\lecture{ 8 --- Network Communication }{\term}{Jeff Zarnett}
 
-\section*{Threads}
+\section*{Network Communication, Continued}
 
-Recall our earlier examination of the process. A process has three major components: an executable program, the data created/needed by the program, and the execution context of the program (files opened, resources allocated, et cetera). A process has at least one \textit{thread}, and can have many.
+We now have a good idea about how to establish a connection for communication, but have thus far not actually sent or received any data! Let's assume that all the setup from before is done and we have established a connection. If we want to send datagrams, the workflow is different and we'll come back to that afterwards.
 
-The term ``thread'' is a short form of \textit{Thread of Execution}. A thread of execution is a sequence of executable commands that can be scheduled to run on the CPU. Threads also have some state (where in the sequence of executable commands the program is) and stores some local variables. Most programs you will write in other courses had only one thread; that is, your program's code is executed one statement at a time.
+Either side can send or receive data. Figuring out whose turn it is to talk and whose turn it is to listen is the job of client and server themselves. Also what the content is, and how to interpret it is the province of the client and server.
 
-A multithreaded program is one that uses more than one thread, at least some of the time. When a program is started, it begins with an initial thread (where the \texttt{main} method is) and that main thread can create some additional threads if needed. Note that threads can be created and destroyed within a program dynamically: a thread can be created to handle a specific background task, like writing changes to the database, and will terminate when it is done. Or a created thread might be persistent.
+\paragraph{Send.} The function for sending data is~\cite{apunix}:
+\begin{lstlisting}[language=C]
+int send( int sockfd, const void* msg, int length, int flags );
+\end{lstlisting}
 
-See the figure below, which illustrates some possible organizations for processes and threads in different programs:
+The first parameter is the socket file descriptor and this is either the one returned by the call to \texttt{socket()} (client-side) or \texttt{accept()} (server-side). Then there is the data to send (some arbitrary bytes). The third parameter is the length of whatever we are sending. The last parameter is the flags and for a simple use case we can just give \texttt{0} to the function for this.
 
-\begin{center}
-	\includegraphics[width=0.625\textwidth]{images/mthread.png}\\
-	Possible organizations of processes and threads~\cite{mthread}.
-\end{center}
+The return value of the function is the number of bytes sent. If something went wrong, this will be -1 and the \texttt{errno} variable will tell you more about what exactly went wrong. Under ideal circumstances, the number of bytes sent equals the length parameter.
 
-In a process that has multiple threads, each thread has its own~\cite{osi}:
-\begin{enumerate}
-	\item Thread execution state (like process state: running, ready, blocked...).
-	\item Saved thread context when not running.
-	\item Execution stack.
-	\item Local variables.
-	\item Access to the memory and resources of the process (shared with all threads in that process).
-\end{enumerate}
+Let's consider a modified example from~\cite{getaddrinfo}:
+\begin{lstlisting}[language=C]
+char *msg = "Hello world!"
+int len = strnlen( msg, 13 );
+int sent = send( sockfd, msg, len, 0 );
+\end{lstlisting}
 
-Or, to represent this visually:
+And there you are, the data is sent! Assuming it went well. In real life it might be best to check for -1; unlike something like \texttt{malloc()} where the failure case is rare (is the memory allocator really going to be unable to give you an \texttt{int} often?), networks are tricky and can fail. Checking is worthwhile...
 
-\begin{center}
-	\includegraphics[width=0.625\textwidth]{images/mthread2.png}\\
-	A single threaded and a multithreaded process compared side-by-side~\cite{osc}.
-\end{center}
+But wait a minute, we said under ideal circumstances the number of bytes is equal to the length. As you might have guessed, there is a limit to the amount of data that you can send in one chunk. The actual amount you can send in one chunk is reasonably-sized (somewhere around 1KB) but you can't just memorize a number and assume that will always be true across all systems. So if you have a significant chunk of data to send, you'll need to check how much was sent and then you are responsible for sending out the rest.
 
-All the threads of a process share the state and resources of the process. If one thread opens a file, other threads in that process can also access that file.
+If the data being sent is large enough that this is a concern, you should track the number of bytes sent and keep calling send, updating the pointer as you advance. The code below is modified from~\cite{getaddrinfo} that sends as many times as necessary until we're down to 0 bytes left to send:
 
-The way programs are written now, there are few if any that are not in some way multithreaded. One common way of dividing up the program into threads is to separate the user interface from a time-consuming action. 
+\begin{lstlisting}[language=C]
+int sendall( int socket, char *buf, int *len ) {
+  int total = 0;        // how many bytes we've sent
+  int bytesleft = *len; // how many we have left to send
+  int n;
 
-Consider a file-transfer program. If the user interface and upload method share a thread, once a file upload has started, the user will not be able to use the UI anymore (and Windows will put the dreaded ``(Not Responding)'' at the end of its dialog title), even to click the button that cancels the upload. For some reason, users hate that. 
+  while( total < *len ) {
+    n = send( socket, buf + total, bytesleft, 0 );
+    if (n == -1) { 
+      break; 
+    }
+    total += n;
+    bytesleft -= n;
+  }
+  *len = total; // return number actually sent here
+  return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
+}
+\end{lstlisting}
 
-We have two options for how to alleviate this problem: when an upload is ready to start, we can call \texttt{fork} and create a new process to do the upload, or we can spawn  new thread. In either case, the newly created entity will handle the upload of the file. The UI remains responsive, because the UI thread is not waiting for the upload method to complete.
+\paragraph{Receive.} And if you'd like to receive data, the call for this is \texttt{recv()}; its signature is almost the same but not identical~\cite{apunix}:
 
-\subsection*{Motivation for Threads}
+\begin{lstlisting}[language=C]
+int recv( int sockfd, void * buffer, int length, int flags );
+\end{lstlisting}
 
-Why choose threads rather than creating a new process? The primary, but not sole, motivation is performance:
-\begin{enumerate}
-	\item Creating a new thread is much faster than creating a new process. In fact, thread creation is on the order of ten times faster~\cite{machThreads}.
-	\item Terminating and cleaning up a thread is faster than terminating and cleaning up a process.
-	\item It takes less time to switch between two threads within the same process (because less data needs to be stored/restored). In Solaris, for example, switching between processes is about five times slower than switching between threads~\cite{osc}.
-	\item Because threads share the same memory space, for two threads to communicate, they do not have to use any of the IPC mechanisms; they can just communicate directly.
-	\item As in the file transfer program, use of threads allows the program to be responsive even when a part of the program is blocked.
-\end{enumerate}
+The socket file descriptor is the place to receive data from. The buffer parameter is the destination where the data goes, and the length is the maximum size of that buffer. Flags can also be 0 here. 
 
-This last advantage, background work, is one of four common examples of the uses of threads in a general purpose operating system~\cite{insideOS2}:
-\begin{enumerate}
-	\item \textbf{Foreground and Background Work:} as already examined, the ability to run something in the background to keep the program responsive.
-	\item \textbf{Asynchronous processing}: for example, to protect against power failure or a crash, a word processor may write the document data in main memory to disk periodically. This can be done as a background task so it does not disrupt the user's workflow.
-	\item \textbf{Speed of Execution:} a multithreaded program can get more done in the same amount of time. Just as the OS can run a different program when the executing program gets blocked (say, on a disk read), if one thread is blocked, another thread may execute.
-	\item \textbf{Modular Structure:} a program that does several different things may be given structure through threads.
-\end{enumerate}
+The return value is the number of bytes actually read into the buffer. If you got back -1, then an error occurred and check \texttt{errno} for more details. If you got back 0, it means the other side hung up on you: they closed the socket. So no point in waiting anymore!
 
-There are some drawbacks, however: there is no protection between threads in the same process: so one thread can easily mess with the memory being used by another thread. This once again brings us to the subject of co-ordination, which will follow the discussion of threads.
+Knowing that the other side is finished sending data is not necessarily all that easy. That's something to work out with the sender. This is why in movies when characters communicate with walkie-talkies, they say ``over'' when they have finished their transmission... so the recipient will know they are finished talking. In network communication, we might know in advance the size of data we are supposed to get, or we might be told as part of the (negotiated) protocol, or we might need to wait for the other side to close the connection (then we know they are definitely done).
 
-Also, if any thread encounters an error (such as a division by zero or Segmentation Fault), the whole process might be terminated by the operating system. If the program has multiple processes for different parts, then the other processes will not be affected; if the program has multiple threads and they all share the same process, then any thread encountering an error might bring all of them to a halt.
+Suppose we are sending more than just a string. Can we do a fancy thing and write directly to a \texttt{struct} by making the buffer location the location of thtat \texttt{struct} and the length the \texttt{sizeof} that type? Yes, you can but this requires that the representation you receive over the network to be exactly the same as your struct. A more sensible approach is to serialize your data in some way, and then de-serialize it on the other side. 
 
+Serialization is the process of converting the data to some sort of byte-representation so that it can be sent across the network (or stored in a database, or anything really) and then later reconstructed via the deserialization process. This means that no particular data format is needed and systems that don't use the same software or architecture, even, can communicate easily.
 
-\subsection*{Thread States}
-Each individual thread will have its own state. We said earlier that a process may have seven states, but the model for thread state will be the somewhat simpler five-state model. If a process is swapped out of memory, all its threads will be swapped out; when that process is swapped in to memory, all the threads will be swapped in. Therefore we do not need to consider whether a thread is in memory or swapped; hence the five-state model, reproduced once again below:
+In a practical scenario there's no need to write your own (de)serialization routine; there exist libraries like \texttt{protobuf-c} that are designed explicitly for this purpose. Pick a good one and use it.
 
-\begin{center}
-\includegraphics[width=0.85\textwidth]{images/5-state-model.png}\\
-State diagram for the five-state model.
-\end{center}
+But anyway, this is it! That's how we send and receive data. When we're done, we just call \texttt{close()} on the socket and that is the end. We now know how to communicate over the network.
 
-The transitions work the same way as the state transitions for a process. As with a process, a thread in any state can transition to terminated even though that is not shown on the diagram. When a process is terminated, all its threads are terminated, regardless of what state it is in. The example we started with, the file transfer upload being cancelled, is an example of termination we should consider: thread cancellation.
+%\paragraph{Shutdown.} For completeness we'll cover the \texttt{shutdown} call even though it probably is needed only in corner cases. It allow
 
-\subsection*{Thread Cancellation}
-Thread cancellation is exactly what it sounds like: a running thread will be terminated before it has finished its work. Once the user presses the cancel button on the file upload, we want to stop the upload task that was in progress. The thread that we are going to cancel is called the \textit{target} (because we shoot targets, I guess) and there are two ways a thread might get cancelled~\cite{osc}:
+\subsection*{Datagrams}
+But if you don't want to establish a communication channel and you just want to send a message (that is, calling is for old people and we just want to text people) there are two related functions for that instead~\cite{getaddrinfo}:
 
-\begin{enumerate}
-	\item \textbf{Asynchronous Cancellation:} One thread immediately terminates the target.
-	\item \textbf{Deferred Cancellation:} The target is informed that it is cancelled; the target is responsible for checking regularly if it is terminated, allowing it to clean itself up properly. 
-\end{enumerate}
+\begin{lstlisting}[language=C]
+int sendto( int sockfd, const void* msg, int length, unsigned int flags, 
+    const struct sockaddr* to, socklen_t tolength )
 
-For example, in Android, a background task has a function \texttt{isCancelled} that returns a boolean value. If we cancel a task then the \texttt{isCancelled} value returns true, but on its own that does not actually impact the task directly. The task itself is responsible for checking if \texttt{isCancelled} is true and stopping its activity and cleaning up (closing open files, etc.) before it terminates. This is deferred cancellation, and it's possible, though generally poor programming practice, to never check for cancellation.
+int recvfrom( int sockfd, void* buffer, int length, unsigned int flags, 
+    struct sockaddr* from, int* fromlength )
+\end{lstlisting}
 
-Given that a thread can effectively ignore a cancellation if it is the deferred cancellation type, why would we ever choose that over asynchronous cancellation? Suppose the thread we are cancelling has some resources. If the thread is terminated in a disorderly fashion, the operating system may not reclaim all resources from that thread. Thus a resource may appear to be in use even though it is not, denying that resource to other threads and processes that may want to use it~\cite{osc}.
+Given what we've covered here nothing is really surprising. Because there's no connection  established, each send has parameters for where to send the data to and each receive tells you where the data is being received from. Send still returns the number of bytes sent and may be less than you were expecting if sending a large amount of data.
 
-\subsection*{Thread Types}
+If you call \texttt{connect()} on a datagram socket, incidentally, you can then skip some of this and just use the regular \texttt{send} and \texttt{recv} operations -- the transport is still UDP, but the source and destination don't need to be added every time.
 
-There are two categories of threads in implementation: \textit{user-level} threads (ULTs) and \textit{kernel-level} threads (KLTs -- sometimes also called a lightweight process). ULTs run at the user level and KLTs run at the kernel level.
-
-There are three possible approaches: (a) all threads are user level; (b) all threads are kernel level; and (c) a combination of both approaches. See the diagram below:
-
-\begin{center}
-	\includegraphics[width=0.85\textwidth]{images/thread-types.png}\\
-	User and Kernel-Level Threads~\cite{osi}.
-\end{center}
+In our next lecture, we will do an in-class exercise related to using sockets. The in-class exercise will provide an opportunity to use the socket code we've learned in a way that is more engaging than just seeing yet another code example in the lecture notes.
 
 
-If the operating system in question does not support threads, we can still have multithreaded programming through user level threads in some sort of threads library. The library handles creation, management, and cleanup of threads. The kernel is unaware of the existence of the user level threads and it is therefore the responsibility of the threads library or the application to manage the threads. 
+\subsection*{cURL}
+In most situations, however, we don't work with sockets directly when dealing with URLs. Instead we are likely to use cURL (or similar), a network communication and transfer request library. There is an associated command-line tool, but the client-side library is the area of interest because we can build on it in our program and save ourselves a lot of hassle. The curl library can do a lot of things and communicate via a lot of different protocols. It is quite flexible in that way. But it is only for the client-side and isn't meant to be used for server-side operations.
 
-There are three advantages to using user-level threads~\cite{osi}:
-\begin{enumerate}
-	\item Thread switches do not require kernel mode privileges, because the thread library is in the user-side. Thus we do not have to switch to kernel mode and back for each thread switch.
-	\item Scheduling can be something the program decides rather than leaving it to operating system policy. 
-	\item Portability: the program can run in a multithreaded way even if the kernel does not support multiple threads.
-\end{enumerate}
+Imagine, if you will, that you want to access a webservice. Lots of things run via web service now and you are probably already somewhat familiar with them. In short, servers have ``endpoints'' that clients connect to via HTTP, and then the client can get a response. There are numerous examples of services that use this mechanism and they often adhere to some design principles like REST (REpresentational State Transfer). If we wished to communicate, for example, a GET request (to ``get'' some resource), then we can put together a connection via a socket and write the ``"GET / HTTP/1.0\textbackslash r\textbackslash n"'' into a string and send that message via \texttt{send()}. But there's no need to do it all by hand because we can do this very easily with libcurl.
 
-As far as the kernel is concerned, there is only one thread for that process. Thus, if any of the threads in the process block (such as making an I/O request), the whole process will be blocked. But there is a solution to this called \textit{jacketing}: conversion of a blocking system call into a non-blocking system call. Instead of calling the system call directly, the program calls the thread library's version of the system call. The jacket routine checks if the request will result in the application being blocked and can decide instead to consider the requesting thread blocked and switch to another one, preventing the OS from blocking the whole process. Additionally, a process cannot take advantage of multiple processes.
+As you might imagine, the information in this section is based on the official libcurl documentation. We don't cover every option or every detail, so it might be worth it to read some of the official documentation if you get stuck: \url{https://curl.haxx.se/libcurl/c/}.
 
-The kernel level threads approach is taken by Windows, for example. The kernel is responsible for all thread management and it overcomes one of the weaknesses of the ULT approach: if one thread in a process is blocked, the others may continue. Another positive feature is that the kernel routines themselves may be multithreaded~\cite{osi}.
+This example, modified from \url{https://curl.haxx.se/libcurl/c/https.html} outlines all the key parts we need to use the curl library. We'll go through it and see what each of the parts do:
 
-The disadvantage of this is the opposite of the advantage of the ULT: a thread switch involves entering kernel mode with a \texttt{trap} and then returning from kernel mode to user mode (which does, of course, take time).
+\begin{lstlisting}[language=C]
+#include <stdio.h>
+#include <curl/curl.h>
+ 
+int main( int argc, char** argv ) {
+  CURL *curl;
+  CURLcode res;
+ 
+  curl_global_init(CURL_GLOBAL_DEFAULT);
+ 
+  curl = curl_easy_init();
+  if( curl ) {
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/" );
+    res = curl_easy_perform(curl);
+    
+  if( res != CURLE_OK) {
+      fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+    }
+    curl_easy_cleanup(curl);
+  }
+ 
+  curl_global_cleanup();
+  return 0;
+}
+\end{lstlisting}
 
-We can, certainly, combine both approaches where user level and kernel level threads co-exist in the system. This is common as any system that has kernel level threads can still run applications that use a thread library. 
+Starting from the top then: we need to include the header \texttt{curl/curl.h}. If you are trying to compile and run a program on your own system and this header is not found, you need to install \texttt{libcurl-dev} on the system. 
 
-To look at this from another angle, we can consider the relationships between user and kernel level threads, of which we will consider three: Many-To-One, One-To-One, and Many-To-Many.
+At the beginning of \texttt{main} there are two variables declared. The \texttt{CURL} structure is our ``handle''. This needs to be, like many structures, initialized before use and cleaned up when we're done with it. The \texttt{CURLcode} type is also a useful structure for finding out how operations went. Unlike in many other scenarios where success is assumed, remember, in the network we should always check and see what happened.
 
-\paragraph{The Many-To-One Model.} In this model, many user level threads are mapped to one kernel thread. Thread management is done in the user space; this is what we see with ULTs only. Few modern operating systems take this approach; most everything these days has at least some support for KLTs.
+All the code that uses the network is bracketed in the \texttt{curl\_global\_init()} and \texttt{curl\_global\_cleanup()}. For the initialization, we take the defaults with \texttt{CURL\_GLOBAL\_DEFAULT} which is sufficient. If we forget to call the global initialization function then the later call to \texttt{curl\_easy\_init} will do it for us, but this is dangerous because having it called more than once is an issue. And of course we should not forget to clean up when done.
 
-\paragraph{The One-To-One Model.} This is what happens when we have KLTs only. Creating a new user level thread results immediately in creating a kernel level thread to correspond to it. Linux and Windows, notably, follow this approach, with some limitations on the number of threads that can be created in the system~\cite{osc}.
+Each connection is accessed through the handle, and so the handle is initialized with \texttt{curl\_easy\_init()}. If something goes wrong, the handle is set to NULL (hence why it can be used in the if-statement). If everything went well then we can actually get to work. If you are wondering why there is ``easy'' in the function names, it's not because there is a ``hard'' interface, but there is a ``multi'' interface that we will learn about in the future. (Whether you think the multi interface is hard is a separate discussion).
 
-\paragraph{The Many-To-Many Model.} This maps many ULTs to a smaller or equal number of kernel threads. This approach provides maximal concurrency in executing a single program.
+The next thing to do is set options for the connection. The only mandatory option its the URL to use (otherwise we don't know where to connect to, after all). In this case it's a dummy URL but it will do for the purposes of the code example. In the future we will need to set other options to do anything useful with a response, but for now the simple example leaves that out. There are something like 200 options, according to the documentation, so you can configure just about anything you want.
 
-You will note there is no One-To-Many model. This is because it makes no sense for one user thread to be mapped to multiple kernel threads. After all, a user thread needs a kernel thread only some of the time and having multiple kernel threads waiting around to serve the user level thread is wasteful.
+With all setup done, then we can perform the request with \texttt{curl\_easy\_perform}. This is the step that actually sends data over the network and retrieves a response. The result is stored in \texttt{res}.
 
-All three approaches are shown in the diagram below:
+Then we need to check and see if everything worked: \texttt{CURLE\_OK} is the response code if all went well. Otherwise we get back something else and the function \texttt{curl\_easy\_strerror} interprets an error for us making it a little easier to understand what happened... isn't this a lot better than having to go google what the given value of \texttt{errno} is?
 
-\begin{center}
-	\includegraphics[width=0.32\textwidth]{images/threads-manytoone.png}
-	\includegraphics[width=0.32\textwidth]{images/threads-onetoone.png}
-	\includegraphics[width=0.32\textwidth]{images/threads-manytomany.png}\\
-	Left to right: User to Kernel level thread mappings: Many-To-One, One-To-One, and Many-To-Many~\cite{osc}.
-\end{center}
+A handle can be used multiple times if you need, although you may need to update the options that are set on it to reflect the new things you'd like to happen
+
+If we wanted to re-use a handle but clear all the settings there is \texttt{curl\_easy\_reset}, but that's not the case in this scenario since the example is a one-time thing. Instead, we clean up. When we're done with a given handle we clean it up with \texttt{curl\_easy\_cleanup}. And then of course when all is finished there's the global cleanup. Excellent!
+
+\paragraph{Setting up Callbacks.} Almost certainly, however, we want to do something useful with the data we got. Or, we might have some data that we need to send. For each direction, what we want to set up is a \textit{callback}. 
+
+In case you haven't been introduced to the concept, it's a lot like what happens when you tell someone ``when you're finished, call me back''. They were in the middle of something when you called, and when a certain condition is fulfilled, they call you. In the context of using the cURL library, we tell the curl handle what function we would like it to call when the appropriate time comes. 
+
+The read callback is used when you are uploading data to the server (sometimes this is a POST operation). The write callback is used when you are receiving data from the server (this can be a GET operation). You may set up a read or write callback (or both) for an operation. There can be different callbacks for different easy handles, of course.
+ 
+A write function has to have the following signature (according to the official documentation):
+\begin{lstlisting}[language=C]
+size_t write_callback( char *ptr, size_t size, size_t nmemb, void *userdata );
+\end{lstlisting}
+
+The name of the function can be anything you like. The \texttt{size\_t} type represents a size and can be treated like an integer. The \texttt{ptr} points to whatever data we received and \texttt{nmemb} is the size of that data. \texttt{size} is always 1 (the documentation does not explain why this is the case). And the last parameter is user data: we can pass some data to the processing function directly. This is helpful when we have some data that we would need to provide to make processing easier or possible. If, for example, we want to write the requested data to a file with a specified name, we can pass that name in the \texttt{userdata} pointer, and then our implementation of the write callback should know how to use it. Finally, the return type is also a \texttt{size\_t}; the spec requires that the returned size is the number of bytes of the data successfully processed. If it's not equal to the size of \texttt{nmemb} then the library interprets that as an error in writing. 
+
+A read function is very similar:
+\begin{lstlisting}[language=C]
+size_t read_callback( char *buffer, size_t size, size_t nitems, void *inputdata );
+\end{lstlisting}
+Again, the function can be called whatever you like. The \texttt{buffer} is the area where you are going to put the data to send (and it can't be any bigger than the next parameters specify). \texttt{size} here is the size of each data element and \texttt{nitems} is the number of items. In practice you will just want to calculate the maximum buffer size by multiplying these two things together. And he return value is the number of bytes successfully put there. We might need to do this in several chunks, though. If you put 0, it signals end-of-file and means no further upload will take place.
+
+And to register the read and write callback respectively, there are two steps. One to register the function, and another to set the data:
+\begin{lstlisting}[language=C]
+CURLcode curl_easy_setopt( CURL *handle, CURLOPT_READFUNCTION, read_callback );
+CURLcode curl_easy_setopt( CURL *handle, CURLOPT_READDATA, void *pointer );
+
+CURLcode curl_easy_setopt( CURL *handle, CURLOPT_WRITEFUNCTION, write_callback );
+CURLcode curl_easy_setopt( CURL *handle, CURLOPT_WRITEDATA, void *pointer );
+\end{lstlisting}
+
+Alright, on to an example, then, modified from \url{https://curl.haxx.se/libcurl/c/post-callback.html}. 
+
+\begin{lstlisting}[language=C]
+#include <stdio.h>
+#include <string.h>
+#include <curl/curl.h>
+  
+const char data[]="Lorem ipsum dolor sit amet, consectetur adipiscing "
+  "elit. Sed vel urna neque. Ut quis leo metus. Quisque eleifend, ex at "
+  "laoreet rhoncus, odio ipsum semper metus, at tempus ante urna in mauris. "
+  "Suspendisse ornare tempor venenatis. Ut dui neque, pellentesque a varius "
+  "eget, mattis vitae ligula. Fusce ut pharetra est. Ut ullamcorper mi ac "
+  "sollicitudin semper. Praesent sit amet tellus varius, posuere nulla non, "
+  "rhoncus ipsum.";
+ 
+struct data {
+  char *readptr;
+  size_t sizeleft;
+};
+ 
+size_t read_callback( void *dest, size_t size, size_t nmemb, void *userp ) {
+  struct data *d = (struct data *) userp;
+  size_t buffer_size = size * nmemb;
+ 
+  if( d->sizeleft > 0 ) {
+    /* copy as much as possible from the source to the destination */ 
+    size_t copy_this_much = d->sizeleft;
+    if ( copy_this_much > buffer_size ) {
+       copy_this_much = buffer_size;
+    }
+    memcpy(dest, d->readptr, copy_this_much);
+ 
+    d->readptr += copy_this_much;
+    d->sizeleft -= copy_this_much;
+    return copy_this_much; 
+  }
+  return 0; /* no more data left to deliver */ 
+}
+ 
+int main( int argc, char** argv ) {
+  CURL *curl;
+  CURLcode res;
+  struct data * d = malloc( sizeof( struct data ) );
+ 
+  d->readptr = data;
+  d->sizeleft = strlen( data );
+ 
+  res = curl_global_init( CURL_GLOBAL_DEFAULT );
+  if ( res != CURLE_OK ) {
+    fprintf( stderr, "curl_global_init() failed: %s\n", curl_easy_strerror( res ) );
+    return 1;
+  }
+ 
+  curl = curl_easy_init();
+  if ( curl ) {
+    curl_easy_setopt( curl, CURLOPT_URL, "https://example.com/index.cgi" );
+ 
+    /* Now specify we want to POST data */ 
+    curl_easy_setopt( curl, CURLOPT_POST, 1L );
+ 
+    curl_easy_setopt( curl, CURLOPT_READFUNCTION, read_callback );
+    curl_easy_setopt (curl, CURLOPT_READDATA, d );
+ 
+    res = curl_easy_perform(curl);
+    /* Check for errors */ 
+    if(res != CURLE_OK) {
+      fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror( res ) );
+    }  
+    curl_easy_cleanup( curl );
+  }
+  free( d );
+  curl_global_cleanup();
+  return 0;
+}
+\end{lstlisting}
+
+A brief explanation is in order. Up at the top there is \texttt{data}, some amount of sample data and a little structure that is used to reference the data and to keep track of how much data there is to send. This is going to be important in the read callback function. And then there is of course the read callback function itself. 
+
+That function conforms, as you would expect, to the function signature as expected. If we are fortunate then it is possible to send the data in one chunk. But in this example we have intentionally made the data large. So we will now figure out how much we can actually fit in there by figuring out the size of the buffer and seeing if the data to be sent is bigger than the available space. Once we've figured out the limit, we can copy the data with \texttt{memcpy} to the buffer. Then we update where we are reading from and how much space is left. Then we return the amount copied. When all data has been copied, we return 0.
+
+A large amount of the code of \texttt{main} is the same as in the previous example. Some new things of note, are obviously the initialization of the structure \texttt{d}. We set the option for the operation to be POST (upload data) since the default is GET (fetch some data), and then we have to register the read callback as well as send the data to be used when the read function runs. 
 
 \input{bibliography.tex}
 

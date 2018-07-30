@@ -81,9 +81,9 @@ And what about ports? If you want to think about your computer's address as bein
 When you log in to a server with \texttt{ssh}, for example, the default port for that is 22. This is a ``well known'' port, in that everyone agrees up front this port is the one for this service. Thus when a server starts up the daemon, it knows to listen for connections on port 22 and when you're ready to connect to that server, the \texttt{ssh} client chooses that port by default.
 
 \paragraph{Looking Up the Address.}
-In real life, we probably only rarely use IP addresses directly when trying to connect to services. If you already know it, that's fine, but more likely you use a human-friendly name. For example, you use \texttt{ssh usernam@ecelinux.uwaterloo.ca} and don't need to manually look up the IP address for the server. You can, of course (the command line tool is \texttt{nslookup}), but why should you have to? The computer can do this for you.
+In real life, we probably only rarely use IP addresses directly when trying to connect to services. If you already know it, that's fine, but more likely you use a human-friendly name. For example, you use \texttt{ssh username@ecelinux.uwaterloo.ca} and don't need to manually look up the IP address for the server. You can, of course (the command line tool is \texttt{nslookup}), but why should you have to? The computer can do this for you.
 
-Looking up hostnames and the like is somewhat complex (and not the focus), so we will just learn one method for doing this. Many examples and older texts use the function \texttt{gethostbyname()}, but this is now deprecated and has been replaced with the \texttt{getaddrinfo()} function instead. And why would we learn the outdated values?
+Looking up hostnames and the like is somewhat complex (and not the focus), so we will just learn one method for doing this. Many examples and older texts use the function \texttt{gethostbyname()}, but this is now deprecated and has been replaced with the \texttt{getaddrinfo()} function instead. You might still see it in the wild but we should learn the new way.
 
 The function is prototyped in in \texttt{netdb.h} and looks like this~\cite{getaddrinfo}:
 \begin{lstlisting}[language=C]
