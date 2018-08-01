@@ -1,6 +1,6 @@
 \input{configuration}
 
-\title{Lecture 11 --- Symmetric Multiprocessing }
+\title{Lecture 10 --- POSIX Threads}
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
@@ -15,508 +15,336 @@
 
  \end{frame}
 
- 
+
 \begin{frame}
-\frametitle{Multiprocessing}
+\frametitle{The pthread}
 
-Not that long ago, a typical computer had one processor with one core. 
+The term \texttt{pthread} refers to a POSIX standard.
 
-It could accordingly do exactly one thing at a time. 
 
-1 processor: 1 general purpose processor that executes user processes. 
+It defines thread behaviour in UNIX and UNIX-like systems.
 
-There may be special-purpose processors in the system (RAID controller). 
+It says how threads should behave. 
 
-Only one general purpose processor so we call it a uniprocessor system.
+This standard lets code for one UNIX-like system run easily on another. 
+
+The POSIX standard for pthreads defines something like 100 function calls.
+
+Let us focus on a few of the important ones.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{pthread Functions}
+
+\begin{itemize}
+	\item \texttt{pthread\_create}
+	\item \texttt{pthread\_exit}
+	\item \texttt{pthread\_join}
+	\item \texttt{pthread\_yield}
+	\item \texttt{pthread\_attr\_init}
+	\item \texttt{pthread\_attr\_destroy}
+	\item \texttt{pthread\_cancel}
+\end{itemize}
 
 
 
 \end{frame}
 
- 
+
 \begin{frame}
-\frametitle{Multiprocessing}
+\frametitle{Running Threads}
 
-Now, desktops, laptops, and even cell phones are using multi-core processors.
+So far we have examined threads at a theoretical level.
 
-A quad-core processor may be executing four different instructions from four different threads at the same time. 
+How to make something run in the background?
 
-In theory, multiple processors may mean that we can get more work done in the same amount of (wall clock) time, but this is not a guarantee. 
+Well, \texttt{main} is just a function (with a special name).
 
-Plus, if one of the CPUs in a two-CPU system fails, the system can likely carry on at a reduced performance level.
+The way we can start a thread is to say: run this function, but in a new thread.
 
 \end{frame}
 
- 
-\begin{frame}
-\frametitle{(A)symmetric Multiprocessing}
 
-Multiprocessor systems can be \alert{asymmetric} or \alert{symmetric}.
-
-Asymmetric: there is a \alert{boss} processor and \alert{workers}.
-
-Symmetric: the workers are in charge and all processors are equal, comrade!
-
-We are mostly familiar with symmetric systems.
-
-\end{frame}
-
- 
-\begin{frame}
-\frametitle{Symmetric Multiprocessing}
-
-
-A formal definition of SMP:
-
-\begin{enumerate}
-	\item There are two or more general purpose processors.
-	\item The processors share the same main memory and I/O devices and are interconnected by a bus.
-	\item All processors are capable of performing the same functions.
-	\item The system is controlled by an OS that provides interaction between processors and their programs.
-\end{enumerate}
-
-\end{frame}
-
- 
-\begin{frame}
-\frametitle{SMP Organization}
-
-\begin{center}
-	\includegraphics[width=0.75\textwidth]{images/smp-architecture.png}
-\end{center}
-
-
-\end{frame}
-
- 
-\begin{frame}
-\frametitle{Terminology Note}
-
-
-Terminology note: we often refer to a logical processing unit as a \alert{core}. 
-
-CPU may refer to a physical chip that contains 1+ logical processing units. 
-
-As far as the operating system is concerned, it does not much matter if a system has four cores in four physical chips or four cores in one chip.
-
-Either way, there are four units that can execute instructions.
-
-
-
-\end{frame}
-
- 
-\begin{frame}
-\frametitle{Execution}
-
-1 process, 1 thread: it does not matter how many cores are available.\\
-\quad At most one core will be used to execute this task. 
-
-If there are multiple processes, each process can execute on a different core. 
-
-But what if there are more processes and threads than available cores?
-
-We can hope that the processes get blocked frequently enough and long enough?
-
-
-
-\end{frame}
-
- 
-\begin{frame}
-\frametitle{Execution}
-
-Switch between the different tasks via a procedure we call \alert{time slicing}. 
-
-So thread 1 would execute for a designated period, such as 20 ms, then thread 2 for 20 ms, then thread 3 for 20 ms, then back to thread 1 for 20 ms. 
-
-To the user, it seems like threads 1, 2, and 3 are being executed in parallel.\\
-\quad 20 ms is fast enough that the user does not notice the difference.
-
-\end{frame}
-
- 
-\begin{frame}
-\frametitle{Single Core Execution}
-
-\begin{center}
-	\includegraphics[width=\textwidth]{images/single-core-execution.png}
-\end{center}
-
-\end{frame}
-
- 
-\begin{frame}
-\frametitle{Multi Core Execution}
-
-Time slicing will still occur, if necessary:
-
-\begin{center}
-	\includegraphics[width=\textwidth]{images/dual-core-execution.png}
-\end{center}
-
-
-\end{frame}
-
- 
-
-\begin{frame}
-\frametitle{Parallelism}
-
-Multiple threads at the same time = tasks completed faster?
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Parallelism and Speedup}
-
-Depends on the nature of the task!
-
-Fully parallelized: 2 $\times$ Threads = 2 $\times$ Speed
-
-Partially parallelized: 2 $\times$ Threads = $(1 < n < 2)$ $\times$ Speed
-
-Cannot be parallelized: 2 $\times$ Threads = $1$ $\times$ Speed
-
-\end{frame}
-
- 
-\begin{frame}
-\frametitle{Speedup Example}
-
-
-Suppose: a task that can be executed in 5~s, containing a parallelizable loop.
-
-Initialization and recombination code in this routine requires 400~ms. 
-
-So with one processor executing, it would take about 4.6~s to execute the loop. 
-
-Split it up and execute on two processors: about 2.3~s to execute the loop. 
-
-Add to that the setup and cleanup time of 0.4~s and we get a total time of 2.7~s. 
-
-Completing the task in 2.7~s rather than 5~s represents a speedup of about~46\%.
-
-\end{frame}
-
- 
-\begin{frame}
-\frametitle{Amdahl's Law}
-
-Gene Amdahl came up with a formula for the general case of how much faster a task can be completed based on how many processors we have available. 
-
-Let us define $S$ as the portion of the application that must be performed serially and $N$ as the number of processing cores available. 
-
-Amdahl's Law:
-
-\begin{center}
-speedup $\leq$ {\huge $\frac{1}{S + \frac{1-S}{N}}$}
-\end{center}
-
-\end{frame}
-
- 
-\begin{frame}
-\frametitle{Amdahl's Law}
-
-Take the limit as $N \rightarrow$ infinity and you will find the speedup converges to $\frac{1}{S}$.
-
-
-The limiting factor on how much additional processors help is the size of $S$.
-
-Matches our intuition of how it should work.
-
-\end{frame}
-
- 
-\begin{frame}
-\frametitle{Amdahl's Law on the 5~s Task}
-
-Applying this formula to the example from earlier:
-
-\begin{center}
-	\begin{tabular}{l|l}
-	\textbf{Processors} & \textbf{Run Time (s)} \\ \hline
-	1 & 5\\
-	2 & 2.7\\
-	4 & 1.55\\
-	8 & 0.975\\
-	16 & 0.6875 \\
-	32 & 0.54375 \\
-	64 & 0.471875 \\
-	128 & 0.4359375\\
-	\end{tabular}
-\end{center}
-
-\end{frame}
-
- 
-\begin{frame}
-\frametitle{Observations on the 5~s Task}
-
-1. Diminishing returns as we add more processors.
-
-2. Converges on 0.4~s.
-
-The most we could speed up this code is by a factor of $\frac{5}{0.4}\approx 12.5$.
-
-But that would require infinite processors (and therefore infinite money).
-
-\end{frame}
-
- 
-\begin{frame}
-\frametitle{Merge Sort Example}
-
-Recall from data structures and algorithms the concept of merge sort. 
-
-This is a divide-and-conquer algorithm like binary search. 
-
-Split the array of values up into smaller pieces, sort those, and then merge the smaller pieces together to have sorted data.
-
-
-\end{frame}
-
- 
-\begin{frame}
-\frametitle{Merge Sort Example}
-
-\begin{center}
-	\includegraphics[width=0.75\textwidth]{images/multithread-sort.png}
-\end{center}
-
-
-\end{frame}
- 
-\begin{frame}
-\frametitle{Merge Sort}
-
-For a small array it makes sense to use one of the simple algorithms like insertion sort.\\
-\quad  (despite $\Theta(n^{2})$ worst-case runtime). 
-
-You may have seen something similar in optimized binary search algorithms where, at some point, a linear search is used. 
-
-So let us begin with the code for the insertion sort routine:
-
-\end{frame}
- 
 \begin{frame}[fragile]
-\frametitle{Insertion Sort Code}
+\frametitle{Creating a Thread}
+ The system call to create a new thread is \texttt{pthread\_create}:
 
 \begin{verbatim}
-void insertion_sort( double *array, size_t a, size_t b ) {
-  size_t j, k;
-  double tmp;
-  for ( k = a + 1; k < b; ++k ) { 
-    tmp = array[k];
-    
-    for ( j = k; j > a; --j ) {
-      if ( array[j - 1] > tmp ) {
-        array[j] = array[j - 1];
-      } else {
-        array[j] = tmp;
-        break;
-      }
-    }
-    if ( tmp < array[a] ) {
-      array[a] = tmp;
-    }
-  } 
-}
+pthread_create( pthread_t *thread,
+                const pthread_attr_t *attributes,
+                void *(*start_routine)( void * ),
+                void *argument );
+\end{verbatim}
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Creating a Thread Parameters}
+
+Where: 
+
+\texttt{thread} is a pointer to a \texttt{pthread} identifier and will be assigned a value when the thread is created. 
+
+The attributes \texttt{attr} may contain various characteristics (can be \texttt{NULL}). 
+
+\texttt{start\_routine} is any function that takes a single untyped pointer and returns an untyped pointer. 
+
+\texttt{arguments} is the argument passed to the \texttt{start\_routine}.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{After Creation}
+
+After the new thread has been created, the process has two threads in it. 
+
+The OS makes no guarantee about which thread will be executing next.
+
+This is a matter of scheduling. 
+
+It could be either of the threads of the process, or a different process entirely.
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Threads: Passing Parameters}
+
+It seems limiting to be able to put in just one parameter. 
+
+There are two ways to get around this: array or structures (\texttt{struct}). 
+
+Array: the argument provided to \texttt{pthread\_create} is just a pointer to the array.
+
+Structure: Define your own \texttt{struct}.
+
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Defining the Parameter Structure}
+
+\begin{verbatim}
+typedef struct {
+  int parameter1;
+  int parameter2;
+} parameters_t;
+
+typedef struct {
+  int return1;
+  int return2;
+} return_t;
 \end{verbatim}
 
 \end{frame}
- 
+
+
 \begin{frame}
-\frametitle{The Merge Sort}
+\frametitle{Using the Parameter Structure}
+
+The function that is to run in the new thread must expect a pointer to the arguments rather than explicit arguments:
+
+\texttt{void* function( void *args )}\\
+which can then be cast to the appropriate type:\\
+\texttt{parameters\_t *arguments = (parameters\_t*) args;}
 
 
-If the list is below a certain size, perform the insertion sort. 
-
-Otherwise, divide the list in half and call merge sort recursively on each half.
-
-Merge the results of those two lists.
 
 \end{frame}
- 
+
+
+\begin{frame}
+\frametitle{Thread Attributes}
+
+What about the thread attributes? 
+
+They can be used to query or set specific attributes of the thread, such as:
+\begin{itemize}
+	\item Detached or joinable state
+	\item Scheduling data (policy, parameters, etc...)
+	\item Stack size
+	\item Stack address
+\end{itemize}
+
+By default, new threads are joinable.
+
+\end{frame}
+
+
 \begin{frame}[fragile]
-\frametitle{Merge Code}
+\frametitle{Exiting}
 
-{\tiny
+The use of \texttt{pthread\_exit} is not the only way that a thread may be terminated. 
+
+If we want to get a return value from the thread, then we need it to exit. 
+
+Like the \texttt{wait} system call, the \texttt{pthread\_join} is how we get a value:
+
 \begin{verbatim}
-#include <assert.h>
+pthread_create( &thread_id, NULL, function_name, &args );
 
-// Merge the entries from a to b - 1 and from b to c - 1 
-void merge( double *array, size_t a, size_t b, size_t c ) {
-  assert( a <= b && b <= c );
-  
-  size_t i = 0, j = a, k = b;
-  double *sorted_array = (double *) malloc( (c - a)*sizeof( double ) );
-  
-  while ( j < b && k < c ) {
-    if ( array[j] <= array[k] ) {
-      sorted_array[i] = array[j];
-      ++j; 
-    } else {
-      sorted_array[i] = array[k];
-      ++k; 
-    }
-    
-    ++i; 
-    }
-    
-  for ( ; j < b; ++i, ++j ) {
-    sorted_array[i] = array[j];
+// This function and the created function
+// are now running in parallel 
+void *void_ret;
+
+pthread_join( thread_id, &void_ret );
+
+return_t *returnValue = (return_t *) void_ret;
+\end{verbatim}
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Exiting}
+
+If a thread has no return values, it can just \texttt{return NULL;} 
+
+This will have the same effect as \texttt{pthread\_exit} and send \texttt{NULL}.
+
+If the function returns rather than calling exit, the thread will still be terminated. 
+
+
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Cancellation}
+
+Another way a thread might terminate: \texttt{pthread\_cancel}. 
+
+As before, if the termination is deferred rather than asynchronous, the thread is responsible for cleaning up after itself before it stops.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Outliving Main}
+
+A thread may also be terminated indirectly: if the entire process is terminated or if \texttt{main} finishes first (without calling \texttt{pthread\_exit} itself). 
+
+Indeed, \texttt{main} can use \texttt{pthread\_exit} as the last thing that it does. 
+
+Without that, \texttt{main} will not wait for other, unjoined threads to finish and they will all get suddenly terminated. 
+
+If \texttt{main} calls \texttt{pthread\_exit} then it will be blocked until the threads it has spawned have finished.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Complex Example}
+
+\begin{verbatim}
+#include <pthread.h>
+#include <stdio.h>
+
+int sum; /* this data is shared by the thread(s) */
+void *runner(void *param); /* threads call this function */
+int main(int argc, char *argv[]) {
+
+  pthread_t tid; /* the thread identifier */
+  pthread_attr_t attr; /* set of thread attributes */
+
+  if (argc != 2) {
+    fprintf(stderr,"usage: a.out <integer value>\n"); 
+    return -1;
   }
-    
-  for ( ; k < c; ++i, ++k ) {
-    sorted_array[i] = array[k];
+  if (atoi(argv[1]) < 0) {
+    fprintf(stderr, "%d must be >= 0\n", atoi(argv[1])); 
+    return -1;
   }
-    
-  for ( i = 0, k = a; k < c; ++i, ++k ) {
-    array[k] = sorted_array[i];
-  }
-    
-  free( sorted_array );
-}
-\end{verbatim}
-}
-
-
-\end{frame}
- 
-\begin{frame}[fragile]
-\frametitle{Insertion Sort Code}
-
-
-\begin{verbatim}
-#define USE_INSERTION_SORT 30
-
-void merge_sort( double *array, size_t a, size_t c ) {
-  assert( a <= c );
-  
-  if ( c - a < USE_INSERTION_SORT ) {
-    insertion_sort( array, a, c );
-    return;
-  }
-  size_t b = a + (c - a)/2;
-  
-  merge_sort( array, a, b );
-  merge_sort( array, b, c );
-  merge( array, a, b, c );
-}
 \end{verbatim}
 
-\end{frame}
-
-\begin{frame}[fragile]
-\frametitle{Argument Structure}
-
-
-To run this as a new thread, we can pass in only one argument for the parameters to the sort function. 
-
-So we need a \texttt{struct} object to contain the arguments:
-
-\begin{verbatim}
-typedef struct interval {
-  double *array;
-  size_t a;
-  size_t c;
-} interval_t;
-\end{verbatim}
 
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{User API}
-
-The user does not know that we are going to use a parallel algorithm so the function call should seem somewhat more ``natural'' and delegate to our internal function: 
+\frametitle{Complex Example}
 
 \begin{verbatim}
-void merge_sort( double *array, size_t n ) {
-  interval_t arg;
-  arg.array = array;
-  arg.a = 0;
-  arg.c = n;
-  merge_sort_internal( &arg );
+  /* get the default attributes */
+  pthread_attr_init(&attr);
+  /* create the thread */
+  pthread_create(&ti, &attr, runner, argv[1]); /* wait */
+  pthread_join(tid, NULL); 
+  printf("sum = %d\n", sum);
 }
-\end{verbatim}
 
-\end{frame}
+/* The thread will begin control in this function */ 
+void *runner(void *param) {
 
-\begin{frame}[fragile]
-\frametitle{Internal Implementation}
-
-{\scriptsize
-\begin{verbatim}
-void *merge_sort_interal( void *void_arg ) {
-  // the argument is an arbitrary pointer
-  //   cast it to a pointer to an instance of 'interval_t'
-  interval_t *arg = (interval_t *)void_arg;
-  if ( ( arg->c - arg->a ) < USE_INSERTION_SORT ) {
-    insertion_sort( arg->array, arg->a, arg->c );
-    return NULL;
+  int i, upper = atoi(param);
+  sum = 0;
+  for (i = 1; i <= upper; i++) {
+    sum += i;
   }
   
-  size_t b = arg->a + (arg->c - arg->a)/2;
-  
-  interval_t arg1, arg2;
-  
-  arg1.array = arg->array;
-  arg1.a = arg->a;
-  arg1.c = b;
-  
-  arg2.array = arg->array;
-  arg2.a = b;
-  arg2.c = arg->c;
-\end{verbatim}
-}
-\end{frame}
-
-\begin{frame}[fragile]
-\frametitle{Internal Implementation}
-
-{\scriptsize
-\begin{verbatim}
-  pthread_t other_thread;
-
-  // Create a thread to sort the second half
-  pthread_create( &other_thread, NULL, merge_sort_interal, &arg2 ); 
-  merge_sort_interal( &arg1 );
-  
-  // Wait for them to finish
-  pthread_join( other_thread, NULL );
-
-  merge( arg->array, arg->a, b, arg->c );
-
-  return NULL;
+  pthread_exit(0);
 }
 \end{verbatim}
-}
+
+
 \end{frame}
+
+
 
 \begin{frame}
-\frametitle{Execution, Visually}
+\frametitle{Co-ordination}
 
-Execution on an array of capacity 21 and insertion sort threshold of 5:
+In this example, both threads are sharing the global variable \texttt{sum}. 
 
-\begin{center}
-	\includegraphics[width=0.6\textwidth]{images/merge-sort-execution.png}
-\end{center}
+We have some form of co-ordination here: the parent thread joins the newly-spawned thread before it tries to print out the value. 
+
+If it did not join the new thread, the parent thread would print the sum early. 
+
+This is yet another example of that subject that keeps popping up...
+
 \end{frame}
+
+
 
 \begin{frame}
-\frametitle{Runtime Analysis}
+\frametitle{\texttt{fork} and \texttt{exec}}
 
+\texttt{fork} results in a parent process spawning a child that is a clone of the parent.
 
-The runtime of merge sort, according to the data structures and algorithms course is $\Theta(n$ ln$(n))$;
+Normally, the \texttt{fork} call makes a duplicate of all of the threads.
 
-If each of the threads execute on their own core, then the run time will be reduced to $\Theta(n)$.
+This is sensible, except for the fact that the child might call \texttt{exec} and replace itself with another program (throwing away all the threads). 
+
+Some UNIX systems solve this by having 2 different implementations of \texttt{fork}:\\ \quad One that will copy all threads; and\\
+\quad One that will copy only the executing thread.
+
 
 \end{frame}
 
 
+\begin{frame}
+\frametitle{Cancellation (Deferred and Otherwise)}
+
+The pthread command to cancel a thread is \texttt{pthread\_cancel}.
+
+It takes one parameter (the thread identifier). 
+
+By default, a pthread is set up for deferred cancellation. 
+
+To check if the thread has been cancelled, call  \texttt{pthread\_testcancel} which takes no parameters.
+
+Example: multiple file upload.
+
+\end{frame}
 
 \end{document}
 
