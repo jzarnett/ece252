@@ -122,13 +122,13 @@ What about the thread attributes? They can be used to set whether a thread is de
 
 Once we do that, the new thread we created is running. It does whatever its code does, so everything proceeds as expected, until of course the thread gets to the end. Usually, it will terminate with \texttt{pthread\_exit}. The use of \texttt{pthread\_exit} is not the only way that a thread may be terminated. Sometimes we want the thread to persist (hang around), but if we want to get a return value from the thread, then we need it to exit. 
 
-If a thread has no return values, it can just \texttt{return NULL;} which will have the same effect as \texttt{pthread\_exit} and send \texttt{NULL} back to the thread that has joined it. If the function that is called as a task returns normally rather than calling the exit routine, the thread will still be terminated. 
+\paragraph{Returning Values.} If a thread has no return values, it can just \texttt{return NULL;} which will have the same effect as \texttt{pthread\_exit} and send \texttt{NULL} back to the thread that has joined it. If the function that is called as a task returns normally rather than calling the exit routine, the thread will still be terminated. 
 
 Another way a thread might terminate is if the \texttt{pthread\_cancel} function is called with it as the target. As before, if the termination is deferred rather than asynchronous, the thread is responsible for cleaning up after itself before it stops.
 
 A thread may also be terminated indirectly: if the entire process is terminated or if \texttt{main} finishes first (without calling \texttt{pthread\_exit} itself). Indeed, \texttt{main} can use \texttt{pthread\_exit} as the last thing that it does. Without that, \texttt{main} will not wait for other, unjoined threads to finish and they will all get suddenly terminated. If \texttt{main} calls \texttt{pthread\_exit} then it will be blocked until the threads it has spawned have finished~\cite{pthreads}.
 
-Like the \texttt{wait} system call, the \texttt{pthread\_join} is how we get a value out of the spawned thread:
+\paragraph{Collecting Returned Values.} Like the \texttt{wait} system call, the \texttt{pthread\_join} is how we get a value out of the spawned thread:
 
 \begin{lstlisting}[language=C]
 pthread_join( pthread_t thread, void** retval );
