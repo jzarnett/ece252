@@ -34,7 +34,7 @@ Throughout this section we will use pseudocode and something like ``Statement A1
 
 Recall from earlier the example with Alice and Bob at the power plant. 
 
-This was signalling.
+This was postling.
 
 Signalling can be used in general as a way of indicating that something has happened. 
 
@@ -44,7 +44,7 @@ Suppose we have a semaphore named \texttt{sem}, initialized to 0.
 \textbf{Thread A}
   \begin{verbatim}
 	1. Statement A1
-	2. signal( sem )
+	2. post( sem )
   \end{verbatim}
 \columnbreak
 \textbf{Thread B}
@@ -61,11 +61,11 @@ Suppose we have a semaphore named \texttt{sem}, initialized to 0.
 \begin{frame}
 \frametitle{Analysis of Signalling}
 
-If $B$ gets to the \texttt{wait} statement first, it will be blocked (as the semaphore is 0) and cannot proceed until someone signals on that semaphore. 
+If $B$ gets to the \texttt{wait} statement first, it will be blocked (as the semaphore is 0) and cannot proceed until someone posts on that semaphore. 
 
-When $A$ does call \texttt{signal}, then $B$ may proceed. 
+When $A$ does call \texttt{post}, then $B$ may proceed. 
 
-If instead $A$ gets to the \texttt{signal} statement first, it will signal and the semaphore value will be 1. 
+If instead $A$ gets to the \texttt{post} statement first, it will post and the semaphore value will be 1. 
 
 Then, when $B$ gets to the \texttt{wait} statement, it can proceed without delay.
 
@@ -76,7 +76,7 @@ Regardless of the actual order that the threads run, we are certain that stateme
 \begin{frame}[fragile]
 \frametitle{Rendezvous}
 
-The rendezvous is an expansion of the signal pattern so that it works both ways.
+The rendezvous is an expansion of the post pattern so that it works both ways.
 
 Two threads should be at the same point before either of them may proceed (they ``meet up'').
 
@@ -122,7 +122,7 @@ A first attempt at a solution:
   \begin{verbatim}
 	1. Statement A1
 	2. wait( bArrived )
-	3. signal( aArrived )
+	3. post( aArrived )
 	4. Statement A2
   \end{verbatim}
 \columnbreak
@@ -130,7 +130,7 @@ A first attempt at a solution:
   \begin{verbatim}
 	1. Statement B1
 	2. wait( aArrived )
-	3. signal( bArrived )
+	3. post( bArrived )
 	4. Statement B2
   \end{verbatim}
 \end{multicols}
@@ -142,11 +142,11 @@ A first attempt at a solution:
 \begin{frame}
 \frametitle{Rendezvous Solution 1 Analysis}
 
-The problem here should be obvious: thread $A$ gets to the \texttt{wait} statement and will wait until $B$ signals its arrival before it can proceed. 
+The problem here should be obvious: thread $A$ gets to the \texttt{wait} statement and will wait until $B$ posts its arrival before it can proceed. 
 
-Thread $B$ gets to its \texttt{wait} statement and will wait until $A$ signals its arrival before it will proceed. 
+Thread $B$ gets to its \texttt{wait} statement and will wait until $A$ posts its arrival before it will proceed. 
 
-Unfortunately, each thread is waiting for the other to signal and neither of them can get to the actual \texttt{signal} statement because they are both blocked. 
+Unfortunately, each thread is waiting for the other to post and neither of them can get to the actual \texttt{post} statement because they are both blocked. 
 
 
 \end{frame}
@@ -169,13 +169,13 @@ Obviously, this is undesirable.
 \begin{frame}[fragile]
 \frametitle{Rendezvous Solution 2}
 
-What if instead, the threads reverse the order and signal first before waiting?
+What if instead, the threads reverse the order and post first before waiting?
 
 \begin{multicols}{2}
 \textbf{Thread A}
   \begin{verbatim}
 	1. Statement A1
-	2. signal( aArrived )
+	2. post( aArrived )
 	3. wait( bArrived )
 	4. Statement A2
   \end{verbatim}
@@ -183,7 +183,7 @@ What if instead, the threads reverse the order and signal first before waiting?
 \textbf{Thread B}
   \begin{verbatim}
 	1. Statement B1
-	2. signal( bArrived )
+	2. post( bArrived )
 	3. wait( aArrived )
 	4. Statement B2
   \end{verbatim}
@@ -196,13 +196,13 @@ What if instead, the threads reverse the order and signal first before waiting?
 \begin{frame}
 \frametitle{Rendezvous Solution 2 Analysis}
 
-This solution works: if $A$ gets to the rendezvous point first, it signals its arrival and waits for $B$. 
+This solution works: if $A$ gets to the rendezvous point first, it posts its arrival and waits for $B$. 
 
-If $B$ gets there first, it signals its arrival and waits for $A$. 
+If $B$ gets there first, it posts its arrival and waits for $A$. 
 
-Whichever gets there last will signal and unblock the other, before it calls \texttt{wait}.
+Whichever gets there last will post and unblock the other, before it calls \texttt{wait}.
 
-It will be able to proceed directly; the first thread to arrive already signalled. 
+It will be able to proceed directly; the first thread to arrive already postled. 
 
 
 \end{frame}
@@ -210,21 +210,21 @@ It will be able to proceed directly; the first thread to arrive already signalle
 \begin{frame}[fragile]
 \frametitle{Rendezvous Solution 3}
 
-A variation on this can also work where only one thread signals first and the other thread signals second.
+A variation on this can also work where only one thread posts first and the other thread posts second.
 
 \begin{multicols}{2}
 \textbf{Thread A}
   \begin{verbatim}
 	1. Statement A1
 	2. wait( bArrived )
-	3. signal( aArrived )
+	3. post( aArrived )
 	4. Statement A2
   \end{verbatim}
 \columnbreak
 \textbf{Thread B}
   \begin{verbatim}
 	1. Statement B1
-	2. signal( bArrived )
+	2. post( bArrived )
 	3. wait( aArrived )
 	4. Statement B2
   \end{verbatim}
@@ -259,14 +259,14 @@ The general form in pseudocode is of course:
   \begin{verbatim}
 	1. wait( mutex )
 	2. critical section
-	3. signal( mutex )
+	3. post( mutex )
   \end{verbatim}
 \columnbreak
 \textbf{Thread B}
   \begin{verbatim}
 	1. wait( mutex )
 	2. critical section
-	3. signal( mutex )
+	3. post( mutex )
   \end{verbatim}
 \end{multicols}
 \vspace{-2em}
@@ -281,7 +281,7 @@ The mutex semaphore is originally initialized to 1.
 
 Whichever thread gets to the \texttt{wait} statement first will proceed immediately and not be blocked at all. 
 
-If the semaphore were initialized to 0 then neither thread could ever get to the \texttt{signal} statement or ever get into the critical section (deadlock).
+If the semaphore were initialized to 0 then neither thread could ever get to the \texttt{post} statement or ever get into the critical section (deadlock).
 
 
 \end{frame}
@@ -342,7 +342,7 @@ This is a symmetric solution, so it will work for arbitrarily many threads.
   \begin{verbatim}
 	1. wait( mutex )
 	2. critical section
-	3. signal( mutex )
+	3. post( mutex )
   \end{verbatim}
 \vspace{-2em}
 
@@ -388,9 +388,9 @@ Thus we will have a semaphore, initialized to 1, called \texttt{mutex} to protec
   \begin{verbatim}
 	1. wait( mutex )
 	2. count++
-	3. signal( mutex )
+	3. post( mutex )
 	4. if count == n
-	5.     signal( barrier )
+	5.     post( barrier )
 	6. end if
 	7. wait( barrier )
   \end{verbatim}
@@ -404,11 +404,11 @@ Thus we will have a semaphore, initialized to 1, called \texttt{mutex} to protec
 
 When the $n$th thread arrives, it unlocks the barrier and then may proceed. 
 
-If there is more than one thread waiting at the barrier, the first thread will be unblocked when the $n$th thread signals on it.
+If there is more than one thread waiting at the barrier, the first thread will be unblocked when the $n$th thread posts on it.
 
-There are no other \texttt{signal} statements!
+There are no other \texttt{post} statements!
 
-The other threads waiting are stuck, waiting for a signal that never comes.
+The other threads waiting are stuck, waiting for a post that never comes.
 
 
 \end{frame}
@@ -416,16 +416,16 @@ The other threads waiting are stuck, waiting for a signal that never comes.
 \begin{frame}[fragile]
 \frametitle{Barrier Solution 2}
 
-The $n$th thread to arrive should signal $n-1$ times:
+The $n$th thread to arrive should post $n-1$ times:
 
 \textbf{Thread \textit{K}}\vspace{-6em}
   \begin{verbatim}
 	1. wait( mutex )
 	2. count++
-	3. signal( mutex )
+	3. post( mutex )
 	4. if count == n
 	5.     for i from 1 to  n
-	6.         signal( barrier )
+	6.         post( barrier )
 	7.     end for
 	8. end if
 	9. wait( barrier )
@@ -444,7 +444,7 @@ This allows all $n$ threads to proceed (none get stuck), but it is less than ide
 
 The thread that runs last is very likely the lowest priority thread.
 
-When it signals on the semaphore, the thread that has just been unblocked will be the next to run.
+When it posts on the semaphore, the thread that has just been unblocked will be the next to run.
 
 Then the system switches back, at some later time, to the thread currently unblocking all the others. 
 
@@ -462,12 +462,12 @@ Have each thread unblock the next:
   \begin{verbatim}
 	1. wait( mutex )
 	2. count++
-	3. signal( mutex )
+	3. post( mutex )
 	4. if count == n
-	5.     signal( barrier )
+	5.     post( barrier )
 	6. end if
 	7. wait( barrier )
-	8. signal( barrier )
+	8. post( barrier )
   \end{verbatim}
 \vspace{-2em}
 
@@ -477,7 +477,7 @@ Have each thread unblock the next:
 \begin{frame}
 \frametitle{Barrier Solution 3 Analysis: The Turnstile}
 
-This pattern (wait followed immediately by signal) is called a \alert{turnstile}.
+This pattern (wait followed immediately by post) is called a \alert{turnstile}.
 
 The analogy should be familiar to anyone who has travelled by subway.\\
 \quad A turnstile allows one person at a time to go through. 
@@ -504,11 +504,11 @@ Consider this instead:
 	1. wait( mutex )
 	2. count++
 	3. if count == n
-	4.     signal( barrier )
+	4.     post( barrier )
 	5. end if
 	6. wait( barrier )
-	7. signal( barrier )
-	8. signal( mutex )
+	7. post( barrier )
+	8. post( mutex )
   \end{verbatim}
 \vspace{-2em}
 
@@ -523,7 +523,7 @@ The first thread waits on \texttt{mutex} and then goes to wait on the \texttt{ba
 
 At this point, the first thread is blocked.
 
-When a second thread comes along, it will wait on \texttt{mutex} but can get no further because the first thread has not signalled on it. 
+When a second thread comes along, it will wait on \texttt{mutex} but can get no further because the first thread has not postled on it. 
 
 
 \end{frame}
@@ -563,16 +563,16 @@ Idea: Decrement \texttt{count} after the rendezvous has taken place.
   \begin{verbatim}
 	 1. wait( mutex )
 	 2. count++
-	 3. signal( mutex )
+	 3. post( mutex )
 	 4. if count == n
-	 5.     signal( turnstile )
+	 5.     post( turnstile )
 	 6. end if
 	 7. wait( turnstile )
-	 8. signal( turnstile )
+	 8. post( turnstile )
 	 9. [critical point]
 	10. wait( mutex )
 	11. count--
-	12. signal( mutex )
+	12. post( mutex )
 	13. if count == 0
 	14.     wait( turnstile )
 	15. end if
@@ -588,7 +588,7 @@ There are two problems with the above implementation.
 
 Suppose thread $n-1$ is about to execute line 4 and then there is a process switch and the $n$th thread comes to this point. 
 
-Both of them will find that \texttt{count} is equal to $n$ and therefore both threads will signal the turnstile. 
+Both of them will find that \texttt{count} is equal to $n$ and therefore both threads will post the turnstile. 
 
 The same problem occurs on line 13.
 
@@ -603,18 +603,18 @@ The same problem occurs on line 13.
 	 1. wait( mutex )
 	 2. count++
 	 3. if count == n
-	 4.     signal( turnstile )
+	 4.     post( turnstile )
 	 5. end if
-	 6. signal( mutex )
+	 6. post( mutex )
 	 7. wait( turnstile )
-	 8. signal( turnstile )
+	 8. post( turnstile )
 	 9. [critical point]
 	10. wait( mutex )
 	11. count--
 	12. if count == 0
 	13.     wait( turnstile )
 	14. end if
-	15. signal( mutex )
+	15. post( mutex )
   \end{verbatim}
 \vspace{-2em}
 
@@ -657,21 +657,21 @@ This solution can also be called a \alert{two-phase barrier} because all threads
 	 2. count++
 	 3. if count == n
 	 4.     wait( turnstile2 )
-	 5.     signal( turnstile1 )
+	 5.     post( turnstile1 )
 	 6. end if
-	 7. signal( mutex )
+	 7. post( mutex )
 	 8. wait( turnstile1 )
-	 9. signal( turnstile1 )
+	 9. post( turnstile1 )
 	10. [critical point]
 	11. wait( mutex )
 	12. count--
 	13. if count == 0
 	14.     wait( turnstile1 )
-	15.     signal( turnstile2 )
+	15.     post( turnstile2 )
 	16. end if
-	17. signal( mutex )
+	17. post( mutex )
 	18. wait( turnstile2 )
-	19. signal( turnstile2 )
+	19. post( turnstile2 )
   \end{verbatim}
 \vspace{-2em}
 
