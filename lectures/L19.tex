@@ -43,7 +43,7 @@ In the dining philosophers problem, we assign each of the five chopsticks a numb
 
 In~\cite{osc} is a proof that ordering the resources prevents deadlock. The approach is proof by contradiction: assume a circular wait is present. Let the set of processes in the circular wait be $\{P_{0}, P_{1}, ... P_{n}\}$ and the set of resources be $\{R_{0}, R_{1}, ... R_{n}\}$. The cycle is formed as: $P_{i}$ is waiting for resource $R_{i}$ and that resource is held by $P_{i+1}$. The exception is the case of $P_{n}$, which is waiting for resource $R_{n}$ that is held by $P_{0}$ (completing the cycle by wrapping around). Since Process $P_{i+1}$ holds resource $R_{i}$ while requesting $R_{i+1}$, this means $f(R_{i}) < f(R_{i+1})$ for all $i$. But this means that $f(R_{0}) < f(R_{1}) < ... < f(R_{n}) < f(R_{0})$. It cannot be the case that $f(R_{0}) < f(R_{0})$: a contradiction, meaning a circular wait cannot occur.
 
-Enforcement of the protocol may be the responsibility of the application developers or the operating system. If the latter, we can be certain that there is no cycle; if the former, then we have once again only reduced the likelihood that deadlock exists. 
+In development this is usually enforced just by coding convention and code review. If you say that mutexes must always be acquired in alphabetical order (or their order in some file), if everyone sticks to that there will be no issue. Sometimes it's not that simple, though, because one mutex can be pointed to by two pointers... which name is the correct one?
 
 \subsubsection*{Stay Alert, Stay Safe\footnote{If this reference makes no sense to you, it's because I'm old: https://www.youtube.com/watch?v=cgvv4wnVlFU}}
 
