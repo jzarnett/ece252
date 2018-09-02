@@ -172,7 +172,7 @@ The idea of a process releasing resources that it is holding is the basis for th
 
 \paragraph{No Preemption.} If we violate this condition, it means that we do have preemption: forcible removal of resources from a process, by the operating system. Suppose a process $P_{1}$ holds $R_{1}$ and $R_{2}$ and wants to get $R_{3}$, but $R_{3}$ is unavailable. $P_{1}$ will be blocked by the operating system. If another process $P_{2}$ comes by and requests $R_{1}$ and $R_{2}$, the resources $R_{1}$ and $R_{2}$ are taken away from $P_{1}$. The resources are added to the list of things that $P_{1}$ is waiting for (so it is waiting for all three now). In the meantime, $P_{2}$ can use them and continue. $P_{1}$ will be unblocked when all three resources are once again available for it to acquire~\cite{osc}. 
 
-This isn't really something we can do a lot about as program designers, because only the operating system really has the power to carry out. It's included for completeness, but is not anything we can actually implement ourselves.
+This isn't really something we can do as program designers, because only the operating system really has the power to carry out. It's included for completeness, but is not anything we can actually implement ourselves.
 
 For preemption to work, however, the resource must be a resource of a type where the state can be saved and restored (e.g., the CPU with its registers). This is not applicable to all resources; if a printer is in use by $P_{1}$ it cannot be preempted and given to $P_{2}$, otherwise the printout will be a jumble. Thus, preemption is also not sufficient to prevent deadlock from ever transpiring, it once again only makes it less likely.
 
