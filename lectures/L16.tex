@@ -185,11 +185,184 @@ pthread_rwlock_destroy( pthread_rwlock_t * rwlock )
 
 In general our syntax very much resembles that of the mutex (attribute initialization and destruction not shown but they do exist). There are some small noteworthy differences, other than obviously the different type of the structure passed. Whereas before we had functions for lock and trylock, we now have those split into readlock and writelock (each of which has its own trylock function). As before, we will return to the subject of how trylock works soon.
 
-In theory, the same thread may lock the same rwlock $n$ times. This is permitted, but it's necessary to unlock it $n$ times as well.
+In theory, the same thread may lock the same rwlock $n$ times; just remember to unlock it $n$ times as well.
 
 And speaking of unlock, there's no specifying whether you are releasing a read or write lock. This is because it is unnecessary; the implementation unlocks whatever type the calling thread was holding. Much like \texttt{close()}, if we can figure out what we're closing we don't need the caller of the function to specify what to do.
 
 As for whether readers get priority, the specification says this is implementation defined. If possible, for threads of equal priority, a writer takes precedence over a reader. But your system may vary.
+
+Consider the following example of the simple readers-writers (without writer priority and with risk of starvation) using the ``old'' way:
+
+\begin{multicols}{2}
+\begin{lstlisting}[language=C]
+int readers;
+pthread_mutex_t mutex;
+sem_t roomEmpty;
+
+void init( ) {
+  readers = 0;
+  pthread_mutex_init( &mutex, NULL );
+  sem_init( &roomEmpty, 0, 1 );
+}
+
+void cleanup( ) {
+  pthread_mutex_destroy( &mutex );
+  sem_destroy( &roomEmpty );
+}
+\end{lstlisting}
+
+\columnbreak
+
+\begin{lstlisting}[language=C]
+void* writer( void* arg ) {
+  sem_wait( &roomEmpty );
+  write_data( arg );
+  sem_post( &roomEmpty );
+}
+
+void* reader( void* read ) {
+  pthread_mutex_lock( &mutex );
+  readers++;
+  if ( readers == 1 ) {
+    sem_wait( &roomEmpty );
+  }
+  pthread_mutex_unlock( &mutex );
+  read_data( arg );
+  pthread_mutex_lock( &mutex );
+  readers--;
+  if ( readers == 0 ) {
+    sem_post( &roomEmpty );
+  }
+  pthread_mutex_unlock( &mutex );
+}
+\end{lstlisting}
+
+\end{multicols}
+
+Now see it as it would be with the use of a rwlock!
+
+\begin{multicols}{2}
+\begin{lstlisting}[language=C]
+pthread_rwlock_t rwlock;
+
+void init( ) {
+  pthread_rwlock_init( &rwlock, NULL );
+}
+
+void cleanup( ) {
+  pthread_rwlock_destroy( &rwlock );
+}
+\end{lstlisting}
+
+\columnbreak
+
+\begin{lstlisting}[language=C]
+void* writer( void* arg ) {
+  pthread_rwlock_wrlock( &rwlock );
+  write_data( arg );
+  pthread_rwlock_unlock( &rwlock );
+}
+
+void* reader( void* read ) {
+  pthread_rwlock_rdlock( &rwlock );
+  read_data( arg );
+  pthread_rwlock_unlock( &rwlock );
+}
+\end{lstlisting}
+
+\end{multicols}
+
+\subsection*{Seek and Destroy: the Search-Insert-Delete Problem}
+
+This is an extension of the readers-writers problem called the search-insert-delete problem. Instead of two types of thread, reader and writer, there are three types of thread: searchers, inserters, deleters. They operate on a shared linked list of data. 
+
+\textit{Searchers} merely examine the list; hence they can execute concurrently with each other. Searcher threads must call \texttt{void search( void* target )} where the argument to the searcher thread is the element to be found. These most closely resemble readers in the readers-writers problem. 
+
+\textit{Inserters} add new items to the end of the list; only one insertion may take place at a time. However, one insert can proceed in parallel with any number of searches. Inserter threads call \texttt{void insert( void* to\_insert )} where the argument to the inserter thread is the element to be inserted. Assume \texttt{insert} is written so the insertion can be done in parallel with the searches. Inserters resemble readers with an additional rule that only one of them can manipulate the list at a time. 
+
+\textit{Deleters} remove items from anywhere in the list. At most one deleter process can access the list at a time, and when the deleter is accessing the list, no inserters and no searchers may be accessing the list. Deleter threads call \texttt{void delete( void* to\_delete )} where the argument to the deleter thread is the element to be deleted. These most closely resemble writers in the readers-writers problem.
+
+It turns out we don't need to modify things too much too allow for this third kind of thread. We need to keep track of when there are ``no inserters'' and ``no searchers'' (some hints for our semaphores) and another mutex to go around the actual insertion... See the code implementation below.
+
+{\scriptsize
+\begin{multicols}{2}
+
+\begin{lstlisting}[language=C]
+pthread_mutex_t searcher_mutex;
+pthread_mutex_t inserter_mutex;
+pthread_mutex_t perform_insert;
+sem_t no_searchers;
+sem_t no_inserters;
+int searchers;
+int inserters;
+
+
+void init( ) {
+  pthread_mutex_init( &searcher_mutex, NULL );
+  pthread_mutex_init( &inserter_mutex, NULL );
+  pthread_mutex_init( &perform_insert, NULL );
+  sem_init( &no_inserters, 0, 1 );
+  sem_init( &no_searchers, 0, 1 );
+  searchers = 0;
+  inserters = 0;
+}
+
+void* searcher_thread( void *target ) {
+  pthread_mutex_lock( &searcher_mutex );
+  searchers++;
+  if ( searchers == 1 ) {
+    sem_wait( &no_searchers );
+  }
+  pthread_mutex_unlock( &searcher_mutex );
+  
+  search( target );
+  
+  pthread_mutex_lock( &searcher_mutex );
+  searchers--;
+  if ( searchers == 0 ) {
+    sem_post( &no_searchers );
+  }
+  pthread_mutex_unlock( &searcher_mutex );
+}
+\end{lstlisting}
+\columnbreak
+\begin{lstlisting}[language=C]
+void* deleter_thread( void* to_delete ) {
+  sem_wait( &no_searchers );
+  sem_wait( &no_inserters );
+  
+  delete( to_delete );
+  
+  sem_post( &no_inserters );
+  sem_post( &no_searchers );
+}
+
+
+void* inserter_thread( void *to_insert ) {
+  pthread_mutex_lock( &inserter_mutex );
+  inserters++;
+  if ( inserters == 1 ) {
+    sem_wait( &no_inserters );
+  }
+  pthread_mutex_unlock( &inserter_mutex );
+  
+  pthread_mutex_lock( &perform_insert );
+  insert( to_insert );
+  pthread_mutex_unlock( &perform_insert );
+  
+  pthread_mutex_lock( &inserter_mutex );
+  inserters--;
+  if ( inserters == 0 ) {
+    sem_post( &no_inserters );
+  }
+  pthread_mutex_unlock( &inserter_mutex );
+}
+\end{lstlisting}
+\end{multicols}
+}
+
+
+
 
 \input{bibliography.tex}
 
