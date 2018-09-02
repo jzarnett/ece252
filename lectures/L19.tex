@@ -2,51 +2,9 @@
 
 \begin{document}
 
-\lecture{ 19 --- Dealing with Deadlock }{\term}{Jeff Zarnett}
+\lecture{ 19 --- Deadlock Avoidance }{\term}{Jeff Zarnett}
 
 \section*{Dealing with Deadlock}
-
-There are four basic approaches to dealing with deadlock, each of which we will examine in turn.
-\begin{enumerate}
-	\item Ignore it.
-	\item Deadlock prevention.
-	\item Deadlock avoidance.
-	\item Deadlock detection.
-\end{enumerate}
-
-\subsection*{Deadlock Option 1: Ignore it}
-This option is certainly convenient for operating system designers: we simply pretend that deadlock can never happen, or if it does happen, it is the application developers' fault. While it is tempting and easy to just define a problem as being nothing we need to deal with, that's unrealistic in reality. That said, this is the approach taken in Microsoft Windows, so it is a valid option. If two processes get deadlocked, the user may simply see no progress (or the ``not responding'' dialog) and have to open task manager and start killing processes.
-
-Setting aside the ``do-nothing'' option, let us move on to some approaches that actually deal with the problem.
-
-\subsection*{Deadlock Option 2: Deadlock Prevention}
-
-This approach is a way of preventing a deadlock from being possible. The first three conditions for deadlock (mutual exclusion, hold and wait, and no preemption) are all necessary for deadlock to be possible. If we eliminate one of these three pillars, deadlock is not possible and it is prevented from happening.
-
-\paragraph{Mutual Exclusion.} This pillar cannot, generally speaking, be disallowed. The purpose of  mutual exclusion is to prevent errors like inconsistent state or crashes. Getting rid of mutual exclusion to rule out the possibility of deadlock is a cure that is worse than the disease. It is therefore not acceptable as a solution.
-
-\paragraph{Hold and Wait.} To prevent the hold-and-wait condition, we must guarantee that when a process requests a resource, it does not have any other resource. In a practical sense this does not mean that things can be requested only one at a time; that would be like telling the philosophers that when they have one chopstick already, they cannot request another.
-
-One plausible solution is that the process must request all resources at the beginning of the program. So if the program is going to need resources $R_{1}$, $R_{2}$, and $R_{3}$ at some point in the program, all three must be requested right at the beginning and held throughout the program. No further resources may be requested at any time during execution. Suppose the program does a lot of processing and then prints the result on a printer (and the printer is $R_{3}$): the printer is tied up by this process throughout the entire execution of the program~\cite{osc}.
-
-Unfortunately, this requires some amount of clairvoyance: a process has to know in advance all of the resources that it will need. Remember that a file is a resource, and even a simple program like a text editor can be used by the user to open an arbitrary file; how do we know in advance which will be requested?
-
-This also has performance implications: a process cannot start until it has all the resources it will ever need, even if it will not need them until much later. Thus, processes might spend a lot of time waiting before starting; something that users may not tolerate. In theory, a process might never start if one or more of the resources it needs is always in use (so this is vulnerable to starvation).
-
-An alternative is that a process must release all its currently-held resources before it can get any new ones. So, if the process has $R_{1}$ and $R_{2}$ and wants to get $R_{3}$ (and needs all three), the process must first release $R_{1}$ and $R_{2}$ before it can request all three of them. 
-
-Unfortunately, this runs into some problems, too. A resource that cannot be easily released is memory, as released memory may be collected and reassigned by the operating system. Therefore we cannot release all resources, and releasing only some of the resources means that we cannot categorically rule out deadlock; we can only make it less likely to occur~\cite{mte241}.
-
-Another idea that might work is \textit{two-phase locking}. A process attempts to lock a group of resources at once, and if it does not get everything it needs, it releases the locks it received and tries again. Thus a process does not wait while holding resources. If a philosopher picks up a chopstick but is unable to acquire a second, she puts down the chopstick she has picked up and tries again. Although she may not be the one to eat next, at least not all philosophers are stuck holding one chopstick.
-
-Two phase locking is not applicable to our current model for semaphores, where there is no way to know the value of the semaphore and the operating system will block a process on a \texttt{wait} if some other thread is in the critical region. After the process is blocked on the semaphore, a second process will run, and the first process does not get the opportunity to release the resources it holds. With that in mind, there are systems that support nonblocking requests for resources and mutual exclusion areas that return, perhaps, \texttt{true} if the resource is acquired and \texttt{false} if it is unavailable. Then the program is responsible for checking if any of the requests returned \texttt{false} and releasing any resources where the request returned \texttt{true}.
-
-The idea of a process releasing resources that it is holding is the basis for the next solution: knocking down the ``no preemption'' pillar.
-
-
-\paragraph{No Preemption.} If we violate this condition, it means that we do have preemption: forcible removal of resources from a process. Suppose a process $P_{1}$ holds $R_{1}$ and $R_{2}$ and wants to get $R_{3}$, but $R_{3}$ is unavailable. $P_{1}$ will be blocked by the operating system. If another process $P_{2}$ comes by and requests $R_{1}$ and $R_{2}$, the resources $R_{1}$ and $R_{2}$ are taken away from $P_{1}$. The resources are added to the list of things that $P_{1}$ is waiting for (so it is waiting for all three now). In the meantime, $P_{2}$ can use them and continue. $P_{1}$ will be unblocked when all three resources are once again available for it to acquire~\cite{osc}.
-
-For preemption to work, however, the resource must be a resource of a type where the state can be saved and restored (e.g., the CPU with its registers). This is not applicable to all resources; if a printer is in use by $P_{1}$ it cannot be preempted and given to $P_{2}$, otherwise the printout will be a jumble. Thus, preemption is also not sufficient to prevent deadlock from ever transpiring, it once again only makes it less likely.
 
 \subsection*{Deadlock Option 3: Deadlock Avoidance}
 In examining deadlock prevention, we were attempting to rule deadlock out categorically by eliminating one of the three preconditions for deadlock to be possible. If successful, then we can be sure that deadlock does not occur. Unfortunately, eliminating the pillars came with some conditions and the best we could accomplish was merely making deadlock less likely and not resolving the problem in its entirety. Thus, we are forced to live with a system where a deadlock is possible. However, deadlock being possible is not the same thing as deadlock being inevitable; we can take steps to avoid it if there is a danger of it actually happening. The basic strategy is: do not allow a cycle in the resource allocation graph.
@@ -87,18 +45,9 @@ In~\cite{osc} is a proof that ordering the resources prevents deadlock. The appr
 
 Enforcement of the protocol may be the responsibility of the application developers or the operating system. If the latter, we can be certain that there is no cycle; if the former, then we have once again only reduced the likelihood that deadlock exists. 
 
-\subsubsection*{Stay Alert Stay Safe\footnote{If this reference makes no sense to you, it's because I'm old: https://www.youtube.com/watch?v=cgvv4wnVlFU}}
+\subsubsection*{Stay Alert, Stay Safe\footnote{If this reference makes no sense to you, it's because I'm old: https://www.youtube.com/watch?v=cgvv4wnVlFU}}
 
 Suppose that instead of ordering the resources, each process will need to give the operating system some additional information about what resources might be requested. Processes need to say in advance of execution what is the maximum number of resources of each type they might conceivably need. In a system with a tape drive and printer, perhaps process $A$ needs the tape drive first, then the printer, and process $B$ needs the printer and then the tape drive. With this knowledge, the system can make more intelligent decisions about when to run a process or make it wait, to avoid getting into a deadlock~\cite{osc}.
-
-Recall from earlier the joint progress diagram for threads $P$ and $Q$:
-
-\begin{center}
-\includegraphics[width=0.75\textwidth]{images/joint-progress}\\
-A joint progress diagram representing the behaviour of the $P$ and $Q$ code~\cite{osi}.
-\end{center}
-
-Every point in the diagram represents a joint state of the two processes. (e.g., $P$ wants \texttt{a} and $Q$ has it) and there are, in this example, six paths of execution, two of which will certainly result in deadlock. The other four will not.  With a single processor, all paths are horizontal or vertical (never diagonal), and the lines may only move up and right, never down or left because processes cannot run backwards in time~\cite{mos}. This diagram is the basis for analyzing the situation and deciding what to do.
 
 We say a state is \textit{safe} if there is some scheduling order in which every process can run to completion even if all of them suddenly request their maximum resources immediately~\cite{mos}. Hence why we needed to know in advance the maximum resources that could be required by the process. 
 
