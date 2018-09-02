@@ -50,8 +50,8 @@ Of course, for deadlock to occur, we do not have to have symmetric processes try
 	 1. wait( a ) 
 	 2. wait( b )
 	 3. [critical section]
-	 4. signal( a )
-	 5. signal( b )
+	 4. post( a )
+	 5. post( b )
   \end{verbatim}
 \columnbreak
 \textbf{Thread Q}\vspace{-2em}
@@ -59,8 +59,8 @@ Of course, for deadlock to occur, we do not have to have symmetric processes try
 	 1. wait( b ) 
 	 2. wait( a )
 	 3. [critical section]
-	 4. signal( b )
-	 5. signal( a )
+	 4. post( b )
+	 5. post( a )
   \end{verbatim}
 \end{multicols}
 \vspace{-2em}
@@ -69,7 +69,7 @@ Of course, for deadlock to occur, we do not have to have symmetric processes try
 \subsection*{Reusable and Consumable Resources}
 So, deadlock takes place when two processes or threads are competing for resources. We can generally classify a resource as either \textit{reusable} or \textit{consumable}. A reusable resource can be used by one process at a time, and is not depleted by that use. A process may lock the resource, make use of it, then release it such that other processes may acquire it. Processors, memory, files, and semaphores are all examples of reusable resources. If process $P$ gets resource A and then releases it, process $Q$ can acquire it. Thus, the example above involving $P$ and $Q$ is a deadlock involving reusable resources.
 
-A consumable resource is one that is created and destroyed upon consumption. If the user presses the ``Z'' key on the keyboard, this generates an interrupt and produces the ``Z'' character in a buffer. A process that takes input will then consume that character (e.g., it goes into the \texttt{vi} editor window) and it is unavailable to other processes. Other things that are consumable resources: interrupts, signals, and messages. Deadlock is somewhat less likely when dealing with consumable resources, but in theory, all processes could be waiting to receive a message, if it is a blocking receive, and no process can send a message (because they are all waiting for some other process to send first).
+A consumable resource is one that is created and destroyed upon consumption. If the user presses the ``Z'' key on the keyboard, this generates an interrupt and produces the ``Z'' character in a buffer. A process that takes input will then consume that character (e.g., it goes into the \texttt{vi} editor window) and it is unavailable to other processes. Other things that are consumable resources: interrupts, posts, and messages. Deadlock is somewhat less likely when dealing with consumable resources, but in theory, all processes could be waiting to receive a message, if it is a blocking receive, and no process can send a message (because they are all waiting for some other process to send first).
 
 \subsection*{Conditions for Deadlock}
 When a disaster happens, it is typically a result of a chain of things going wrong. If any one of those things did not happen, the disaster would be averted. This is referred to as ``breaking the chain''. There are four conditions for deadlock:

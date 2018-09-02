@@ -20,8 +20,8 @@ A general strategy to prevent a cycle from forming is to impose ordering on reso
 	 1. wait( a ) 
 	 2. wait( b )
 	 3. [critical section]
-	 4. signal( a )
-	 5. signal( b )
+	 4. post( a )
+	 5. post( b )
   \end{verbatim}
 \columnbreak
 \textbf{Thread Q}\vspace{-2em}
@@ -29,8 +29,8 @@ A general strategy to prevent a cycle from forming is to impose ordering on reso
 	 1. wait( b ) 
 	 2. wait( a )
 	 3. [critical section]
-	 4. signal( b )
-	 5. signal( a )
+	 4. post( b )
+	 5. post( a )
   \end{verbatim}
 \end{multicols}
 \vspace{-2em}

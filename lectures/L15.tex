@@ -28,7 +28,7 @@ If busy-waiting is permitted, that is, we do not care if we are wasting CPU time
 	 7.        count++
 	 8.        added = true
 	 9.    end if
-	10.    signal( mutex )
+	10.    post( mutex )
 	11. end while
   \end{verbatim}
 \columnbreak
@@ -42,7 +42,7 @@ If busy-waiting is permitted, that is, we do not care if we are wasting CPU time
 	 6.        count--
 	 7.        removed = true
 	 8.    end if
-	 9.    signal( mutex )
+	 9.    post( mutex )
 	10. end while
 	11. [consume item]
   \end{verbatim}
@@ -58,14 +58,14 @@ While this accomplishes what we want, it is inefficient. Let's add a third rule 
 	 1. [produce item]
 	 2. wait( spaces )
 	 3. [add item to buffer]
-	 4. signal( items )
+	 4. post( items )
   \end{verbatim}
 \columnbreak
 \textbf{Consumer}\vspace{-2em}
   \begin{verbatim}
 	 1. wait( items )
 	 2. [remove item from buffer]
-	 3. signal( spaces )
+	 3. post( spaces )
 	 4. [consume item]
   \end{verbatim}
 \end{multicols}
@@ -82,8 +82,8 @@ To generalize this solution to allow multiple producers and multiple consumers, 
 	 2. wait( spaces )
 	 3. wait( mutex )
 	 4. [add item to buffer]
-	 5. signal( mutex )
-	 6. signal( items )
+	 5. post( mutex )
+	 6. post( items )
   \end{verbatim}
 \columnbreak
 \textbf{Consumer}\vspace{-2em}
@@ -91,8 +91,8 @@ To generalize this solution to allow multiple producers and multiple consumers, 
 	 1. wait( items )
 	 2. wait( mutex )
 	 3. [remove item from buffer]
-	 4. signal( mutex )
-	 5. signal( spaces )
+	 4. post( mutex )
+	 5. post( spaces )
 	 6. [consume item]
   \end{verbatim}
 \end{multicols}
@@ -109,8 +109,8 @@ Reading through the code above, you should be able to reason that this solution 
 	 2. wait( mutex )
 	 3. wait( spaces )
 	 4. [add item to buffer]
-	 5. signal( items )
-	 6. signal( mutex )
+	 5. post( items )
+	 6. post( mutex )
   \end{verbatim}
 \columnbreak
 \textbf{Consumer}\vspace{-2em}
@@ -118,8 +118,8 @@ Reading through the code above, you should be able to reason that this solution 
 	 1. wait( mutex )
 	 2. wait( items )
 	 3. [remove item from buffer]
-	 4. signal( spaces )
-	 5. signal( mutex )
+	 4. post( spaces )
+	 5. post( mutex )
 	 6. [consume item]
   \end{verbatim}
 \end{multicols}
