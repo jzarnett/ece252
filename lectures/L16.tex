@@ -1,0 +1,126 @@
+\input{header.tex}
+
+\begin{document}
+
+\lecture{ 16 --- The Readers-Writers Problem }{\term}{Jeff Zarnett}
+
+\section*{The Readers-Writers Problem}
+
+This problem is about concurrent reading and modification of a data structure or record by more than one thread. A writer will modify the data; a reader will read it only without modification. Unlike the producer-consumer problem, some concurrency is allowed:
+
+\begin{enumerate}
+\item Any number of readers may be in the critical section simultaneously.
+\item Only one writer may be in the critical section (and when it is, no readers are allowed).
+\end{enumerate}
+
+Or, to sum that up, a writer cannot enter the critical section while any other thread (whether reader or writer) is there. While a writer is in the critical section, neither readers nor writers may enter the critical section~\cite{lbs}. This is very often how file systems work: a file may be read concurrently by any number of threads, but only one thread may write to it at a time (and to prevent reading of inconsistent data, no thread may read during the write).
+
+This is similar to, but distinct from, the general mutual exclusion problem and the producer-consumer problem. In the readers-writers problem, readers do not modify the data (consumers do take things out of the buffer, modifying it). If any thread could read or write the shared data structure, we would have to use the general mutual exclusion solution. Although the general mutual exclusion routine would work in that it would prevent errors, it is a serious performance reduction versus allowing multiple readers concurrently~\cite{osi}. Thus, this situation is worth examining in its own right.
+
+Let us keep track of the number of readers at any given time with a variable \texttt{readers}. We will need a way of protecting this variable from concurrent modifications, so there will have to be a binary semaphore \texttt{mutex}. We will also need one further semaphore, \texttt{roomEmpty}, as a way of indicating that the room is empty. A writer has to wait for the room to be empty (i.e., \texttt{wait} on the \texttt{roomEmpty} semaphore) before it can enter. The solution comes from~\cite{lbs}:
+
+\begin{multicols}{2}
+\textbf{Writer}\vspace{-2em}
+  \begin{verbatim}
+	 1. wait( roomEmpty )
+	 2. [write data]
+	 3. signal( roomEmpty )
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+  \end{verbatim}
+\columnbreak
+\textbf{Reader}\vspace{-2em}
+  \begin{verbatim}
+	 1. wait( mutex )
+	 2. readers++
+	 3. if readers == 1
+	 4.     wait( roomEmpty )
+	 5. end if
+	 6. signal( mutex )
+	 7. [read data]
+	 8. wait( mutex )
+	 9. readers--
+	10. if readers == 0
+	11.     signal( roomEmpty )
+	12. end if
+	13. signal( mutex )
+  \end{verbatim}
+\end{multicols}
+\vspace{-2em}
+
+The code for the writer is much simpler than that of the readers. The writer may only enter into the critical section if the room is empty. When it has finished, it signals that the room is empty. The writer can be certain that when it exits the critical section that there are no other threads in the room, because no thread may enter the room while the writer was there.
+
+The reader code is somewhat more complicated. The first reader that arrives encounters the situation that the room is empty, so it ``locks'' the room (waiting on the \texttt{roomEmpty} semaphore), and that will prevent writers from entering the room. Additional readers do not check if the room is empty; they just proceed to enter. When the last reader leaves the room, it signals that the room is empty (``unlocking it'' to allow a writer in). This pattern is sometimes called the \textit{light switch}, as in~\cite{mte241}: the first one into the room turns on the lights and the last one out turns them off again. 
+
+The reader code has that situation that makes us concerned about the possibility of deadlock: a wait on \texttt{roomEmpty} inside a critical section controlled by \texttt{mutex}. With a bit of reasoning, we can convince ourselves that there is no risk: the only situation in which a thread waits on \texttt{roomEmpty} is that a writer is currently in its critical section. No other reader thread can get the \texttt{mutex} lock. As long as the write operation takes finite time, eventually the writer will signal the \texttt{roomEmpty} semaphore and the threads can continue. Deadlock is not a problem.
+
+There is, however, a second problem that we need to be concerned about. Suppose some readers are in the room, and a writer arrives. The writer must wait until all the readers have left the room. When each of the readers is finished, it exits the room. In the meantime, more readers arrive and enter the room. So even though each reader is in the room for only a finite amount of time, there is never a moment when the room has no readers in it. This undesirable situation is not deadlock, because the reader threads are not stuck, but the writer (and any subsequent writers) is (are) going to wait forever. This is a situation called \textit{starvation}: a thread never gets a chance to run.
+
+Recall criterion 3 of the list of properties we want in any mutual exclusion solution: it must not be possible for a thread requiring access to the critical section to be delayed indefinitely. This problem is just as bad as deadlock in that if it is discovered, it eliminates a proposed solution as an acceptable option, even though starvation might only be an unlikely event. We must therefore improve on this solution such that there is no longer the possibility that a writer starves.
+
+Conceptually, the solution that accomplishes the goal looks something like this: when a writer arrives, any readers currently reading should be permitted to finish their read, but no new readers should be allowed to start reading. Thus, eventually, all the readers currently in the critical section will finish, the writer will get a turn, because the room is empty, and when the writer is done, all the readers that arrived after the writer will be able to enter.
+
+A new binary semaphore is needed here, called \texttt{turnstile}. 
+
+\begin{multicols}{2}
+\textbf{Writer}\vspace{-2em}
+  \begin{verbatim}
+	 1. wait( turnstile )
+	 2. wait( roomEmpty )
+	 3. [write data]
+	 4. signal( turnstile )
+	 5. signal( roomEmpty )
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+  \end{verbatim}
+\columnbreak
+\textbf{Reader}\vspace{-2em}
+  \begin{verbatim}
+	 1. wait( turnstile )
+	 2. signal( turnstile )
+	 3. wait( mutex )
+	 4. readers++
+	 5. if readers == 1
+	 6.     wait( roomEmpty )
+	 7. end if
+	 8. signal( mutex )
+	 9. [read data]
+	10. wait( mutex )
+	11. readers--
+	12. if readers == 0
+	13.     signal( roomEmpty )
+	14. end if
+	15. signal( mutex )
+  \end{verbatim}
+\end{multicols}
+\vspace{-2em}
+
+As before, the writer code is simpler, so we will examine it first. When the writer arrives, it will wait on the turnstile. If it is not the first writer, subsequent writers will queue up there, but if proceeds then it will wait for the room to be empty. Because the writer has locked the turnstile, no new readers can enter. There may be an arbitrary number of readers currently in the room, but each is there for only a finite amount of time. These existing-readers will be allowed to finish and leave the room. Then the writer gets a turn. When the writer is done, it signals the turnstile, which might unblock a reader or another writer. 
+
+Readers first get to the turnstile, and if they find it is locked, a writer is in its critical section. Thus, readers will queue at the turnstile if necessary, otherwise proceed. After that, the code is the same as we saw before: keep track of the number of readers and signal if the room is empty or not empty.
+
+Does this solution satisfy our goals of avoidance of deadlock and starvation? Starvation is fairly easy to assess: the first attempt at the solution had one scenario leading to starvation and this solution addresses it. Problem solved. You should be able to convince yourself that the solution as described cannot starve the writers or readers.
+
+On to deadlock: the reader code is minimally changed from before; we have identified the turnstile code as not being a problem on its own (though its interactions with other threads need to be examined). The more dangerous block of code is on the side of the writer, because it has that pattern: two waits. If the writer is blocked on the \texttt{roomEmpty} semaphore, no readers or writers could advance past the turnstile and no writers. If the writer is blocked on that semaphore, it means there are readers in the room, and the readers will individually finish and leave (their progress is not impeded). Given that, the room will eventually become empty and the writer will be unblocked.
+
+Note that this solution does not give writers any particular priority: when a writer exits it signals \texttt{turnstile} and that may unblock a reader or a writer. If it unblocks a reader, a whole bunch of readers may enter before the next writer is unblocked and locks the turnstile again. That may or may not be desirable, depending on the application. In any event, it does mean it is possible for readers to proceed even if a writer is queued. If there is a need to give writers priority, there are several techniques for doing so (but we will not examine those right now)~\cite{lbs}.
+
+\input{bibliography.tex}
+
+\end{document}
