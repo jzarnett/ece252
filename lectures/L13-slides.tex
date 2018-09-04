@@ -260,7 +260,7 @@ This adds a small amount of extra bookkeeping to the semaphore, but this is a re
 \begin{frame}[fragile]
 \frametitle{Semaphore Example: Linked List Integrity}
 
-\begin{verbatim}
+\begin{lstlisting}[language=C]
 typedef struct single_node {
   void *element;
   struct single_node *next;
@@ -278,16 +278,15 @@ void single_list_init( single_list_t *list ) {
   list->tail = NULL;
   list->size = 0;
 }
-\end{verbatim}
+\end{lstlisting}
 \end{frame}
 
 \begin{frame}[fragile]
 \frametitle{Semaphore Example: Linked List Integrity}
 
-\begin{verbatim}
+\begin{lstlisting}[language=C]
 bool push_front( single_list_t *list, void *obj ) {
-  single_node_t *tmp = (single_node_t *) 
-                  malloc( sizeof( single_node_t ) );
+  single_node_t *tmp = malloc( sizeof( single_node_t ) );
   
   if ( tmp == NULL ) {
     return false;
@@ -305,7 +304,7 @@ bool push_front( single_list_t *list, void *obj ) {
    return true;
 }
 
-\end{verbatim}
+\end{lstlisting}
 \end{frame}
 
 
@@ -316,7 +315,7 @@ If only one thread access this data structure, we do not have a problem.
 
 Suppose a thread tries to add an element $A$ to the list using \texttt{push\_front}. 
 
-Right before the increment of the \texttt{size} fieldthere is a process switch. 
+Right before the increment of the \texttt{size} field there is a process switch. 
 
 At this point, the new node has been allocated and initialized, the pointers of \texttt{head} and \texttt{tail} have been updated, but \texttt{size} is 0. 
 
@@ -373,28 +372,44 @@ Or the \texttt{head} pointer will be updated but \texttt{tail} will still point 
 \end{frame}
 
 \begin{frame}
-\frametitle{Binary Semaphore Syntax}
+\frametitle{Semaphore Syntax}
 
 The linked list problem just discussed can be solved easily if a semaphore is employed. 
 
+Binary semaphores are useful, and we can generalize this concept to what is known as a \textit{counting} or \textit{general} semaphore.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{General Semaphores}
+
+If a thread attempts to wait on a semaphore and the decrement operation makes the integer value negative, the calling thread is blocked. 
+
+If initialized with 5 and the current value is 2, a thread that waits on that general semaphore will not be blocked.
+
+In some operating systems there is no distinction between binary and counting semaphores (create a general semaphore with a value of 1).
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Semaphore Syntax}
+
 The syntax we will use is as follows:
 
-\texttt{semaphore\_init( semaphore\_t *sem, int i )}\\
-Initialize the semaphore to \texttt{i} (can be 0 or 1).
-
-\texttt{semaphore\_wait( semaphore\_t *sem )}\\
-Wait on a semaphore.
-
-\texttt{semaphore\_signal( semaphore\_t *sem)}\\
-If the semaphore is 1, do nothing.\\
-If the semaphore is 0 and there is at least one task blocked on this semaphore, unblock it; otherwise set the semaphore to 1.
+\begin{lstlisting}[language=C]
+sem_init( sem_t* semaphore, int shared, int initial_value);
+sem_destroy( sem_t* semaphore )
+sem_wait( sem_t* semaphore )
+sem_post( sem_t* semaphore )
+\end{lstlisting}
 
 \end{frame}
 
 \begin{frame}[fragile]
 \frametitle{Applying the Semaphore to the Linked List}
 
-\begin{verbatim}
+\begin{lstlisting}[language=C]
 typedef struct single_node {
   void *element;
   struct single_node *next;
@@ -404,7 +419,7 @@ typedef struct single_list {
   single_node_t *head;
   single_node_t *tail;
   int size;
-  semaphore_t mutex;
+  sem_t sem;
 } single_list_t;
 
 void single_list_init( single_list_t *list ) {
@@ -412,24 +427,23 @@ void single_list_init( single_list_t *list ) {
   list->tail = NULL;
   list->size = 0;
 
-  semaphore_init( &( list->mutex ), 1 );
+  sem_init( &( list->sem ), 0, 1 );
 }
-\end{verbatim}
+\end{lstlisting}
 
 \end{frame}
 
 \begin{frame}[fragile]
 \frametitle{Applying the Semaphore to the Linked List}
 
-\begin{verbatim}
+\begin{lstlisting}[language=C]
 bool push_front( single_list_t *list, void *obj ) {
-  single_node_t *tmp = (single_node_t *) 
-                   malloc( sizeof( single_node_t ) );
+  single_node_t *tmp = malloc( sizeof( single_node_t ) );
   
   if ( tmp == NULL ) { return false; }  
   tmp->element = obj;
 
-  semaphore_wait( &( list->mutex ) ); {  
+  sem_wait( &( list->sem ) ); {  
     tmp->next = list->head;
     list->head = tmp;
 
@@ -438,10 +452,10 @@ bool push_front( single_list_t *list, void *obj ) {
     }
     ++( list->size );
   
-  } semaphore_signal( &( list->mutex ) );
+  } sem_post( &( list->sem ) );
   return true;
 }
-\end{verbatim}
+\end{lstlisting}
 
 
 \end{frame}
@@ -458,44 +472,6 @@ This is, however, suboptimal: it forces unnecessary waiting.
 Including the call to \texttt{malloc} is especially bad; the memory allocation itself can block if insufficient memory is available. 
 
 \end{frame}
-
-\begin{frame}
-\frametitle{Counting Semaphores}
-
-Binary semaphores are useful, and we can generalize this concept to what is known as a \alert{counting} or \alert{general} semaphore. 
-
-Instead of having only the values 0 and 1, the setup routine for the counting semaphore allows the choice of an integer value and this is the maximum value. 
-
-A thread that waits on that semaphore will decrement the integer by 1.
-
-A thread that signals on the semaphore will increment the integer by 1. 
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{General Semaphores}
-
-If a thread attempts to wait on a semaphore and the decrement operation makes the integer value negative, the calling thread is blocked. 
-
-If initialized with 5 and the current value is 2, a thread that waits on that general semaphore will not be blocked.
-
-In some operating systems there is no distinction between binary and counting semaphores (create a general semaphore with a value of 1).
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{General Semaphore Creation}
-
-The general semaphore initialization function signature now takes an extra parameter, \texttt{n}, to show the maximum value of the semaphore.
-
-\texttt{semaphore\_init( semaphore\_t *sem, int i, int n )}\\
-Initialize the semaphore to \texttt{i} with a maximum value of \texttt{n}.
-
-
-\end{frame}
-
 
 \end{document}
 
