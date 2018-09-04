@@ -70,7 +70,7 @@ void single_list_init( single_list_t *list ) {
 }
 
 bool push_front( single_list_t *list, void *obj ) {
-  single_node_t *tmp = (single_node_t *) malloc( sizeof( single_node_t ) );
+  single_node_t *tmp = malloc( sizeof( single_node_t ) );
   
   if ( tmp == NULL ) {
     return false;
@@ -155,7 +155,7 @@ void single_list_init( single_list_t *list ) {
 }
 
 bool push_front( single_list_t *list, void *obj ) {
-  single_node_t *tmp = (single_node_t *) malloc( sizeof( single_node_t ) );
+  single_node_t *tmp = malloc( sizeof( single_node_t ) );
   
   if ( tmp == NULL ) {
     return false;
