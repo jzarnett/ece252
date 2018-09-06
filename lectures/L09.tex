@@ -13,7 +13,7 @@ A very large number of programs will in some way communicate over the network wi
 
 \paragraph{Secondary Objective(s).} You will also gain some more experience using the toolchain (gcc mostly) that should have been introduced in the labs for this course. This may also be your first introduction to git and gitlab.
 
-\paragraph{Starter Code.} The starter code can be found at \url{https://git.uwaterloo.ca/jzarnett/ece252/ece252-e1} -- fork this repository to your own space. If you have not set up a gitlab account yet, you should do this now. Set permissions for your new repository to be private, but add the group for the course staff with read access so your code can be evaluated. 
+\paragraph{Starter Code.} The starter code can be found at \url{https://git.uwaterloo.ca/ece252/ece252-e1} -- fork this repository to your own space. If you have not set up a gitlab account yet, you should do this now. Set permissions for your new repository to be private, but add the group for the course staff with read access so your code can be evaluated. 
 
 \paragraph{Submitting Your Code.} When you're done, use the command \texttt{git commit -a} to add all files to your commit and enter a commit message. Make sure the \texttt{output.txt} file is included and has the answer you got back from the server. Then \texttt{git push} to upload your changes to your repository. You can commit and push as many times as you like; we'll look at whatever was last pushed. And check that you gave the course staff permissions!
 
@@ -22,12 +22,12 @@ A very large number of programs will in some way communicate over the network wi
 \paragraph{Description of Behaviour.} The goal is to implement the program so that the following behaviour occurs:
 
 \begin{itemize}
-	\item Your program should take in the IP of the remote server as the first argument. So if the server IP to use is \texttt{127.0.0.1} then the program is invoked like \texttt{./socket 127.0.0.1}.
+	\item Your program should take in the IP of the remote server as the first argument. So if the server IP to use is \texttt{127.0.0.1} then the program is invoked like \texttt{./socket-client 127.0.0.1}. 
 	\item Establish a TCP/stream connection to the server specified (actual IP will be given in the class because these things can and do change with time!) 
-	\item Send your 8-digit student number to the server as a character array (string).
-	\item After you send your number, receive a response from the server. If your upload was unsuccessful (i.e., you didn't send a valid student number) the remote server will close the connection without sending a response (and this indicates an error).
+	\item Send your 8-digit student number to the server as a character array (\texttt{char[]} or \texttt{char*}) (string).
+	\item After you send your number, try to receive a 64 character response from the server. If your upload was unsuccessful (i.e., you didn't send a valid student number) the remote server will close the connection without sending a response (and this indicates an error).
 	\item Close the connection after you got the response.
-	\item The answer you get back from the server should be written to the file called \texttt{output.txt}. The output is a hashed value so it doesn't look particularly human readable, but that's okay; the course staff know how to interpret it.
+	\item The answer you get back from the server should be written to the file called \texttt{output.txt}. The output doesn't look particularly human readable, but that's okay; the course staff know how to interpret it.
 	\item Your program should not leak memory; be sure to destroy/deallocate anything initialized/allocated.
 \end{itemize}
 
@@ -40,6 +40,7 @@ Some general guidance is below. If you're having trouble, try checking these thi
 	\item Check the documentation for how functions work if you are unfamiliar with them (google is your friend!)
 	\item Check return values (and possibly \texttt{errno}) for network functions if things are going wrong.  
 	\item Have you initialized all variables? It is easy to forget; \texttt{malloc} does not initialize the value...
+	\item Pay attention to compiler warnings. Warnings can sometimes be ignored, but may be a hint about a semantic error that you will want to resolve. If the compiler is trying to tell you something, listen.
 	\item You need a buffer for receiving the data, and the receive function tells you how many bytes the server sent.
 	\item Don't forget null terminators for strings! Especially one you received via the socket.
 	\item Is there a missing or extra \texttt{*} (dereference) on a pointer somewhere?
