@@ -23,9 +23,9 @@ A very large number of programs will in some way communicate over the network wi
 
 \begin{itemize}
 	\item Your program should take in the IP of the remote server as the first argument. So if the server IP to use is \texttt{127.0.0.1} then the program is invoked like \texttt{./socket-client 127.0.0.1}. 
-	\item Establish a TCP/stream connection to the server specified (actual IP will be given in the class because these things can and do change with time!) 
-	\item Send your 8-digit student number to the server as a character array (\texttt{char[]} or \texttt{char*}) (string).
-	\item After you send your number, try to receive a 64 character response from the server. If your upload was unsuccessful (i.e., you didn't send a valid student number) the remote server will close the connection without sending a response (and this indicates an error).
+	\item Establish a TCP/stream connection to the server specified (actual IP will be given in the class because these things can and do change with time!). This is the client-side, so you need to get the address information (\texttt{getaddrinfo()}), create a socket (\texttt{socket()}), and then \texttt{connect()} to the remote server. 
+	\item Once connected, send your 8-digit student number to the server as a character array (\texttt{char[]} or \texttt{char*}) (string) using \texttt{send()}.
+	\item After you send your number, try to receive (using \texttt{recv()}) a 64 character response from the server. If your upload was unsuccessful (i.e., you didn't send a valid student number) the remote server will close the connection without sending a response (and this indicates an error).
 	\item Close the connection after you got the response.
 	\item The answer you get back from the server should be written to the file called \texttt{output.txt}. The output doesn't look particularly human readable, but that's okay; the course staff know how to interpret it.
 	\item Your program should not leak memory; be sure to destroy/deallocate anything initialized/allocated.
