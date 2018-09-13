@@ -2,9 +2,9 @@
 
 \begin{document}
 
-\lecture{ 23 --- Concurrency in File Systems }{\term}{Jeff Zarnett}
+\lecture{ 24 --- Concurrency in File Systems }{\term}{Jeff Zarnett}
 
-\section*{Concurrency with File Systems}
+\section*{Concurrency in File Systems}
 
 To understand the idea of concurrency in file systems, we need to peel back the interface a bit and have at least a high-level understanding of their implementation. File can be of arbitrary size (although in a particular file system there may be a limit), so they have to be allocated on disk in some way. 
 
@@ -27,7 +27,7 @@ With that out of the way, we can show a visual representation of an inode. This 
 	The UNIX inode. Triple indirection is left to the reader's imagination~\cite{osc}.
 \end{center}
 
-We already discussed the use of \texttt{flock()} to lock a file, and this locks the entire file. There exists another way to lock a file, using \texttt{fcntl}), in which case we can lock only a part of a file, specifically a byte range of that file. This is referred to as \texttt{record locking}.
+We already discussed the use of \texttt{flock()} to lock a file, and this locks the entire file. There exists another way to lock a file, using \texttt{fcntl}, in which case we can lock only a part of a file, specifically a byte range of that file. This is referred to as \textit{record locking}.
 
 Locking just a part of the file allows for more concurrency: if a process is writing the beginning of the file, another one can be writing the end of the file and these don't overlap so the second write does not need to wait. Let's see how to do that. The function is found in the header \texttt{fcntl.h}. Here's the function signature:
 
@@ -48,7 +48,7 @@ struct flock {
 };
 \end{lstlisting}
 
-Much like the readers-writers locks, the types of locks are read and write. The compatibility matrix is exactly what you would expect: read locks are compatible with other read locks; write locks are not compatible with any other lock. And finally, to unlock, you still use the set-lock functionality, but with type \texttt{F\_UNLCK}. 
+Much like the readers-writers locks, the types of locks are read and write. The compatibility matrix is exactly what you would expect: read locks are compatible with other read locks; write locks are not compatible with any other lock. And finally, to unlock, you still use the set-lock functionality, but with type \texttt{F\_UNLCK}. This sort of locking scheme is vulnerable to deadlock, as it's possible for a process to lock file 1 and need file 2 while another process has a lock on file 2 and needs the lock on file 1. 
 
 The value of \texttt{l\_whence} is going to be one of the three constants named in the comment above. This refers to where the offset begins. \texttt{SEEK\_SET} means at the start of the file. So if you specify \texttt{SEEK\_SET} and an offset of \texttt{1000} it means the locked region begins 1000 bytes after the start of the file. \texttt{SEEK\_END} means the relative point is the end of the file. Finally, \texttt{SEEK\_CUR} means based on the current position in the file (if you've positioned within the file using \texttt{seek()} this makes sense).
 
@@ -58,19 +58,83 @@ It is possible for a locked region to extend past the end of the file. This is u
 For \texttt{command}, our choices are~\cite{apunix}:
 \begin{itemize}
 	\item \texttt{F\_GETLK} -- Determine if the lock described by \texttt{flockptr} is blocked by some other lock. If a lock exists, the content of \texttt{flockptr} is overwritten with the data of the lock; if no lock exists then the \texttt{l\_type} field is set to \texttt{F\_UNLCK}.
-	\item \texttt{F\_SETLK} -- Set the lock as described by \texttt{flockptr}. If the lock cannot be acquired then the return value of the function returns an error and \texttt{errno} are set. This is ``trylock''-behaviour.
+	\item \texttt{F\_SETLK} -- Set the lock as described by \texttt{flockptr}. If the lock cannot be acquired then the return value of the function returns an error and \texttt{errno} are set. This is ``trylock''-behaviour and can be used to avoid the possibility of a deadlock.
 	\item \texttt{F\_SETLKW} -- A blocking version of the \texttt{F\_SETLK} command. If the region we want to lock is currently in use then the caller gets blocked.
 \end{itemize}
 
 When unlocking a region, just as for locking, you can specify what part of the file you would like to unlock. Partial unlocking is unusual, but why not? The system will combine or split locks as appropriate, based on what is to be locked or unlocked.
 
-Let's do some examples of locking and unlocking.
+Let's do some examples on how to use this structure and system call. The first example is how to lock a file and then how to unlock it:
 
 \begin{lstlisting}[language=C]
-Example of locking a file
+int write_lock_file( int file_descriptor ) {
+
+  struct flock fl;
+  fl.l_type = F_WRLOCK;
+  fl.l_start = 0;
+  fl.l_whence = SEEK_SET;
+  fl.l_len = 0;
+  
+  return fcntl( fd, F_SETLK, &fl );
+}
+
+int unlock_file( int file_descriptor ) {
+
+  struct flock fl;
+  fl.l_type = F_UNLCK;
+  fl.l_start = 0;
+  fl.l_whence = SEEK_SET;
+  fl.l_len = 0;
+  
+  return fcntl( fd, F_SETLK, &fl );
+}
 \end{lstlisting}
 
-It is noteworthy that both kinds of lock are ``advisory'' only. That is, like the use of a semaphore or mutex, it only is really effective if everyone involved in accessing the shared resource follows the proper protocol and checks if access is permitted or not. Mandatory locks do exist, but are hard to use and are not recommended.
+Obviously if you wished to have a different type of lock or to only lock a specific range, then you would need different values in the structure. Now for checking if a given part of a file is locked:
+
+\begin{lstlisting}[language=C]
+int fd = open ( "example.txt", O_RDONLY );
+struct flock lock;
+
+lock.l_type = F_RDLOCK;
+lock.l_start = 1024;
+lock.l_whence = SEEK_SET;
+lock.l_len = 256;
+
+fcntl( fd, F_GETLK, &lock );
+if ( lock.l_type == F_UNLCK ) {
+	/* Lock is unlocked; we may proceed */
+} else if ( lock.l_type = F_WRLOCK ) {
+  /* File is write locked by a different process */
+  printf( "File locked by process ID %d.\n", lock.l_pid );
+  return -1;
+}
+\end{lstlisting}
+
+Checking on things with \texttt{F\_GETLK} is really for information purposes only: you should not make decisions about whether to proceed based on this, because of course the sequence of ``read of the value and then whatever operation you'd like to do next'' is not atomic. Instead, use the command \texttt{F\_SETLK} and actually try to set the lock. If \texttt{-1} is returned then locking was not successful. Or, if the plan is to wait, use \texttt{F\_SETLKW} as one would expect.
+
+It's important to remember that \texttt{fcntl} changes some values of the \texttt{struct lock} so if you wanted to re-use it you need to make sure to reset it as appropriate. So if you want to use the same \texttt{struct lock} to unlock the thing that you locked, you can, just do so carefully.
+
+I'll also take a minute to mention \texttt{lockf}: it is a simplified way of locking a file. While \texttt{fcntl} is more flexible, sometimes all we need is the simple version. According to the documentation:
+
+\begin{lstlisting}[language=C]
+int lockf( int file_descriptor, int command, off_t length );
+\end{lstlisting}
+
+The command options can be:
+\begin{itemize}
+	\item \texttt{F\_LOCK} -- Acquire an exclusive lock on the (section of the) file.
+	\item \texttt{F\_TLOCK} -- Try to acquire an exclusive lock (try-lock behaviour).
+	\item \texttt{F\_ULOCK} -- Unlock the indicated section of the file.
+	\item \texttt{F\_TEST} -- Check if (a section of) the file is locked; 0 if it is unlocked and -1 if the file is locked.
+\end{itemize}
+
+
+The length is an offset, and is based off the current position in the file. If zero is provided then it locks the whole file.
+
+Two further notes: The file is automatically unlocked when the file descriptor is closed. And, on some systems \texttt{lockf} just calls \texttt{fcntl} but on some others they use different mechanisms. So don't mix and match. If you lock a file with one function, unlock it with the matching one.
+
+It is noteworthy that both kinds of lock are ``advisory'' only. That is, like the use of a semaphore or mutex, it only is really effective if everyone involved in accessing the shared resource follows the proper protocol and checks if access is permitted or not. Mandatory locks do exist, but are hard to use and are not recommended. Did you really want to know about mandatory locking? Well, check out this kernel.org documentation as to why you shouldn't, but also how it works if you must: \url{https://www.kernel.org/doc/Documentation/filesystems/mandatory-locking.txt}.
 
 \subsection*{Using A File as a Lock}
 
