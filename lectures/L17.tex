@@ -25,9 +25,9 @@ Dobby, who is a free elf. At the beginning of the day, the headmaster, Dumbledor
 \paragraph{Description of Behaviour.} The goal is to implement the program so that the following behaviour occurs:
 
 \begin{itemize}
-	\item At program start, the first argument provided to the program represents the total number of tasks to do today. So if, for example, the program is invoked with \texttt{./dobby 100}, there are 100 tasks to be done today.
+	\item At program start, the first argument provided to the program represents the total number of tasks to do today. So if, for example, the program is invoked with \texttt{./hogwarts 100}, there are 100 tasks to be done today (total tasks).
 
-	\item The \texttt{init} and \texttt{cleanup} functions should initialize and clean up, respectively, any global variables. 
+	\item The \texttt{main} function should initialize and clean up, respectively, any global variables. 
 
 	\item Your program should create five (5) house elves (\texttt{house\_elf()}) and one (1) Dobby thread (\texttt{dobby()}). 
 
@@ -36,9 +36,9 @@ Dobby, who is a free elf. At the beginning of the day, the headmaster, Dumbledor
 calling \texttt{do\_work()} (which can be done in parallel). If the list of tasks is 
 empty, an elf cannot call \texttt{take\_task()} and must instead wake up Dobby, who will then post the next 10 tasks before going to sleep again; meanwhile the elf is blocked until the next group of tasks is ready.
 
-	\item When woken up, Dobby posts (up to) 10 tasks to do by calling \texttt{post\_tasks()} and updates the number of available tasks. After that, Dobby sleeps (is blocked). If there are fewer than 10 tasks remaining for the day then Dobby cannot post 10, but instead posts however many remain.
+	\item When woken up, Dobby posts (up to) 10 tasks to do by calling \texttt{post\_tasks()} and updates the number of available tasks (active tasks). After that, Dobby sleeps (is blocked). If there are fewer than 10 tasks remaining for the day then Dobby cannot post 10, but instead posts however many remain.
 	
-\item  Note that Dobby and the elves are responsible for managing the count of tasks available.
+\item  Note that Dobby and the elves are responsible for managing the number of active tasks.
 
 \item House elves don't know that their day is over until they are told so using \texttt{pthread\_cancel}. Dobby must dismiss the other elves using this function, if Dobby gets woken up and the remaining tasks for the day is zero. After cancelling the other threads, Dobby should use \texttt{pthread\_join} to wait for each of them to finish before he can go home for the day (exit).
 
