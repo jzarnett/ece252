@@ -34,14 +34,13 @@ Dobby, who is a free elf. At the beginning of the day, the headmaster, Dumbledor
 	\item Worker elves take tasks using the function 
 \texttt{take\_task()} (which cannot be safely run in parallel) and then do the work by 
 calling \texttt{do\_work()} (which can be done in parallel). If the list of tasks is 
-empty, an elf cannot call \texttt{take\_task()} and must instead wake up Dobby, who will 
-then post the next 10 tasks before going to sleep again; meanwhile the elf is blocked 
-until the next group of tasks is ready.
+empty, an elf cannot call \texttt{take\_task()} and must instead wake up Dobby, who will then post the next 10 tasks before going to sleep again; meanwhile the elf is blocked until the next group of tasks is ready.
 
 	\item When woken up, Dobby posts (up to) 10 tasks to do by calling \texttt{post\_tasks()} and updates the number of available tasks. After that, Dobby sleeps (is blocked). If there are fewer than 10 tasks remaining for the day then Dobby cannot post 10, but instead posts however many remain.
 	
-\item  Note that Dobby and the elves are responsible 
-for managing the count of tasks available.
+\item  Note that Dobby and the elves are responsible for managing the count of tasks available.
+
+\item House elves don't know that their day is over until they are told so using \texttt{pthread\_cancel}. Dobby must dismiss the other elves using this function, if Dobby gets woken up and the remaining tasks for the day is zero. After cancelling the other threads, Dobby should use \texttt{pthread\_join} to wait for each of them to finish before he can go home for the day (exit).
 
 \item Your program should not leak memory; be sure to destroy/deallocate anything initialized/allocated.
 
@@ -59,9 +58,11 @@ Some general guidance is below. If you're having trouble, try running through th
 	\item If a variable is going to be used in more than one function, make sure it is allocated on the heap (ie with \texttt{malloc}) and not on the stack.
 	\item Is there a missing or extra \texttt{*} (dereference) on a pointer somewhere?
 	\item Check carefully what values semaphores are initialized to.
-	\item Is the number of \texttt{wait} and \texttt{post} statements on a given semaphore balanced?
+	\item Is the number of \texttt{wait} and \texttt{post} statements on a given semaphore balanced? 
 	\item Does every memory allocation have a matching deallocation?
 	\item Does every code path in a critical section protected by a mutex lead to an unlock statement? 
+	\item Are accesses to shared variables protected by a mutex or semaphore appropriately?
+	\item Remember that both reads and writes of shared variables need to be inside critical sections.
 	\item It may be helpful to put \texttt{printf()} statements to follow along what the program is doing and it may help you narrow down where the issue is.
 	\item Don't be shy about asking for help; the TAs and instructor are here to help you get it done and will help you as much as is reasonable.
 \end{itemize}
