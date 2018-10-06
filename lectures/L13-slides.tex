@@ -115,11 +115,11 @@ The \alert{binary semaphore}: this is a variable that has two values, 0 and 1.
 
 It can be initialized to 0 or to 1. 
 
-The semaphore has two operations: \texttt{wait} and \texttt{signal}. 
+The semaphore has two operations: \texttt{wait} and \texttt{post}. 
 
-In the original paper, \texttt{wait} was called \texttt{P} and \texttt{signal} was called \texttt{V}, but the names in common usage have become a little more descriptive. 
+In the original paper, \texttt{wait} was called \texttt{P} and \texttt{post} was called \texttt{V}, but the names in common usage have become a little more descriptive. 
 
-Note: \texttt{signal} is also called \texttt{post} in many textbooks.
+Note: \texttt{post} is also called \texttt{signal} in many textbooks.
 
 
 \end{frame}
@@ -140,9 +140,9 @@ The \texttt{wait} operation on the semaphore is how a program tries to enter the
 \end{frame}
 
 \begin{frame}
-\frametitle{Binary Semaphore: signal}
+\frametitle{Binary Semaphore: post}
 
-The \texttt{signal} operation is how a program \textit{signals}, or indicates, it is finished with the critical section. 
+The \texttt{post} (or signal) operation is how a program \textit{signals}, or indicates, it is finished with the critical section. 
 
 When this is called, if the semaphore is 1, do nothing.
 
@@ -176,7 +176,7 @@ If it is currently occupied, you will have to wait.
 
 When the key is returned, if anyone is waiting, the employee will give the key to the first person in line for the washroom. 
 
-Otherwise he or she will put the key away behind the counter.
+Otherwise they will put the key away behind the counter.
 
 
 \end{frame}
@@ -208,9 +208,9 @@ It can only give it a shot. Either it will be blocked or proceed directly.
 \end{frame}
 
 \begin{frame}
-\frametitle{Signalling}
+\frametitle{Post}
 
-When a thread signals a semaphore, it likewise does not know if any other thread(s) are waiting on that semaphore. 
+When a thread posts on a semaphore, it likewise does not know if any other thread(s) are waiting on that semaphore. 
 
 There is no facility to check this, either. 
 
@@ -228,9 +228,9 @@ Suppose thread $C$ would like to enter the critical section.
 
 The programmer of this task is malicious as well as impatient: ``my task is FAR too important to wait for those other processes and threads,'' he says. 
 
-He implements his code: before he waits on the semaphore, he signals it. 
+He implements his code: before he waits on the semaphore, he posts on it. 
 
-Even though $A$ or $B$ might be in the critical section, the semaphore is signalled.
+Even though $A$ or $B$ might be in the critical section, the semaphore is incremented.
 
 So he is fairly certain that his program will now get to enter the critical section. 
 \end{frame}
@@ -251,7 +251,9 @@ Though the example here makes the author of thread $C$ a scheming villain, such 
 
 The problem identified is usually solved by supplementing the basic binary semaphore. 
 
-A data structure called a \alert{mutex} is a binary semaphore with an additional rule enforced: only the thread that has called \texttt{wait} may \texttt{signal} that semaphore. 
+A data structure called a \alert{mutex} is a binary semaphore with an additional rule enforced: only the thread that has called \texttt{wait} may \texttt{post} that semaphore. 
+
+Although typically when we have a mutex we use the terms \alert{lock} and \alert{unlock}.
 
 This adds a small amount of extra bookkeeping to the semaphore, but this is a reasonable price to pay.
 
