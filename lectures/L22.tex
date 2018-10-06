@@ -1,0 +1,253 @@
+\input{header.tex}
+
+\begin{document}
+
+\lecture{ 18 --- Condition Variables, Monitors, Atomic Types }{\term}{Jeff Zarnett}
+
+\subsection*{Condition Variables}
+Condition variables are another way to achieve synchronization. Rather than designating critical areas and enforcing rules about how many threads may be in the critical area, a condition variable allows synchronization based on the value of the data. Instead of locking a mutex, checking a variable, and then unlocking the mutex, we could achieve the same goal without constantly polling. We can think of condition variables as ``events'' that occur (like interrupts from hardware when there is new data to read rather than polling to check periodically or constantly).
+
+An event is similar to, but slightly different from, a counting semaphore. We have the option, when an event occurs, to signal either one thread waiting for that event to occur, or to broadcast (signal) to all threads waiting for the event~\cite{mte241}. It should be noted that if a thread signals a condition variable that an event has occurred, but no thread is waiting for that event, the event is ``lost''. 
+
+Condition variables are also supported in pthreads. To create a \texttt{pthread\_cond\_t} (condition variable type), the function is \texttt{pthread\_cond\_init} and to destroy them, \texttt{pthread\_cond\_destroy}. As before, we can initialize them with attributes, and there are functions to create and destroy the attribute structures, too. But the default attributes will be fine.
+
+Condition variables are always used in conjunction with a mutex. To wait on a condition variable, the function \texttt{pthread\_cond\_wait} takes two parameters: the condition variable and the mutex. This routine should be called only while the mutex is locked. It will automatically release the mutex while it waits for the condition; when the condition is true then the mutex will be automatically locked again so the thread may proceed. The programmer then unlocks the mutex when the thread is finished with it~\cite{pthreads}. Obviously, failing to lock and unlock the mutex before and after using the condition variable, respectively, can result in problems.
+
+In addition to the expected \texttt{pthread\_cond\_signal} function that signals a provided condition variable, there is also \texttt{pthread\_cond\_broadcast} that signals all threads waiting on that condition variable. Because an event that takes place when no thread is listening is simply lost, it is (almost always) a logical error to signal or broadcast on a condition variable before some thread is waiting on it. It's this ``broadcast'' idea that makes the condition variable more interesting than the simple ``signalling'' 
+
+\paragraph{Condition Variable Example.} Let us now examine a code example from~\cite{pthreads}:
+
+\begin{lstlisting}[language=C]
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define NUM_THREADS  3
+#define TCOUNT 10
+#define COUNT_LIMIT 12
+
+int     count = 0;
+pthread_mutex_t count_mutex;
+pthread_cond_t count_threshold_cv;
+
+void *inc_count(void *t) {
+  int i;
+  long my_id = (long)t;
+
+  for (i=0; i < TCOUNT; i++) {
+    pthread_mutex_lock(&count_mutex);
+    count++;
+
+    /* Check the value of count and signal waiting thread when condition is
+    reached.  Note that this occurs while mutex is locked. */
+    if (count == COUNT_LIMIT) {
+      printf("inc_count(): thread %ld, count = %d  Threshold reached. ",
+             my_id, count);
+      pthread_cond_signal(&count_threshold_cv);
+      printf("Just sent signal.\n");
+      }
+    printf("inc_count(): thread %ld, count = %d, unlocking mutex\n", 
+       my_id, count);
+    pthread_mutex_unlock(&count_mutex);
+
+    /* Do some work so threads can alternate on mutex lock */
+    sleep(1);
+    }
+  pthread_exit(NULL);
+}
+
+void *watch_count(void *t) {
+  long my_id = (long)t;
+
+  printf("Starting watch_count(): thread %ld\n", my_id);
+
+  /* Lock mutex and wait for signal.  Note that the pthread_cond_wait routine
+  will automatically and atomically unlock mutex while it waits. 
+  Also, note that if COUNT_LIMIT is reached before this routine is run by
+  the waiting thread, the loop will be skipped to prevent pthread_cond_wait
+  from never returning. */
+  pthread_mutex_lock(&count_mutex);
+  
+  while (count < COUNT_LIMIT) {
+    printf("watch_count(): thread %ld Count= %d. Going into wait...\n", my_id,count);
+    pthread_cond_wait(&count_threshold_cv, &count_mutex);
+    printf("watch_count(): thread %ld Condition signal received. Count= %d\n", my_id,count);
+    printf("watch_count(): thread %ld Updating the value of count...\n", my_id,count);
+    count += 125;
+    printf("watch_count(): thread %ld count now = %d.\n", my_id, count);
+    }
+  printf("watch_count(): thread %ld Unlocking mutex.\n", my_id);
+  pthread_mutex_unlock(&count_mutex);
+  pthread_exit(NULL);
+}
+
+int main(int argc, char *argv[]) {
+  int i, rc; 
+  long t1=1, t2=2, t3=3;
+  pthread_t threads[3];
+  pthread_attr_t attr;
+
+  /* Initialize mutex and condition variable objects */
+  pthread_mutex_init(&count_mutex, NULL);
+  pthread_cond_init (&count_threshold_cv, NULL);
+
+  /* For portability, explicitly create threads in a joinable state */
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+  pthread_create(&threads[0], &attr, watch_count, (void *)t1);
+  pthread_create(&threads[1], &attr, inc_count, (void *)t2);
+  pthread_create(&threads[2], &attr, inc_count, (void *)t3);
+
+  /* Wait for all threads to complete */
+  for (i = 0; i < NUM_THREADS; i++) {
+    pthread_join(threads[i], NULL);
+  }
+  printf ("Main(): Waited and joined with %d threads. Final value of count = %d. Done.\n", 
+          NUM_THREADS, count);
+
+  /* Clean up and exit */
+  pthread_attr_destroy(&attr);
+  pthread_mutex_destroy(&count_mutex);
+  pthread_cond_destroy(&count_threshold_cv);
+  pthread_exit (NULL);
+
+}
+\end{lstlisting}
+
+
+\subsection*{Monitors}
+A condition variable can be used to create a \textit{monitor}, a higher level synchronization construct. Just as in object-oriented programming we package up data and functions inside a class to make errors less likely and to improve the design, when we use a monitor we are packaging up the shared data and operations on that data to avoid problems of synchronization and concurrency.
+
+The objective of the monitor is to make it so that programmers do not need to code the synchronization part directly, making it less likely a programmer makes an error.
+
+
+Suppose there are processes $P$ and $Q$ and a condition variable $x$. If $P$ signals on $x$ when $Q$ is waiting, there are two things we can do: \textit{signal-and-wait}, where $P$ waits until $Q$ leaves the monitor (or another condition); or \textit{signal-and-continue} where $P$ continues and $Q$ waits for $P$ to leave the monitor or another condition. Signal-and-continue seems logical, in one sense: $P$ is already running, so why do the extra work to switch? On the other hand, by the time $P$ exits the monitor on its own, the condition $Q$ was waiting for might no longer be true. Some programming languages opt for a compromise: after signalling, $P$ must immediately leave the monitor~\cite{osc}.
+
+The idea of monitors should be familiar to you if you have used Java synchronization constructs, notably the \texttt{synchronized} keyword. In Java we can declare a method to be \texttt{synchronized}, adding it after the access modifier keyword (public, private, etc) in the function definition, and then there is a lock created around that method. Only one thread can be inside that method at a time; if a second would like to call that method on the same instance, it will be placed in the entry set for the lock: a set of threads waiting for the lock to become available~\cite{osc}. 
+
+\begin{lstlisting}[language=Java]
+public synchronized void doSomething() {
+    // Synchronized area
+}
+\end{lstlisting}
+
+
+Note that in Java we can make a method \texttt{synchronized} or define a block as synchronized:
+
+\begin{lstlisting}[language=Java]
+public void exampleMethod() {
+    synchronized( object ) { // Lock must be acquired to enter this block
+           // Critical section 
+    } // Lock is automatically released.
+}
+\end{lstlisting}
+
+This sort of ``automatic'' locking and releasing is intended to simplify the process of writing multithreaded code and abstract away the details of mutual exclusion.
+
+\subsection*{Atomic Types}
+
+Frequently we have a code pattern that looks something like this:
+
+\begin{lstlisting}[language=C]
+pthread_mutex_lock( lock );
+shared_var++;
+pthread_mutex_unlock( lock );
+\end{lstlisting}
+
+While is is fully correct, if this happens frequently there is a lot of locking and unlocking on the same mutex, just to do the increment. So there's a fair amount of overhead on this. Thinking back to the ``test and set'' type of instruction from earlier, wouldn't it be nice if we could do that sort of thing for something like incrementing a variable? We can! 
+
+The Linux kernel provides operations that are guaranteed to execute atomically, to avoid simple race conditions. In a uniprocessor system, the CPU cannot be interrupted until the operation is finished; in a multiprocessor system, the variable is locked until the operation is finished. There are two types of atomic operations: those that operate on integers and those that operate on a single bit in a bitmap. On some architectures, the atomic operations are translated into uninterruptible assembly instructions; on others, the memory bus is locked to ensure the operation is atomic~\cite{osi}.
+
+Rather than just using an integer for atomic integer operations, there is a defined type \texttt{atomic\_t}, ensuring that only atomic operations can be used on this data type and that atomic operations can only be used on that data type. This prevents programming errors and hides architecture-specific implementation details.
+
+The following table gives an overview of the atomic integer and bitmap operations, from~\cite{lkd}:
+
+\begin{center}
+\begin{tabular}{l|l}
+	\textbf{Function} & \textbf{Description}\\\hline
+
+	\texttt{atomic\_t ATOMIC\_INIT( int i )} & At declaration, initialize an \texttt{atomic\_t} to \texttt{i}\\\hline
+
+\texttt{int atomic\_read( atomic\_t *v )} &  Read the integer value of \texttt{v}\\\hline
+
+\texttt{void atomic\_set( atomic\_t *v, int i )} & Set \texttt{v} equal to \texttt{i}\\\hline
+
+\texttt{void atomic\_add( int i, atomic\_t *v )} & Add \texttt{i} to \texttt{v}\\\hline
+
+\texttt{void atomic\_sub( int i, atomic\_t *v )} & Subtract \texttt{i} from \texttt{v}\\\hline
+
+\texttt{void atomic\_inc( atomic\_t *v )} & Add 1 to \texttt{v}\\\hline
+
+\texttt{void atomic\_dec( atomic\_t *v )} & Subtract 1 from \texttt{v}\\\hline
+
+\texttt{int atomic\_sub\_and\_test( int i, atomic\_t *v )} & Subtract \texttt{i} from \texttt{v}; return true if 0; otherwise false\\\hline
+
+\texttt{int atomic\_add\_negative( int i, atomic\_t *v )} & Add \texttt{i} to \texttt{v}; return true if negative; otherwise false\\\hline
+
+\texttt{int atomic\_dec\_and\_test( atomic\_t *v )} & Decrement \texttt{v} by 1; return true if 0; otherwise false\\\hline
+
+\texttt{int atomic\_inc\_and\_test( atomic\_t *v )} & Increment \texttt{v} by 1; return true if 0; otherwise false\\ \hline\hline
+
+\texttt{void set\_bit( int n, void *addr )} &  Set the $n^{th}$ bit starting from \texttt{addr}\\\hline
+
+\texttt{void clear\_bit( int n, void *addr )} &  Clear the $n^{th}$ bit starting from \texttt{addr}\\\hline
+
+\texttt{void change\_bit( int n, void *addr )} &  Flip the value of the $n^{th}$ bit starting from \texttt{addr}\\\hline
+
+\texttt{int test\_and\_set\_bit( int n, void *addr )} &  Set $n^{th}$ bit starting from \texttt{addr}; return previous value\\\hline
+
+\texttt{int test\_and\_clear\_bit( int n, void *addr )} &  Clear $n^{th}$ bit starting from \texttt{addr}; return previous value\\\hline
+
+\texttt{int test\_and\_change\_bit( int n, void *addr )} &  Flip $n^{th}$ bit starting from \texttt{addr}; return previous value\\\hline
+
+\texttt{int test\_bit( int n, void *addr )} &  Return value of $n^{th}$ bit starting from \texttt{addr}\\\hline
+
+\end{tabular}
+\end{center}
+
+Atomic operations are helpful for scenarios like a single variable being modified and read. But atomic operations are not always ideal. Consider this:
+
+\begin{lstlisting}[language=C]
+struct point {
+  atomic_t x;
+  atomic_t y;
+};
+atomic_set( p1->x, 0 );
+atomic_set( p1->y, 0 );
+
+/* Somewhere else in the program */
+atomic_set( p1->x, 25 );
+atomic_set( p1->y, 30 );
+\end{lstlisting}
+
+Although the set of each of \texttt{x} and \texttt{y} is atomic, the operation as a whole is not. The write of \texttt{x} could succeed and then a read of both in a different thread could take place before the write of \texttt{y}, meaning that a reader would see (25, 0) when that's probably not valid. Similarly, the state could be totally corrupted if another thread did atomic writes of (10, 15) in between the two, leading to a final state of (10, 30). 
+
+When a number of writes need to take place as a ``package'', then a mutex type is the appropriate choice. 
+
+\paragraph{Spinlocks.}
+Another common technique for protecting a critical section in Linux is the \textit{spinlock}. This is a handy way to implement constant checking to acquire a lock. Unlike semaphores where the process is blocked if it fails to acquire the lock, a thread will constantly try to acquire the lock. The implementation is an integer that is checked by a thread; if the value is 0, the thread can lock it (set the value to 1) and continue; if it is nonzero, it constantly checks the value until the value becomes 0. As you know, this is very inefficient; it would be better to let another thread execute, except in the circumstances where the amount of time waiting on the lock might be less than it would take to block the process, switch to another, and unblock it when the value changes~\cite{osi}.
+
+\begin{lstlisting}[language=C]
+spin_lock( &lock )
+    /* Critical Section */
+spin_unlock( &lock )
+\end{lstlisting}
+
+In addition to the regular spinlock, there are \textit{reader-writer-spinlocks}. Like the readers-writers problem discussed earlier, the goal is to allow multiple readers but give exclusive access to a writer. This is implemented as a 24-bit reader counter and an unlock flag, with the meaning defined as follows~\cite{osi}.
+
+\begin{center}
+\begin{tabular}{l|l|l}
+	\textbf{Counter} & \textbf{Flag} & \textbf{Interpretation}\\\hline
+	0 & 1 & The spinlock is released and available. \\
+	0 & 0 & The spinlock has been acquired for writing.\\
+	$n$ ($n > 0$) & 0 & The spin lock has been acquired for reading by $n$ threads.\\
+	$n$ ($n > 0$) & 1 & Invalid state.\\
+\end{tabular}
+\end{center}
+
+There are further additional details related to use of spinlocks, which can of course be explored by reading the Linux kernel documentation.
+
+
+\input{bibliography.tex}
+
+\end{document}
