@@ -2,20 +2,31 @@
 
 \begin{document}
 
-\lecture{ 18 --- Condition Variables, Monitors, Atomic Types }{\term}{Jeff Zarnett}
+\lecture{ 22 --- Condition Variables, Monitors, Atomic Types }{\term}{Jeff Zarnett}
 
 \subsection*{Condition Variables}
 Condition variables are another way to achieve synchronization. Rather than designating critical areas and enforcing rules about how many threads may be in the critical area, a condition variable allows synchronization based on the value of the data. Instead of locking a mutex, checking a variable, and then unlocking the mutex, we could achieve the same goal without constantly polling. We can think of condition variables as ``events'' that occur (like interrupts from hardware when there is new data to read rather than polling to check periodically or constantly).
 
-An event is similar to, but slightly different from, a counting semaphore. We have the option, when an event occurs, to signal either one thread waiting for that event to occur, or to broadcast (signal) to all threads waiting for the event~\cite{mte241}. It should be noted that if a thread signals a condition variable that an event has occurred, but no thread is waiting for that event, the event is ``lost''. 
+An event is similar to, but slightly different from, a counting semaphore. We have the option, when an event occurs, to signal either one thread waiting for that event to occur, or to broadcast (signal) to all threads waiting for the event~\cite{mte241}.
 
-Condition variables are also supported in pthreads. To create a \texttt{pthread\_cond\_t} (condition variable type), the function is \texttt{pthread\_cond\_init} and to destroy them, \texttt{pthread\_cond\_destroy}. As before, we can initialize them with attributes, and there are functions to create and destroy the attribute structures, too. But the default attributes will be fine.
+Consider the condition variable functions:
+
+\begin{lstlisting}
+pthread_cond_init( pthread_cond_t *cv, pthread_condattr_t *attributes );
+pthread_cond_wait( pthread_cond_t *cv, pthread_mutex_t *mutex );
+pthread_cond_signal( pthread_cond_t *cv );
+pthread_cond_broadcast( pthread_cond_t *cv );
+pthread_cond_destroy( pthread_cond_t *cv );
+\end{lstlisting}
+
+To initialize a \texttt{pthread\_cond\_t} (condition variable type), the function is \texttt{pthread\_cond\_init} and to destroy them, \texttt{pthread\_cond\_destroy}. As with threads and a mutex, we can initialize them with attributes, and there are functions to create and destroy the attribute structures, too. But the default attributes will be fine, at least in this course.
 
 Condition variables are always used in conjunction with a mutex. To wait on a condition variable, the function \texttt{pthread\_cond\_wait} takes two parameters: the condition variable and the mutex. This routine should be called only while the mutex is locked. It will automatically release the mutex while it waits for the condition; when the condition is true then the mutex will be automatically locked again so the thread may proceed. The programmer then unlocks the mutex when the thread is finished with it~\cite{pthreads}. Obviously, failing to lock and unlock the mutex before and after using the condition variable, respectively, can result in problems.
 
-In addition to the expected \texttt{pthread\_cond\_signal} function that signals a provided condition variable, there is also \texttt{pthread\_cond\_broadcast} that signals all threads waiting on that condition variable. Because an event that takes place when no thread is listening is simply lost, it is (almost always) a logical error to signal or broadcast on a condition variable before some thread is waiting on it. It's this ``broadcast'' idea that makes the condition variable more interesting than the simple ``signalling'' 
+In addition to the expected \texttt{pthread\_cond\_signal} function that signals a provided condition variable, there is also \texttt{pthread\_cond\_broadcast} that signals all threads waiting on that condition variable. It's this ``broadcast'' idea that makes the condition variable more interesting than the simple ``signalling'' pattern we covered much earlier on.
 
-\paragraph{Condition Variable Example.} Let us now examine a code example from~\cite{pthreads}:
+
+Let us now examine a code example from~\cite{pthreads} which has been cut down a bit to make it more readable:
 
 \begin{lstlisting}[language=C]
 #include <pthread.h>
@@ -23,105 +34,128 @@ In addition to the expected \texttt{pthread\_cond\_signal} function that signals
 #include <stdlib.h>
 
 #define NUM_THREADS  3
-#define TCOUNT 10
 #define COUNT_LIMIT 12
 
-int     count = 0;
+int count = 0;
 pthread_mutex_t count_mutex;
 pthread_cond_t count_threshold_cv;
 
-void *inc_count(void *t) {
-  int i;
-  long my_id = (long)t;
-
-  for (i=0; i < TCOUNT; i++) {
-    pthread_mutex_lock(&count_mutex);
+void* inc_count( void* arg ) {
+  for (int i = 0; i < 10; i++ ) {
+    pthread_mutex_lock( &count_mutex );
     count++;
-
-    /* Check the value of count and signal waiting thread when condition is
-    reached.  Note that this occurs while mutex is locked. */
-    if (count == COUNT_LIMIT) {
-      printf("inc_count(): thread %ld, count = %d  Threshold reached. ",
-             my_id, count);
-      pthread_cond_signal(&count_threshold_cv);
-      printf("Just sent signal.\n");
-      }
-    printf("inc_count(): thread %ld, count = %d, unlocking mutex\n", 
-       my_id, count);
-    pthread_mutex_unlock(&count_mutex);
-
-    /* Do some work so threads can alternate on mutex lock */
-    sleep(1);
+    if ( count == COUNT_LIMIT ) {
+      printf( "Condition Fulfilled!\n" );
+      pthread_cond_signal( &count_threshold_cv );
+      printf( "Sent signal.\n" );
     }
-  pthread_exit(NULL);
+    pthread_mutex_unlock( &count_mutex );
+  }
+  pthread_exit( NULL );
 }
 
-void *watch_count(void *t) {
-  long my_id = (long)t;
-
-  printf("Starting watch_count(): thread %ld\n", my_id);
-
-  /* Lock mutex and wait for signal.  Note that the pthread_cond_wait routine
-  will automatically and atomically unlock mutex while it waits. 
-  Also, note that if COUNT_LIMIT is reached before this routine is run by
-  the waiting thread, the loop will be skipped to prevent pthread_cond_wait
-  from never returning. */
-  pthread_mutex_lock(&count_mutex);
-  
-  while (count < COUNT_LIMIT) {
-    printf("watch_count(): thread %ld Count= %d. Going into wait...\n", my_id,count);
-    pthread_cond_wait(&count_threshold_cv, &count_mutex);
-    printf("watch_count(): thread %ld Condition signal received. Count= %d\n", my_id,count);
-    printf("watch_count(): thread %ld Updating the value of count...\n", my_id,count);
-    count += 125;
-    printf("watch_count(): thread %ld count now = %d.\n", my_id, count);
-    }
-  printf("watch_count(): thread %ld Unlocking mutex.\n", my_id);
-  pthread_mutex_unlock(&count_mutex);
-  pthread_exit(NULL);
+void* watch_count( void *arg ) {
+  pthread_mutex_lock( &count_mutex );  
+  if ( count < COUNT_LIMIT ) {
+    pthread_cond_wait( &count_threshold_cv, &count_mutex );
+    printf( "Watcher has woken up.\n" );
+    /* Do something useful here now that condition is fulfilled. */
+  }
+  pthread_mutex_unlock( &count_mutex );
+  pthread_exit( NULL );
 }
 
-int main(int argc, char *argv[]) {
-  int i, rc; 
-  long t1=1, t2=2, t3=3;
+int main( int argc, char **argv ) {
   pthread_t threads[3];
-  pthread_attr_t attr;
 
-  /* Initialize mutex and condition variable objects */
-  pthread_mutex_init(&count_mutex, NULL);
-  pthread_cond_init (&count_threshold_cv, NULL);
+  pthread_mutex_init( &count_mutex, NULL );
+  pthread_cond_init ( &count_threshold_cv, NULL );
 
-  /* For portability, explicitly create threads in a joinable state */
-  pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-  pthread_create(&threads[0], &attr, watch_count, (void *)t1);
-  pthread_create(&threads[1], &attr, inc_count, (void *)t2);
-  pthread_create(&threads[2], &attr, inc_count, (void *)t3);
+  pthread_create( &threads[0], NULL, watch_count, NULL );
+  pthread_create( &threads[1], NULL, inc_count, NULL );
+  pthread_create( &threads[2], NULL, inc_count, NULL );
 
-  /* Wait for all threads to complete */
-  for (i = 0; i < NUM_THREADS; i++) {
+  for ( int i = 0; i < NUM_THREADS; i++ ) {
     pthread_join(threads[i], NULL);
   }
-  printf ("Main(): Waited and joined with %d threads. Final value of count = %d. Done.\n", 
-          NUM_THREADS, count);
-
-  /* Clean up and exit */
-  pthread_attr_destroy(&attr);
-  pthread_mutex_destroy(&count_mutex);
-  pthread_cond_destroy(&count_threshold_cv);
-  pthread_exit (NULL);
-
+  
+  pthread_mutex_destroy( &count_mutex );
+  pthread_cond_destroy( &count_threshold_cv );
+  pthread_exit( NULL );
 }
 \end{lstlisting}
 
+It should be noted that if a thread signals a condition variable that an event has occurred, but no thread is waiting for that event, the event is ``lost''.  Because an event that takes place when no thread is listening is simply lost, it is (almost always) a logical error to signal or broadcast on a condition variable before some thread is waiting on it. This is sometimes called the ``lost wakeup problem'', because threads don't get woken up if they weren't waiting for this. Maybe it's not as dire as that, however, because sometimes an event is broadcast but nobody is interested and that's fine. 
+
+The condition variable with broadcast can be used to replace some of the synchronization constructs we've seen already. Consider the barrier pattern from earlier. There are $n$ threads and we wait for the last one to arrive. Then the last thread signals to unlock the barrier and then each thread calls post to unblock the next thread until all of them are through. This is a lot of calls and maybe it would be better to make it a broadcast instead. Remember the simple barrier (one phase rather than two), on the left, and then the condition variable on the right:
+
+\begin{multicols}{2}
+  \begin{verbatim}
+	1. wait( mutex )
+	2. count++
+	3. if count == n
+	4.     post( barrier )
+	5. end if
+	6. post( mutex )
+	7. wait( barrier )
+	8. post( barrier )
+  \end{verbatim}
+\columnbreak
+  \begin{verbatim}
+	1. wait( mutex )
+	2. count++
+	3. if count < n
+	4.     cond_wait( barrier, mutex )
+	5. else 
+	6.     cond_broadcast( barrier )
+	7. end if
+	8. post( mutex )
+  \end{verbatim}
+\end{multicols}
+
+The \texttt{wait} takes place before the post on \texttt{mutex}. That looks strange, doesn't it? What's important to remember is that we give up the mutex \texttt{lock} when we wait on the condition variable so the fact that we don't get to the unlock statement first does not cause a problem. So we are alright. The last thread, doesn't wait on the condition at all because there's no need to: it knows that it is last and there's nothing to wait for so it should proceed.
+
+Okay, let's think about how to put that to use in an actual code example. Assume that \texttt{count}, \texttt{lock} and \texttt{cv} are initialized correctly as they should be. 
+
+\begin{lstlisting}[language=C]
+int count;
+pthread_mutex_t lock;
+pthread_cond_t cv; 
+
+void barrier( ) {
+  pthread_mutex_lock( &lock );
+  count++;
+  if ( count < NUM_THREADS ) {
+    pthread_cond_wait( &cv, &lock );
+  } else {
+    pthread_cond_broadcast( &cv );
+  }
+  pthread_mutex_unlock( &lock );
+}
+\end{lstlisting}
+
+If every thread calls \texttt{barrier()} before going on to whatever is next, they will wait until the last thread arrives -- as they should. Broadcast wakes up all the other threads. It's possible to use a for loop to signal on the condition variable $n$ times but that mostly defeats the purpose of using the condition variable instead of a regular semaphore, doesn't it?
 
 \subsection*{Monitors}
 A condition variable can be used to create a \textit{monitor}, a higher level synchronization construct. Just as in object-oriented programming we package up data and functions inside a class to make errors less likely and to improve the design, when we use a monitor we are packaging up the shared data and operations on that data to avoid problems of synchronization and concurrency.
 
-The objective of the monitor is to make it so that programmers do not need to code the synchronization part directly, making it less likely a programmer makes an error.
+The objective of the monitor is to make it so that programmers do not need to code the synchronization part directly, making it less likely a programmer makes an error. There are numerous steps where you can get it wrong in a typical program. Look at:
 
+\begin{lstlisting}[language=C]
+void foo( ) {
+  pthread_mutex_lock( &l );
+  /* Read some data */
+  if ( condition ) {
+    printf( "Cannot continue due to reasons...\n" );
+    return;
+  }
+  /* More stuff */
+   
+  pthread_mutex_unlock( &l );
+}
+\end{lstlisting}
 
-Suppose there are processes $P$ and $Q$ and a condition variable $x$. If $P$ signals on $x$ when $Q$ is waiting, there are two things we can do: \textit{signal-and-wait}, where $P$ waits until $Q$ leaves the monitor (or another condition); or \textit{signal-and-continue} where $P$ continues and $Q$ waits for $P$ to leave the monitor or another condition. Signal-and-continue seems logical, in one sense: $P$ is already running, so why do the extra work to switch? On the other hand, by the time $P$ exits the monitor on its own, the condition $Q$ was waiting for might no longer be true. Some programming languages opt for a compromise: after signalling, $P$ must immediately leave the monitor~\cite{osc}.
+In this case, there is control flow that could lead to exiting this function \texttt{foo} without unlocking the mutex \texttt{l}. Sure, when I cut the remaining code out and just replace it with some comments so the control flow that causes the problem here is obvious, but in a real code example the function in question is likely to be in the hundreds of lines and it's easy to overlook something. 
 
 The idea of monitors should be familiar to you if you have used Java synchronization constructs, notably the \texttt{synchronized} keyword. In Java we can declare a method to be \texttt{synchronized}, adding it after the access modifier keyword (public, private, etc) in the function definition, and then there is a lock created around that method. Only one thread can be inside that method at a time; if a second would like to call that method on the same instance, it will be placed in the entry set for the lock: a set of threads waiting for the lock to become available~\cite{osc}. 
 
@@ -142,7 +176,9 @@ public void exampleMethod() {
 }
 \end{lstlisting}
 
-This sort of ``automatic'' locking and releasing is intended to simplify the process of writing multithreaded code and abstract away the details of mutual exclusion.
+This sort of ``automatic'' locking and releasing is intended to simplify the process of writing multithreaded code and abstract away some of the details of mutual exclusion.
+
+Monitors don't have to be written in Java (or a similar language) but they very commonly appear in object-oriented programming languages because of the goal of packaging up your data with the associated synchronization constructs looks a lot like Object-Oriented Programming: package up the data with its associated functions. Moreover, in an object-oriented language thanks to things like encapsulation (i.e., \texttt{private} variables), it's somewhat easier to ``force'' all access to be through the appropriate monitor.
 
 \subsection*{Atomic Types}
 
@@ -160,7 +196,7 @@ The Linux kernel provides operations that are guaranteed to execute atomically, 
 
 Rather than just using an integer for atomic integer operations, there is a defined type \texttt{atomic\_t}, ensuring that only atomic operations can be used on this data type and that atomic operations can only be used on that data type. This prevents programming errors and hides architecture-specific implementation details.
 
-The following table gives an overview of the atomic integer and bitmap operations, from~\cite{lkd}:
+The following table gives an overview of the atomic integer and bitmap operations, from~\cite{lkd}. These are, however, linux specific, and not necessarily available in a general system. In the C11 (2011) standard, atomic types were finally introduced as part of the language specification itself. But before this we just had implementation-specific options:
 
 \begin{center}
 \begin{tabular}{l|l}
