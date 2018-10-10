@@ -112,45 +112,45 @@ When the \texttt{trap} occurs, the OS takes over and control switches from user 
 
 Back in user mode, the \texttt{read} call finishes and returns, and control goes back to the user program.
 
-Let's consider a more complex example. This uses some Linux specific items, but is a quick example of a program that reads a file and prints it out (even if it uses the \texttt{FILE} pointer and \texttt{getline()} functions rather than straight up \texttt{read()}):
+Let's consider a more complex example. This uses some Linux specific items, but is a quick example of a program that reads a file and prints it out:
 
 \begin{lstlisting}[language=C]
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
+#include <fcntl.h>
 
-void readfile( FILE* file );
+void readfile( int fd );
 
 int main( int argc, char** argv ) {
     if ( argc != 2 ) {
         printf("Usage: %s <filename>\n", argv[0]);
         return -1;
     }
-    FILE* f = fopen( argv[1], "r");
-    if ( f == NULL ) {
+    int fd = open( argv[1], O_RDONLY );
+    if ( fd == -1 ) {
         printf("Unable to open file! %s is invalid name?\n", argv[1] );
         return -1;
     }
-    readfile( f );
-    fclose( f );
+    readfile( fd );
+    close( fd );
     return 0;
 }
 
-void readfile( FILE* file ) {
-    char** line = malloc( sizeof( char* ) );
-    ssize_t* length = malloc( sizeof( ssize_t ) );
-    
+void readfile( int fd ) {
+    int buf_size = 256;
+    char* buffer = malloc( buf_size );
     while ( 1 ) {
-        int read = getline(line, length, file);
-        if (read == -1 ) {
-            break;
-        }
-        printf("%s", *line);
+        memset( buffer, 0, buf_size );
+        int bytes_read = read( fd, buffer, buf_size );  
+        if ( bytes_read == 0 ) {
+            break; 
+        }     
+        printf("%s", buffer);
     }
     printf("\nEnd of File.\n");
-    free( length );
-    free( line );
+    free( buffer );
 }
 \end{lstlisting}
 
