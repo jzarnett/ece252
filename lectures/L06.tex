@@ -5,11 +5,11 @@
 \lecture{ 6 --- Inter-Process Communication }{\term}{Jeff Zarnett}
 
 \section*{Inter-Process Communication (IPC)}
-When two or more processes on the same system would like to co-ordinate or exchange data the mechanism for doing so is called \textit{inter-process communication}, usually abbreviated as IPC. If a process shares data with another process in the system, the operating system will provide some facilities to make this possible. 
+When two or more processes would like to co-ordinate or exchange data the mechanism for doing so is called \textit{inter-process communication}, usually abbreviated as IPC. If a process shares data with another process in the system, the operating system will provide some facilities to make this possible. 
 
-The motivations for inter-process communication are fairly obvious and we do not want to belabour the point with long descriptions of scenarios where IPC is desirable. Some brief examples include breaking a large task into smaller subtasks, allowing multiple users to edit the same data, and system modularity.
+The motivations for inter-process communication are fairly obvious and we do not need to waste time with long descriptions of scenarios where IPC is desirable. Every time you send an e-mail, for example, there's IPC going on. In the context of your own program, you could consider breaking a large task into smaller subtasks, allowing multiple users to edit the same data, and system modularity.
 
-Before proceeding, we need to define some idea about what communication is: transfer of data from one process to another. The data being transferred is typically referred to as the \textit{message}. The process sending that message is the \textit{sender} and the process receiving it will be the \textit{receiver}. This terminology may seem obvious. 
+Before proceeding, we need to define some idea about what communication is: transfer of data from one process to another. The data being transferred is typically referred to as the \textit{message}. The process sending that message is the \textit{sender} and the process receiving it will be the \textit{receiver}. This terminology is brutally, painfully obvious, but completeness is key.
 
 The processes involved must have some agreement on what data a message should contain, and the way the data is formatted. Though there may be defined standards, e.g., transferring data formatted in XML, for the message content, the processes themselves would have to be aware of the fact that the message is in XML format. How this agreement is reached tends to fall outside the purview of the operating system; perhaps the authors agree in a meeting or the sender publishes its format online and the author of the receiver program writes her code to accommodate that.
 
@@ -26,42 +26,24 @@ It is also common in the case of asynchronous receive for the receiver to send b
 
 A general paradigm for understanding IPC is known as the \textit{producer-consumer} problem. The \textit{producer} creates some information which is later used by the \textit{consumer}. For example, the database may produce the data (some records from the database) to be consumed by the shell to be displayed to the user. This is a general problem and applicable to client-server situations (e.g., web servers sending out web pages to web browsers).
 
-\subsection*{Implementation Strategies}
-
 There are three approaches we will consider on how we can accomplish IPC:
 \begin{enumerate}
-	\item Shared memory.
 	\item The file system.
 	\item Message passing.
+	\item Shared memory.
 \end{enumerate}
 
 All of these methods are quite common and a system can easily implement them all. There is no single option that is optimal in every situation, but each method has some areas of strength and weakness.
 
-\subsubsection*{Shared Memory}
-Conceptually, the idea of shared memory is very simple. A particular region of memory is designated as being shared between multiple processes, all of whom may read and write to that location. To share an area of memory, the OS must be notified.
+\subsection*{File System}
 
-Normally, a region of memory is associated with exactly one process (its owner) and that process may read and write that location, but other processes may not. If a second process attempts to do so, the operating system will intervene and that will be an error. If a process wants to designate memory as shared, it needs to tell the operating system it is okay for the other process to have access to that area. Furthermore, the OS needs to know that the memory is referenced by two processes: if the first one terminates and is reaped, the memory may still be in use by the second process, so that previously-shared region should not be considered free as long as the second process is still using it. Once the area of memory is shared, when either process attempts to access it, it is just a normal memory access. The kernel is only involved in the setup and cleanup of that shared area.
+One way for two processes to communicate is through the file system. Messages stored in the file system will be persistent and survive a reboot. It can also be used when the sender and receiver know nothing about one another (and the programmer knows nothing about any other IPC mechanisms).
 
-This situation is shown in the diagram below. 
+The producer may write to a file in an agreed upon location and the consumer may read from that same location. The operating system is still involved because of its role in file creation and manipulation (as well as permissions for who may read and write a file).
 
-\begin{center}
-	\includegraphics[width=0.2\textwidth]{images/shared-memory.png}\\
-	A view of memory when a block is designated as shared~\cite{osc}.
-\end{center}
+If one file is being used then we have the problem of co-ordination: making sure one process does not overwrite the changes of another. We can get around this, however, by using multiple files with unique IDs. Consider an example from a co-op work term: if the producer is generating XML data, it can write in a file in a designated \texttt{import/} directory. The consumer program scans the directory, and when it finds files, reads the file and imports the data contained therein. The imported data is then shown in the program. In this case, since one process writes files and another reads them, there is no possibility that one process overwrites the data of another. As long as the sender chooses distinct file names, it will not overwrite a message if a second message is created before the receiver picks up the first.
 
-Note that in the diagram the shared memory area appears in between the memory for processes $A$ and $B$; this is not necessarily the case (the shared block could be anywhere). It tends to be in the block for the process that creates the shared memory in the first place. This makes sense, because Process $A$ will request the memory from the operating system and then ask the OS to consider a particular block $A$ already owns to be shared.
-
-When a section of memory is shared, there exists the possibility that one process will overwrite another's changes. To prevent this sort of problem, we will need a mechanism for co-ordination... a subject we will return to later.
-
-\subsubsection*{File System}
-
-Another way for two processes to communicate is through the file system. Unlike shared memory, messages stored in the file system will be persistent and survive a reboot. It can also be used when the sender and receiver know nothing about one another (and the programmer knows nothing about proper IPC mechanisms).
-
-Rather than asking the operating system to get involved with shared memory and being concerned about which programs have access to it, the producer may write to a file in an agreed upon location and the consumer may read from that same location. The operating system is still involved because of its role in file creation and manipulation (as well as permissions for who may read and write a file).
-
-If one file is being used then we still have the problem of co-ordination: making sure one process does not overwrite the changes of another. We can get around this, however, by using multiple files with unique IDs. Consider an example from a co-op work term: if the producer is generating XML data, it can write in a file in a designated \texttt{import/} directory. The consumer program scans the directory, and when it finds files, reads the file and imports the data contained therein. The imported data is then shown in the program. In this case, since one process writes files and another reads them, there is no possibility that one process overwrites the data of another. As long as the sender chooses distinct file names, it will not overwrite a message if a second message is created before the receiver picks up the first.
-
-\subsubsection*{Message Passing}
+\subsection*{Message Passing}
 
 Message passing is a service provided by the operating system where the sender will give the message to the OS and ask that it be delivered to a recipient. There are two basic operations: sending and receiving. Messages can be of fixed or variable size.
 
@@ -105,79 +87,109 @@ Thus far we have dealt with messages one at a time: the sender wants to send one
 
 A message queue may alleviate the problem or just ``kick the can down the road''. If a queue exists, when sending a message, that message is placed in the queue and when receiving a message, the first message is taken. If the queue is of (effectively) unlimited size, then the problem may generally be ignored. If the queue has a fixed size then the problem is put off but not solved: the sender can keep adding messages to the queue until the queue is full. If the queue is full, the sender has to face the same choices of what to do: block, overwrite, or discard.
 
-\subsubsection*{UNIX Pipes}
+\paragraph{Using Signals.} We got onto the topic of inter-process communication by talking about signals, so it makes sense to start with then. Signals are, as previously introduced, an interrupt with a specified ID. They don't contain any ``message'' within them, so they are somewhat limited. It's a little bit like how pagers work (strange as those are to think about, doctors still use them!). When someone is paged their pager vibrates and they can see only the number who paged them. So it's like a text message, but the body is blank. Nevertheless, the poor sleep-deprived overworked medical resident is alerted and will react appropriately, dealing with the situation before going back to whatever else they were doing before being paged.
 
-In UNIX, we can create a \textit{pipe} to set up communication between a producer and consumer. The producer writes in one end of the pipe and the consumer receives it on the other. This is unidirectional, so if bidirectional communication is desired, two pipes must be used (going in different directions). The UNIX method for creating a pipe is \texttt{pipe} and it is constructed with the call \texttt{pipe( int fileDescriptors[])} where \texttt{fileDescriptors[0]} is the read-end and \texttt{fileDescriptors[1]} is the write-end~\cite{osc}. Yes, \texttt{fileDescriptors} means that UNIX thinks of a pipe as a file (UNIX thinks \textit{everything} is a file...) even though it is in memory.
+As you can imagine, the fact that a signal contains no message is a limitation that means signals can't be used for every single interprocess communication scenario. That is true, but it is sufficient for some of them. When the fire alarm sounds in a building, you don't need an accompanying voice announcement to say ``this indicates a fire alarm; please calmly exit the building'' -- you will figure this out just fine on your own (one hopes!). Some of the reason it works out, though, is that you have previously been informed that when the fire alarm sounds it means you need to exit the building, and the same is true for signals: you need to know what to listen for and what's supposed to happen if you want to react accordingly.
 
-\begin{center}
-	\includegraphics[width=0.5\textwidth]{images/unix-pipe.png}\\
-	A UNIX Pipe~\cite{osc}.
-\end{center}
+The appropriate header for including signals is \texttt{signal.h} and it contains the definitions that let you write \texttt{SIGKILL} instead of having to put an explicit int \texttt{9} in your program.  Earlier, we introduced a small table of some of the common UNIX signals. They are by no means exhaustive, but unfortunately there is not always 100\% agreement between different implementations about what the higher signal numbers are. For this reason it's helpful to use the names, so if you use \texttt{SIGABC} then it abstracts away the fact that on one system that's implemented as being \texttt{X} and on another it's \texttt{Y}.
 
-The pipe itself is a block of main memory that is interpreted as a circular queue, and each entry in the queue is fixed in size and usually one character. The sender may place the message into the queue in small chunks, but the receiver gets data one character at a time. Thus, the sender and receiver need to know when the message is finished. This may be through the use of a designated termination character (e.g., the line feed or null character), or the message may begin with an explicit value of the number of characters the message will be~\cite{mte241}.
-
-A UNIX pipe may be stored on disk. When this happens, we call it a \textit{named pipe}. Unless we make it a named pipe, a pipe exists only as long as the processes are communicating. Furthermore, regular pipes depend on file descriptors, so a parent-child relationship is required to get the descriptors from one process to another. The named pipe, however, might be used by any process and will persist even after the creating process has terminated. Another nice bonus of named pipes is that they can be bidirectional, so we do not need two pipes for communication to go in both directions. With that said, communication can only go in one direction at a time; if concurrent communication is required, a second pipe is needed after all.
-
-You may have worked with pipes on the UNIX command line. A command like \texttt{ cat fork.c | less } creates a pipe that takes the output of the \texttt{cat} program and delivers it as input to the program \texttt{less} which allows for scrolling and pagination of that data.
-
-\subsubsection*{UNIX Pipes: Code Example}
-
-Let's consider an example from~\cite{osc} that combines the pipe concept with what we've seen before: using \texttt{fork} to spawn a new child process and then setting up a communication pipe between the parent and child. We will send a message ``Greetings'' from the parent to the child.
+We already learned how to send a signal from the command line. But there are two functions for sending a signal programmatically:
 
 \begin{lstlisting}[language=C]
-#include <sys/types.h> 
-#include <stdio.h> 
-#include <string.h> 
-#include <unistd.h>
+int kill( int pid, int signo );
+int raise( int signo );
+\end{lstlisting}
 
-#define BUFFER_SIZE 25
-#define READ_END 0 
-#define WRITE_END 1
+Both functions return 0 if they were successful and -1 if they were unsuccessful (for whatever reason, such as no such process existing). The \texttt{raise} function sends the signal to the current process, so a nice little shortcut when you need it.
 
-int main( int argc, char** argv ) {
-  char write_msg[BUFFER_SIZE] = "Greetings"; 
-  char read_msg[BUFFER_SIZE];
-  int fd[2];
-  pid_t pid;
+We need to know the process ID of the recipient. This is fine, but may require a little bit of negotiation for how processes find out about each other. A common convention is for services to register themselves in some way, which might be as simple as putting a file on disk in a specific location that contains the process ID. For example, mysql (a database) server will put its process ID in the file \texttt{/var/run/mysqld/mysqld.pid} and in that file is just the number of its process ID (e.g., \texttt{1494}). So if you know where to look, you can find the recipient's address. But this could also be communicated in any other way.
 
-  if (pipe(fd) == -1) {
-    fprintf(stderr,"Pipe failed");
-    return 1;
-  }
-  
-  pid = fork();
-  if (pid < 0) { /* error occurred */ 
-    fprintf(stderr, "Fork Failed"); 
-    return 1;
-  }
+You can use \texttt{kill} to do some interesting things, like signal all your processes. It depends on the value chosen for your \texttt{pid} argument~\cite{apunix}:
+\begin{itemize}
+	\item \texttt{pid > 0} -- send the signal to the process with process ID \texttt{pid}.
+	\item \texttt{pid == 0} -- send the signal to all processes in the same process group as the caller.
+	\item \texttt{pid == -1} -- send the signal to all processes for which the calling process has permission to send a signal, except \texttt{init} and the calling process. Broadcast, basically.
+	\item \texttt{pid < -1} -- send the signal to all processes whose process group ID is equal to the absolute value of \texttt{pid}.	
+\end{itemize}
 
-  if (pid > 0) { /* parent process */
-    /* close the unused end of the pipe */ 
-    close(fd[READ_END]);
-    
-    /* write to the pipe */
-    write(fd[WRITE_END], write_msg, strlen(write_msg)+1);
-    
-    /* close the write end of the pipe */
-    close(fd[WRITE_END]);
-    
-  } else { /* child process */
-    /* close the unused end of the pipe */ 
-    close(fd[WRITE_END]);
-    
-    /* read from the pipe */
-    read(fd[READ_END], read_msg, BUFFER_SIZE); 
-    printf("read %s",read_msg);
-     /* close the write end of the pipe */
-     close(fd[READ_END]);
-  }
-  return 0;
+In addition to the signals we know, you can also invoke the \texttt{kill} function with a 0 argument for the signal. This is called the ``null signal''. It does not actually send any signal, but can be used to check if the recipient process exists. If not, the \texttt{errno} return value of \texttt{ESRCH} tells you that it no longer exists~\cite{apunix}. This is of limited utility, however, because (1) the process might exit between the time you check for its existence and the time you do something with that information; and (2) process IDs are only relatively unique so a given ID could be reused for a different process, and the recipient is no longer whom you expect it to be...
+
+A signal can be sent to a given process, but that process can only actually deal with it when that process is running. A signal is generated by something, and it is later delivered to the recipient. But during the time between generation and delivery, we say the signal is \textit{pending}. The pending signal is typically delivered at the first opportunity, which might be immediately if the recipient is currently executing~\cite{lpi}.
+
+Interestingly, for most (but not all) signals, your process can choose to refuse to listen.  This is called blocking signals, and can be done to any with with the exception of \texttt{SIGKILL} and \texttt{SIGSTOP}. When a signal is blocked, it just remains in the pending state until signals of that type are unblocked. Blocking signals is supposed to be temporary, although a badly-behaved program could ignore them indefinitely. 
+
+If the same signal is sent more than once when that signal is blocked by the recipient, it might be delivered only once, depending on your particular operating system implementation~\cite{apunix}.
+
+As introduced earlier, signals have a default action. The action that is taken when the signal is delivered is called the \textit{disposition} of the signal. If you don't explicitly change what happens when the signal arrives, the default (see the table) happens. But we can change it. There are three options (1) ignore it, (2) run a signal handler, and (3) run the default action. The third option is used to undo an earlier change (such as if we said we wanted to ignore the signal but now no longer do). We'll restrict our to the ``run a signal handler'' option in this lecture. 
+
+If we decide to register a signal handler, the function is:
+\begin{lstlisting}[language=C]
+void( *signal( int signo, void (*handler)(int)) ) (int);
+\end{lstlisting}
+
+Yikes! That is difficult to read. The good news is that using this in practice is a lot easier. What we actually do is call a function to say ``for signal \texttt{X}, run function \texttt{foo}''. There are restrictions on the function signature. It must have a \texttt{void} return type and take one parameter of an \texttt{int}. It returns a pointer to the old handler (if there was one). You could use that to set it back if you wanted. 
+
+So a sample signal handler would be:
+\begin{lstlisting}[language=C]
+void sig_handler( int signal_num ) {
+  /* Handle the signal in some way */
 }
 \end{lstlisting}
 
-In some of the runs of this program we sometimes get a random character after the ``Greetings'' message. What gives? Remember that in C a string is NULL terminated. So a \texttt{printf} routine with a \texttt{\%s} qualifier will just keep going until it gets to a 0-byte somewhere. We are supposed to put the null terminator where it belongs, but this may not suffice. When we have a buffer (as we do here), it makes sense to initialize the buffer to 0. So, in this code, we should add a call to \texttt{memset} to initialize the \texttt{read\_msg} variable to 0s. 
+The integer parameter is set to the number of the signal received. This allows us to have one signal handler that handles many signals, if we wish, but differentiate between them at the time of invocation. To register the signal handler, the simplest way is to ignore the return value of \texttt{signal}:
 
-If we wanted to create a named pipe, the system call for that is \texttt{mkfifo} (make first-in-first-out) because sometimes a named pipe is called a FIFO. As it is a file, it can be manipulated with the usual UNIX file system calls: \texttt{open}, \texttt{read}, \texttt{write}, and \texttt{close}~\cite{osc}.
+\begin{lstlisting}[language=C]
+signal( SIGINT, sig_handler );
+\end{lstlisting}
+
+Alright, with your signal handler set up, then the workflow looks like the diagram below:
+
+\begin{center}
+\includegraphics[width=0.5\textwidth]{images/sighandler.png}\\
+Signal delivery, signal handler execution and return~\cite{lpi}.
+\end{center}
+
+The content of your signal handler, however, is restricted. Because the handler deals with an interrupt and runs between two instructions it is important to make sure that the signal handler doesn't mess anything up. If the signal handler runs in the middle of \texttt{malloc} and the signal handler itself calls \texttt{malloc} it could put the memory management in an invalid state~\cite{apunix}. 
+
+We can only use functions that are \textit{reentrant}. That is to say, a function that can be interrupted during execution, have another complete to that same function execute, and then resume (and have everything be okay). In particular the big ones to avoid are: \texttt{printf}, \texttt{malloc}, \texttt{free}, and anything that could possibly block the process (e.g., a read of a file!). The subject of reentrancy is a little bit more complicated than can be covered in a few sentences, and future courses should cover reentrancy in much more detail.
+
+There are tables of what functions are safe to invoke from within a signal handler. In general what you are looking for is a designation of \textit{async-signal safe}. 
+
+To block a signal, unblock one, or just find out what the current state is, the function is:
+\begin{lstlisting}[language=C]
+int sigprocmask( int how, const sigset_t * set, sigset_t * old_set );
+\end{lstlisting}
+
+The first argument is what we would like to do here: if \texttt{SIG\_BLOCK}, the signals pointed to by \texttt{set} are added to the block list; if \texttt{SIG\_UNBLOCK} then the ones in \texttt{set} are removed from the block list; if \texttt{SIG\_SETMASK} then \texttt{set} is assigned to the signal mask (overwrite all current values)\cite{lpi}.
+
+The third argument is optional, and if a pointer is provided then upon a change to the signal mask, \texttt{old\_set} is updated to contain the values from before the change.
+
+There is also the ability to manage signal disposition in a more advanced way using the function \texttt{sigaction}, but we will consider this beyond the scope of the course.
+
+There are some helper functions to fill in the mask:
+\begin{lstlisting}[language=C]
+int sigemptyset( sigset_t set ); /* Initialize an empty sigset_t */
+int sigaddset( sigset_t set, int signal ); /* Add specified signal to set */
+int sigfillset( sigset_t set ); /* Add ALL signals to set */
+int sigdelset( sigset_t set, int signal ); /* Remove specified signal from set */
+int sigismember( sigset_t set, int signal ); /* Returns 1 if true, 0 if false */
+\end{lstlisting}
+
+A quick example based on~\cite{lpi}:
+\begin{lstlisting}[language=C]
+sigset_t set;
+sigset_t previous;
+
+sigemptyset( &set ); /* Initialize set */
+sigaddset( &set, SIGINT ); /* Add SIGINT to it */
+
+sigprocmask( SIG_BLOCK, &set, &previous ); /* Add SIGINT to the mask */
+/* SIGINT is blocked in this section */
+sigprocmask( SIG_SETMASK, &previous, NULL ); /* Restore previous mask */
+
+\end{lstlisting}
+
+Finally, if you want to pause your program for a bit until the call is interrupted by a signal, there is the function \texttt{int pause( )}. This function always returns -1 and it suspends your program until the signal handler runs. This can be useful if we really do need to wait for something...
 
 \input{bibliography.tex}
 
