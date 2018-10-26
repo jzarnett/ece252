@@ -2,17 +2,47 @@
 
 \begin{document}
 
-\lecture{ 19 --- Deadlock Avoidance }{\term}{Jeff Zarnett}
+\lecture{ 19 --- Deadlock }{\term}{Jeff Zarnett}
 
-\section*{Dealing with Deadlock}
+\section*{The Dining Philosophers Problem}
 
-\subsection*{Deadlock Option 3: Deadlock Avoidance}
-In examining deadlock prevention, we were attempting to rule deadlock out categorically by eliminating one of the three preconditions for deadlock to be possible. If successful, then we can be sure that deadlock does not occur. Unfortunately, eliminating the pillars came with some conditions and the best we could accomplish was merely making deadlock less likely and not resolving the problem in its entirety. Thus, we are forced to live with a system where a deadlock is possible. However, deadlock being possible is not the same thing as deadlock being inevitable; we can take steps to avoid it if there is a danger of it actually happening. The basic strategy is: do not allow a cycle in the resource allocation graph.
+The dining philosophers problem was also proposed by Dijkstra in 1965. The problem can be formulated with $n$ philosophers, but problem is typically described as involving five philosophers. The description that follows is from~\cite{osc}. These five smart individuals spend their lives thinking, but every so often, they need to eat. They share a table, each having his or her own chair. In the centre of the table is a bowl of rice, and the table is laid with five single chopsticks. See the diagram below.
 
-In the dining philosophers problem, one strategy to prevent the deadlock was limiting the number of concurrently-eating philosophers to four, even though the table has five seats. This was a way of preventing a cycle in the resource allocation graph: with only four philosophers and five chopsticks, there were insufficient requests to complete a cycle. This solution is suitable, but not necessarily generalizable to all deadlock situations.
+\begin{center}
+\includegraphics[width=0.4\textwidth]{images/philosopher-table.png}\\
+The situation of the dining philosophers~\cite{osc}.
+\end{center}
 
-\subsubsection*{Ordering of Resources}
-A general strategy to prevent a cycle from forming is to impose ordering on resource requests. Resources are given some order and requests must follow that order. This idea may have occurred seemed obvious from this example: 
+When a philosopher wishes to eat, she sits down at her designated chair, and attempts to pick up the two chopsticks that are nearest (one on the left, and one on the right). Philosophers are polite and therefore do not grab a chopstick out of the hands of a colleague. When a philosopher has both chopsticks, she may eat rice, and when she is finished, she puts down the chopsticks and goes back to thinking.
+
+Some textbooks formulate this problem as philosophers needing two forks to eat rather than chopsticks. It is, of course, much easier to imagine having difficulty eating with only one chopstick than having difficulty with only one fork. Of course, the scenario is a little bit silly; we don't study it because it is supposed to be a true to life model of how real philosophers behave. The scenario is just a convenient and memorable example of a whole class of problems.
+
+Suppose then that semaphores are the method for managing things. Because only one person can be in possession of a chopstick at a time, each chopstick may be represented by a binary semaphore. As a philosopher needs the chopstick to his left and right to eat, when the philosopher sits down he attempts to acquire the left chopstick, then the right, eats, and puts the chopsticks down. This works fine, until all philosophers sit down at the same time. Each grabs the chopstick to his or her left. None of them are able to acquire the chopstick to his or her right (because someone has already picked it up). None of the philosophers can eat; they are all stuck. This is deadlock. 
+
+This example makes it more clear why we call a situation where a thread never gets to run ``starvation''. If a philosopher is never able to get both chopsticks, that philosopher will never be able to eat, and though I am not an expert on biology, I have it on good authority that people who do not eat anything end up eventually starving to death. Even philosophers.
+
+One thing that would guarantee that this problem does not occur is to protect the table with a binary semaphore. This would allow exactly one philosopher at a time to eat, but at the very least, deadlock and starvation would be avoided. Although this works, it is a suboptimal solution. There are five seats and five chopsticks and yet only one person is eating at a time. We can get better concurrency and use of the resources.
+
+Next idea: what if we limit the number of philosophers at the table concurrently to four? The pigeonhole principle applies here: if there are $k$ pigeonholes and more than $k$ pigeons, at least one pigeonhole must have at least two pigeons. Thus, at least one of the four philosophers can get two chopsticks~\cite{mte241}. Implementing the solution is easy; we have a general semaphore with a maximum and initial value of 4.
+
+Another idea: the problem above occurs because every philosopher tries to pick up the left chopstick first. If some of them try to pick up the left and some pick up the right first, then deadlock will not happen, either~\cite{osc}.
+
+The dining philosophers problem is a good springboard from which to launch into a much deeper discussion of deadlock, and starvation.
+
+
+\section*{Deadlock}
+We have already introduced the subject of deadlock and gave an informal definition as all processes being ``stuck'' (unable to proceed). A more formal definition is given in~\cite{osi}: ``the \textit{permanent} blocking of a set of processes that either compete for system resources or communicate with each other''. There is emphasis on permanent. It may be possible for all processes to be stuck temporarily, because one is waiting for some event (e.g., a read from disk), but this situation will resolve itself and is not deadlock. A set of processes is truly deadlocked when each process in the set is blocked on some event that can only be triggered by another blocked process in the set. In this case it is permanent, because none of the events can take place.
+
+A deadlock involves some conflicting needs for resources by two or more processes. Consider a traffic deadlock. Suppose four cars arrive at a four-way stop intersection at the same time. We can divide the intersection into four quadrants, labelled, a, b, c, and d. To drive straight through the intersection, any one vehicle will need at least two of the quadrants (the two directly in front of it). 
+
+\begin{center}
+\includegraphics[width=0.75\textwidth]{images/car-deadlock.png}\\
+An illustration of deadlock involving cars~\cite{osi}.
+\end{center}
+
+According to the Highway Traffic Act, whichever vehicle arrives at the stop sign first has the right of way. In the event that two vehicles arrive at the same time, a vehicle yields the right of way to the vehicle on its right. As long as three or fewer vehicles come to the stop sign at the same time, this works. If all four vehicles arrive at the same time, we have the potential for a problem. It is not a deadlock yet, because none of the processes are stuck yet, but it could happen. If all the drivers believe they should go first, we get the situation on the right, and we actually do have deadlock. This is very much like the dining philosophers problem; deadlock occurs if everyone tries to do the same thing at the same time.
+
+Of course, for deadlock to occur, we do not have to have symmetric processes trying to do the same thing at the same time. Given two semaphores, \texttt{a} and \texttt{b}, and two processes, we can have the following code that will sometimes, but not always lead to deadlock. If thread $P$ locks \texttt{a} and then there is a process switch, and \texttt{b} is locked by $Q$, both threads will be stuck. Each has one resource the other needs, but they are both blocked and waiting for the other. It is obvious when we compare threads $P$ and $Q$ like this side-by-side, but in reality the problem is not usually that easy to see.
 
 \begin{multicols}{2}
 \textbf{Thread P}\vspace{-2em}
@@ -35,107 +65,116 @@ A general strategy to prevent a cycle from forming is to impose ordering on reso
 \end{multicols}
 \vspace{-2em}
 
-Thread $Q$ requests \texttt{b} first and then \texttt{a}, while $P$ does the reverse. The deadlock would not take place if both threads requested these two resources in the same order, whether \texttt{a} then \texttt{b} or \texttt{b} then \texttt{a}. Of course, when they have names like this, a natural ordering (alphabetical, or perhaps reverse alphabetical) is obvious. 
 
-To generalize and formalize this principle, if the set of all resources in the system is $R = \{R_{0}, R_{1}, R_{2}, ... R_{m}\}$, we assign to each resource $R_{k}$ a unique integer value. Let us define this function as $f(R_{i})$, that maps a resource to an integer value. This integer value is used to compare two resources: if a process has been assigned resource $R_{i}$, that process may request $R_{j}$ only if $f(R_{j}) > f(R_{i})$. Note that this is a strictly greater-than relationship; if the process needs more than one of $R_{i}$ then the request for all of these must be made at once (in a single request). To get $R_{i}$ when already in possession of a resource $R_{j}$ where $f(R_{j}) > f(R_{i})$, the process must release any resources $R_{k}$ where $f(R_{k}) \geq f(R_{i})$. If these two protocols are followed, then a circular-wait condition cannot hold~\cite{osc}.
+\subsection*{Reusable and Consumable Resources}
+So, deadlock takes place when two processes or threads are competing for resources. We can generally classify a resource as either \textit{reusable} or \textit{consumable}. A reusable resource can be used by one process at a time, and is not depleted by that use. A process may lock the resource, make use of it, then release it such that other processes may acquire it. Processors, memory, files, and semaphores are all examples of reusable resources. If process $P$ gets resource A and then releases it, process $Q$ can acquire it. Thus, the example above involving $P$ and $Q$ is a deadlock involving reusable resources.
 
-In the dining philosophers problem, we assign each of the five chopsticks a number from 0 to 5. Each philosopher must then request them in ascending order. The first philosopher requests chopstick 0, on her left, and then chopstick 1, on her right. The second requests chopstick 1 and then chopstick 2. This continues until the last philosopher who would previously have requested chopstick 4 and then 0, but under the new rules, this is forbidden. This philosopher must instead request 0 on his right, and then 4, on his left. This last philosopher will be blocked when trying to acquire chopstick 0 and it means chopstick 4 will be available for the second-to-last philosopher. Thus, deadlock is avoided.
+A consumable resource is one that is created and destroyed upon consumption. If the user presses the ``Z'' key on the keyboard, this generates an interrupt and produces the ``Z'' character in a buffer. A process that takes input will then consume that character (e.g., it goes into the \texttt{vi} editor window) and it is unavailable to other processes. Other things that are consumable resources: interrupts, posts, and messages. Deadlock is somewhat less likely when dealing with consumable resources, but in theory, all processes could be waiting to receive a message, if it is a blocking receive, and no process can send a message (because they are all waiting for some other process to send first).
 
-In~\cite{osc} is a proof that ordering the resources prevents deadlock. The approach is proof by contradiction: assume a circular wait is present. Let the set of processes in the circular wait be $\{P_{0}, P_{1}, ... P_{n}\}$ and the set of resources be $\{R_{0}, R_{1}, ... R_{n}\}$. The cycle is formed as: $P_{i}$ is waiting for resource $R_{i}$ and that resource is held by $P_{i+1}$. The exception is the case of $P_{n}$, which is waiting for resource $R_{n}$ that is held by $P_{0}$ (completing the cycle by wrapping around). Since Process $P_{i+1}$ holds resource $R_{i}$ while requesting $R_{i+1}$, this means $f(R_{i}) < f(R_{i+1})$ for all $i$. But this means that $f(R_{0}) < f(R_{1}) < ... < f(R_{n}) < f(R_{0})$. It cannot be the case that $f(R_{0}) < f(R_{0})$: a contradiction, meaning a circular wait cannot occur.
+\subsection*{Conditions for Deadlock}
+When a disaster happens, it is typically a result of a chain of things going wrong. If any one of those things did not happen, the disaster would be averted. This is referred to as ``breaking the chain''. There are four conditions for deadlock:
 
-In development this is usually enforced just by coding convention and code review. If you say that mutexes must always be acquired in alphabetical order (or their order in some file), if everyone sticks to that there will be no issue. Sometimes it's not that simple, though, because one mutex can be pointed to by two pointers... which name is the correct one?
-
-\subsubsection*{Stay Alert, Stay Safe\footnote{If this reference makes no sense to you, it's because I'm old: https://www.youtube.com/watch?v=cgvv4wnVlFU}}
-
-Suppose that instead of ordering the resources, each process will need to give the operating system some additional information about what resources might be requested. Processes need to say in advance of execution what is the maximum number of resources of each type they might conceivably need. In a system with a tape drive and printer, perhaps process $A$ needs the tape drive first, then the printer, and process $B$ needs the printer and then the tape drive. With this knowledge, the system can make more intelligent decisions about when to run a process or make it wait, to avoid getting into a deadlock~\cite{osc}.
-
-We say a state is \textit{safe} if there is some scheduling order in which every process can run to completion even if all of them suddenly request their maximum resources immediately~\cite{mos}. Hence why we needed to know in advance the maximum resources that could be required by the process. 
-
-More formally, there must exist a \textit{safe sequence}: a sequence of processes $<P_{1}, P_{2}, ... P_{n}$ is a safe sequence in the current allocation state if, for each $P_{i}$ the resource requests that $P_{i}$ can still make can be satisfied by the currently available resources plus resources held by $P_{j}$ where $j < i$. If a resource $P_{i}$ needs is not currently available, $P_{i}$ can wait until all $P_{j}$ have finished and releases its resources. When $P_{i}$ terminates, $P_{i+1}$ can obtain its needed resources and continue~\cite{osc}.
-
-Any state that is not safe is considered \textit{unsafe}. If the system is in a safe state, then there is no deadlock. Being in an unsafe state does not mean that there is a deadlock, but it means a deadlock is possible. The analysis we do is the worst case scenario: every process immediately requests the maximum resources it could ever use. Perhaps the processes do not make those requests in reality.
-
-Consider an example from~\cite{mos} in which there are three processes, $A$, $B$, and $C$. Assume there is only one resource, and a maximum of 10 instances exist. Suppose $A$ has 3 resources but may request up to 9, $B$ has 2 and may request up to 4, $C$ has 2 and may request up to 7. There are 3 resources currently free. How do we determine that the state described below is safe?
-
-\begin{center}
-\includegraphics[width=0.15\textwidth]{images/safe-state-initial.png}\\
-A diagram representing the resource allocation state of the system~\cite{mos}.
-\end{center}
-
-Recall that for a state to be safe we need only one path that allows all processes to complete. Multiple solutions may exist, and there may be paths that lead to deadlock. But we need only one solution, such as:
-
-\begin{center}
-\includegraphics[width=0.75\textwidth]{images/safe-state.png}\\
-A diagram demonstrating the state in (a) is safe~\cite{mos}.
-\end{center}
-
-The part of the diagram labelled (a) is the initial state of the system. Imagine that process $B$ is allowed to run exclusively, until it gets two more resources, so it now has 4 resources and there is one free, as diagram (b) depicts. $B$ is allowed to run to completion, and it therefore finishes and releases its resources to the free pool, shown in (c). Then process $C$ is scheduled and gets its full complement of resources, consuming all the elements in the free pool, as in (d). $C$ runs exclusively until completion and it releases its resources, shown in (e). Finally, $A$ is able to get all the resources and run to completion, too. Thus, we proved that the state is safe: there is a way the system can avoid a deadlock, and run all processes to completion.
-
-Suppose, however, $A$ requests and gets another resource. In that case, the initial condition has changed so that $A$ has 4 resources and there are 2 free resources. Or, in the diagram below, the state changes from (a) to (b).
-
-\begin{center}
-\includegraphics[width=0.35\textwidth]{images/unsafe-state-initial.png}\\
-A diagram representing the updated resource allocation state of the system~\cite{mos}.
-\end{center}
-
-Given this new initial state (b), we need to evaluate if it is safe. 
-
-\begin{center}
-\includegraphics[width=0.70\textwidth]{images/unsafe-state.png}\\
-A diagram demonstrating the state of~\cite{mos}.
-\end{center}
-
-Let us start by attempting to run $A$ - there are 3 free resources and $A$ would need 6 to continue (because a process immediately takes its full resources when it runs), so it cannot run to completion. The same is true for $C$ - it needs 5 additional resources when 3 are available. $B$, however, can continue: it needs 2 resources when 3 are available. If we attempt to run $B$ exclusively, it gets its full resources, shown in part (c), and then will terminate and release its resources, as in (d). At this point, however, there is no way to continue; neither $A$ nor $C$ can get the full complement of resources it might need because there are only 4 free resources. We are out of options; there is no path that guarantees all processes run to completion. Thus, the state is unsafe. 
-
-Remember that just because the state is unsafe, does not mean that deadlock is present or certain. The analysis is worst-case: $C$ may never need all 7 of the resource and may run to completion with its current 2. However, in an unsafe state, we cannot be certain that deadlock will not occur.
-
-\paragraph{Resource-Allocation-Graph Algorithm.} The fourth condition for deadlock is modelled, typically as being a resource allocation graph with a cycle in it. Idea: let us use that idea to avoid deadlock by having the operating system maintain a resource allocation graph. This is applicable if there is only one instance of each resource and still requires that all the resources that a process will require must be declared in advance. However, this condition does not have to be strictly adhered to, if the system allows additional requests only when none of the process's requests have yet been made.
-
-The model for resource allocation graphs earlier had two kinds of edges: one representing requests (a process requests a resource) and one representing allocation (a resource currently belongs to a process). We will require a new type of edge in the graph: a \textit{claim} edge, as a way of indicating a process may request a resource at some time in the future, and it is drawn with a dashed line. When the process actually makes the request for the resource, a claim edge is converted to a request edge, and upon release the assignment edge reverts to a claim edge~\cite{osc}.
-
-\begin{center}
-\includegraphics[width=0.25\textwidth]{images/resource-allocation-graph-claim.png}\\
-A resource allocation graph showing claim edges~\cite{osc}.
-\end{center}
-
-A resource request will only be granted if converting the request edge to an assignment edge will not result in a cycle in the graph. There are graph algorithms in code that can be used to detect a cycle (and you may have studied them in a data structures and algorithms class). If no cycle is found, then allocation of the resource will not move the system into an unsafe state. If a cycle is found, the request should not be granted, as it risks a deadlock.
-
-As mentioned, this is applicable only if all resource requests are known in advance and there is only one instance of each resource.
-
-\paragraph{The Banker's Algorithm.} The banker's algorithm is more general: it allows for resources with multiple instances. It received this name because it is hypothetically an algorithm that a small town banker might follow if he or she were trying to prevent allocating the cash on hand in such away that he or she could no longer satisfy customers\footnote{Although the financial crisis of 2008 might convince you that the banker's algorithm is ``do whatever makes you rich and when you run out of money, the government will bail you out'', this is not the algorithm we are studying here.}. Banks typically lend out more money than they have on hand on the (usually-correct) theory that not everyone will come asking for all their deposits all at once\footnote{Not to digress too much to the subject of banking, but if it IS the case that everyone asks for their money all at once, this is called a ``run'' on the bank and is generally considered a disaster. Central banks step in with more money to fix this situation.}.
-
-In fact, the analysis we did earlier to determine if a state is safe or unsafe, is the foundation of the banker's algorithm. Recall this diagram from earlier:
-
-\begin{center}
-\includegraphics[width=0.35\textwidth]{images/unsafe-state-initial.png}\\
-A diagram representing the updated resource allocation state of the system~\cite{mos}.
-\end{center}
-
-Granting the request from process $A$, the transition from (a) to (b), moved the system from a safe state to an unsafe state. The operating system, when it receives a resource request, will evaluate the new state to see if it would transition the system to an unsafe state. If it would result in that transition, the request will be denied or $A$ will be blocked until the request can be fulfilled without putting the system in an unsafe state. Holding to this condition means deadlock will be avoided.
-
-The banker's algorithm can accommodate multiple resources, as shown in the diagram below.
-
-\begin{center}
-\includegraphics[width=0.6\textwidth]{images/bankers-multiple.png}\\
-The banker's algorithm with multiple resources~\cite{mos}.
-\end{center}
-
-The left matrix shows the current state of assigned resources and the matrix on the right shows the maximum number of resources that a process might need to complete execution. At the far right of the diagram is a series of vectors: $E$ for the existing resources, $P$ for the resources some process currently possesses, and $A$ for the available instances of that resource.
-
-The informal approach for checking if a state is safe is described by~\cite{mos}:
 \begin{enumerate}
-	\item Look for a row in the matrix, $r$, where the unmet resource needs are less than or equal to the available resources in $A$. If no such row exists, the system state is unsafe.
-	\item Assume the process from $r$ gets all the resources it needs. Mark that process as terminated and put all its resources into $A$, the available pool.
-	\item Repeat steps 1 and 2 until either: (i) all processes are marked terminated and the initial state was safe; or (ii) no process remains whose needs can be met and the initial state is unsafe.
+	\item \textbf{Mutual Exclusion}: A resource belongs to, at most, one process at a time.
+	\item \textbf{Hold-and-Wait}: A process that is currently holding some resources may request additional resources and may be forced to wait for them.
+	\item \textbf{No Preemption}: A resource cannot be ``taken'' from the process that holds it; only the process currently holding that resource may release it.
+	\item \textbf{Circular-Wait}: A cycle in the resource allocation graph.
 \end{enumerate}
 
-If more than one process may be chosen in step 1, it does not matter which we choose: the pool of available resources will either stay the same or get larger; it cannot shrink. 
+If the first three conditions are true, deadlock is possible, but deadlock will only happen if the fourth condition is fulfilled. But what is a resource allocation graph? It is a directed graph that tells us the state of the system by representing the processes, the resources, and which resources are held by which processes. Consider the example below:
 
-To determine if granting a resource will make the system unsafe, the operating system should simply perform a what-if calculation. Assume the resource is granted and do the safe state calculation given that new state. If the result is that the state is unsafe, the request should be deferred or denied.
+\begin{center}
+\includegraphics[width=0.20\textwidth]{images/rag1.png}\\
+A sample resource allocation graph~\cite{osc}.
+\end{center}
 
-A formal, mathematical description of the banker's algorithm is defined in~\cite{osc}.
+A process is represented by a circle labelled $P_{n}$. A resource is a box labelled $R_{n}$ and contains one or more black circles, representing how many of that resource are available. A binary semaphore would therefore have one black circle; a general semaphore will have 1 or more. A directed edge from $P_{i}$ to $R_{j}$ is a request: a process requests that resource. A directed edge from $R_{j}$ to $P_{i}$ represents assignment - the process holds that resource. When a request is made, a request edge is inserted into the graph; if the request is fulfilled it is instantly turned into an assignment edge. When a resource is released, the assignment edge is deleted~\cite{osc}.
 
-As great as the banker's algorithm is in theory, in practice it is utterly useless, as highlighted by~\cite{mos}. Processes rarely know in advance what their maximum resource needs will be. Also, the number of processes is not fixed, but varies as users log in and launch and close programs and log out. Finally, a resource that was thought to be available can suddenly vanish (a peripheral device is disconnected, the network goes down, a printer breaks...). Thus in practice, the banker's algorithm can almost never be used.
+If there are no cycles in the graph, then we can be certain that no process in the system is deadlocked. If a cycle exists, then some process may be deadlocked:
+
+\begin{center}
+\includegraphics[width=0.20\textwidth]{images/rag2.png}\\
+A sample resource allocation graph with a deadlock~\cite{osc}.
+\end{center}
+
+But the presence of a cycle, on its own, is not necessarily certain that there is a deadlock:
+
+\begin{center}
+\includegraphics[width=0.20\textwidth]{images/rag3.png}\\
+A sample resource allocation graph with a cycle, but no deadlock~\cite{osc}.
+\end{center}
+
+In this case, $P_{4}$ and $P_{2}$ are not part of the cycle and when they release their held resources, the other two processes will be able to proceed.
+
+\section*{Dealing with Deadlock}
+
+There are four basic approaches to dealing with deadlock, each of which we will examine in turn.
+\begin{enumerate}
+	\item Ignore it.
+	\item Deadlock prevention.
+	\item Deadlock avoidance.
+	\item Deadlock detection.
+\end{enumerate}
+
+\subsection*{Deadlock Option 1: Ignore it}
+This option is certainly convenient: we simply pretend that deadlock can never happen, or if it does happen, it is someone else's fault. That said, this is the approach taken in Microsoft Windows, so it is a valid option. If two processes get deadlocked, the user may simply see no progress (or the ``not responding'' dialog) and have to open task manager and start killing processes. But the operating system designers can plausibly blame the problem on the program authors. Since we are the program authors we can't really pass the buck here. You can try to blame the users, but they'll tell you that your system shouldn't allow them to make mistakes in the first place. Well then.
+
+Setting aside the ``do-nothing'' option, let us move on to some approaches that actually deal with the problem.
+
+\subsection*{Deadlock Option 2: Deadlock Prevention}
+
+This approach is a way of preventing a deadlock from being possible. The first three conditions for deadlock (mutual exclusion, hold and wait, and no preemption) are all necessary for deadlock to be possible. If we eliminate one of these three pillars, deadlock is not possible and it is prevented from happening.
+
+\paragraph{Mutual Exclusion.} This pillar cannot, generally speaking, be disallowed. The purpose of  mutual exclusion is to prevent errors like inconsistent state or crashes. Getting rid of mutual exclusion to rule out the possibility of deadlock is a cure that is worse than the disease. It is therefore not acceptable as a solution. 
+
+When it comes to your specific program, though, you might be able to make it so that mutual exclusion is not necessary. If you can give each thread, for example, its own copy of the data,  or you can find an algorithm that no longer requires locking a given resource, then by all means, use it! Locking and other mutual exclusion constructs are things we use because we must, not because we like to.
+
+\paragraph{Hold and Wait.} To prevent the hold-and-wait condition, we must guarantee that when a process requests a resource, it does not have any other resource. In a practical sense this does not mean that things can be requested only one at a time; that would be like telling the philosophers that when they have one chopstick already, they cannot request another.
+
+The operating system could operate under these rules, but we know that our usual commercial operating systems don't do this. We could imagine a world where things are different, but that's not very helpful when it comes to implementing the program we're trying to write. Even so, the idea of requesting everything up front is obviously not possible (at the time of opening a document you are not asked if you are going to use the printer sometime later, just in case), nor is giving up all resources before asking for more possible. A resource that cannot be easily released is memory, as released memory may be collected and reassigned by the operating system. Therefore we cannot release all resources, and releasing only some of the resources means that we cannot categorically rule out deadlock; we can only make it less likely to occur~\cite{mte241}.
+
+Another idea that might work is \textit{two-phase locking}. A process attempts to lock a group of resources at once, and if it does not get everything it needs, it releases the locks it received and tries again. Thus a process does not wait while holding resources. If a philosopher picks up a chopstick but is unable to acquire a second, she puts down the chopstick she has picked up and tries again. Although she may not be the one to eat next, at least not all philosophers are stuck holding one chopstick.
+
+Two phase locking is not applicable to our current model for semaphores, where there is no way to know the value of the semaphore and the operating system will block a process on a \texttt{wait} if some other thread is in the critical region. After the process is blocked on the semaphore, a second process will run, and the first process does not get the opportunity to release the resources it holds. If there exist requests for resources and mutual exclusion areas that return, perhaps, \texttt{true} if the resource is acquired and \texttt{false} if it is unavailable, this can work. Then the program is responsible for checking if any of the requests returned \texttt{false} and releasing any resources where the request returned \texttt{true}.
+
+Fortunately, we know of some routines that do just this: the \texttt{trylock} functions that were mentioned earlier but not expanded upon:
+\begin{lstlisting}[language=C]
+int pthread_mutex_trylock( pthread_mutex_t * mutex )
+int pthread_rwlock_tryrdlock( pthread_rwlock_t * rwlock )
+int pthread_rwlock_trywrlock( pthread_rwlock_t  * rwlock )
+\end{lstlisting}
+
+These functions return an integer and it's extremely important to check and see if the return code is 0, because that is the only way to know if the lock was acquired. The call is non-blocking so the code will carry on regardless. Consider below a code description of the dining philosophers if they used two-phase locking via the trylock routines. Assume that the mutex variables have been initialized appropriately. It should be possible to reason about this solution and demonstrate that (1) a philosopher can only eat if they have both chopsticks, and (2) deadlock does not occur.
+
+\begin{lstlisting}[language=C]
+int locked_both = 0;
+while( locked_both == 0 ) {
+  int locked1 = pthread_mutex_trylock( chopstick1 );
+  int locked2 = pthread_mutex_trylock( chopstick2 );
+  if (locked1 != 0 && locked2 == 0) {
+    pthread_mutex_unlock( chopstick2 );
+  } else if (locked1 == 0 && locked2 != 0 ) {
+    pthread_mutex_unlock( chopstick1 );
+  } else if (locked1 != 0 && locked2 != 0 ) {
+    /* Do nothing */
+  } else {
+    locked_both = 1;
+  }
+}
+eat( );
+
+pthread_mutex_unlock( chopstick1 );
+pthread_mutex_unlock( chopstick2 );
+\end{lstlisting}
+
+The idea of a process releasing resources that it is holding is the basis for the next solution: knocking down the ``no preemption'' pillar.
+
+
+\paragraph{No Preemption.} If we violate this condition, it means that we do have preemption: forcible removal of resources from a process, by the operating system. Suppose a process $P_{1}$ holds $R_{1}$ and $R_{2}$ and wants to get $R_{3}$, but $R_{3}$ is unavailable. $P_{1}$ will be blocked by the operating system. If another process $P_{2}$ comes by and requests $R_{1}$ and $R_{2}$, the resources $R_{1}$ and $R_{2}$ are taken away from $P_{1}$. The resources are added to the list of things that $P_{1}$ is waiting for (so it is waiting for all three now). In the meantime, $P_{2}$ can use them and continue. $P_{1}$ will be unblocked when all three resources are once again available for it to acquire~\cite{osc}. 
+
+This isn't really something we can do as program designers, because only the operating system really has the power to carry out. It's included for completeness, but is not anything we can actually implement ourselves.
+
+For preemption to work, however, the resource must be a resource of a type where the state can be saved and restored (e.g., the CPU with its registers). This is not applicable to all resources; if a printer is in use by $P_{1}$ it cannot be preempted and given to $P_{2}$, otherwise the printout will be a jumble. Thus, preemption is also not sufficient to prevent deadlock from ever transpiring, it once again only makes it less likely.
 
 
 \input{bibliography.tex}

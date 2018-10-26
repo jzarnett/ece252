@@ -405,10 +405,36 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 \begin{frame}
+\frametitle{Apr\`{e}s \texttt{fork}, le d\'{e}luge}
+
+A short digression on a denial of service attack: the ``fork bomb''.
+
+The idea is to call \texttt{fork} repeatedly.
+
+Keep doing this until the system crashes (or no work can get done).
+
+Exponential growth ($2^n$) processes after $n$ calls.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Apr\`{e}s \texttt{fork}, le d\'{e}luge}
+A system can be configured to defend against this.
+
+1. Limit total number of processes per user.
+
+2. Limit rate of process spawning.
+
+Note: do not attempt this on University computers!
+
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Signals}
 
-UNIX systems use signals to indicate events (e.g., the \texttt{Ctrl-C} on the console)\\
-\quad A form of event-driven programming. 
+UNIX systems use signals to indicate events (e.g., the \texttt{Ctrl-C} on the console)
 
 Signals also are things like exceptions (division by zero, segmentation fault).
 
@@ -475,20 +501,6 @@ The signals \texttt{SIGKILL} and \texttt{SIGSTOP} cannot be caught, blocked, or 
 
 
 \begin{frame}
-\frametitle{Delivering Signals in UNIX}
-
-In UNIX, to deliver a signal to a process, the command is:
-
-\texttt{kill( pid\_t pid, int signal )}
-
-Yes, to send a signal, even if it's not a kill signal, the command is kill. 
-
-\end{frame}
-
-
-
-
-\begin{frame}
 \frametitle{Command-Line Signals}
 
 On the command line: to send a signal, \texttt{kill} followed by a process ID. 
@@ -507,31 +519,7 @@ Some users are eager to jump to \texttt{kill -9} whenever a process is stuck...
 
 
 
-\begin{frame}
-\frametitle{Apr\`{e}s \texttt{fork}, le d\'{e}luge}
 
-A short digression on a denial of service attack: the ``fork bomb''.
-
-The idea is to call \texttt{fork} repeatedly.
-
-Keep doing this until the system crashes (or no work can get done).
-
-Exponential growth ($2^n$) processes after $n$ calls.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Apr\`{e}s \texttt{fork}, le d\'{e}luge}
-A system can be configured to defend against this.
-
-1. Limit total number of processes per user.
-
-2. Limit rate of process spawning.
-
-Note: do not attempt this on University computers!
-
-\end{frame}
 
 
 \end{document}

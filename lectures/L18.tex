@@ -2,179 +2,366 @@
 
 \begin{document}
 
-\lecture{ 18 --- Deadlock }{\term}{Jeff Zarnett}
+\lecture{ 18 --- The Readers-Writers Problem }{\term}{Jeff Zarnett}
 
-\section*{The Dining Philosophers Problem}
+\section*{The Readers-Writers Problem}
 
-The dining philosophers problem was also proposed by Dijkstra in 1965. The problem can be formulated with $n$ philosophers, but problem is typically described as involving five philosophers. The description that follows is from~\cite{osc}. These five smart individuals spend their lives thinking, but every so often, they need to eat. They share a table, each having his or her own chair. In the centre of the table is a bowl of rice, and the table is laid with five single chopsticks. See the diagram below.
+This problem is about concurrent reading and modification of a data structure or record by more than one thread. A writer will modify the data; a reader will read it only without modification. Unlike the producer-consumer problem, some concurrency is allowed:
 
-\begin{center}
-\includegraphics[width=0.4\textwidth]{images/philosopher-table.png}\\
-The situation of the dining philosophers~\cite{osc}.
-\end{center}
+\begin{enumerate}
+\item Any number of readers may be in the critical section simultaneously.
+\item Only one writer may be in the critical section (and when it is, no readers are allowed).
+\end{enumerate}
 
-When a philosopher wishes to eat, she sits down at her designated chair, and attempts to pick up the two chopsticks that are nearest (one on the left, and one on the right). Philosophers are polite and therefore do not grab a chopstick out of the hands of a colleague. When a philosopher has both chopsticks, she may eat rice, and when she is finished, she puts down the chopsticks and goes back to thinking.
+Or, to sum that up, a writer cannot enter the critical section while any other thread (whether reader or writer) is there. While a writer is in the critical section, neither readers nor writers may enter the critical section~\cite{lbs}. This is very often how file systems work: a file may be read concurrently by any number of threads, but only one thread may write to it at a time (and to prevent reading of inconsistent data, no thread may read during the write).
 
-Some textbooks formulate this problem as philosophers needing two forks to eat rather than chopsticks. It is, of course, much easier to imagine having difficulty eating with only one chopstick than having difficulty with only one fork. Of course, the scenario is a little bit silly; we don't study it because it is supposed to be a true to life model of how real philosophers behave. The scenario is just a convenient and memorable example of a whole class of problems.
+This is similar to, but distinct from, the general mutual exclusion problem and the producer-consumer problem. In the readers-writers problem, readers do not modify the data (consumers do take things out of the buffer, modifying it). If any thread could read or write the shared data structure, we would have to use the general mutual exclusion solution. Although the general mutual exclusion routine would work in that it would prevent errors, it is a serious performance reduction versus allowing multiple readers concurrently~\cite{osi}. Thus, this situation is worth examining in its own right.
 
-Suppose then that semaphores are the method for managing things. Because only one person can be in possession of a chopstick at a time, each chopstick may be represented by a binary semaphore. As a philosopher needs the chopstick to his left and right to eat, when the philosopher sits down he attempts to acquire the left chopstick, then the right, eats, and puts the chopsticks down. This works fine, until all philosophers sit down at the same time. Each grabs the chopstick to his or her left. None of them are able to acquire the chopstick to his or her right (because someone has already picked it up). None of the philosophers can eat; they are all stuck. This is deadlock. 
-
-This example makes it more clear why we call a situation where a thread never gets to run ``starvation''. If a philosopher is never able to get both chopsticks, that philosopher will never be able to eat, and though I am not an expert on biology, I have it on good authority that people who do not eat anything end up eventually starving to death. Even philosophers.
-
-One thing that would guarantee that this problem does not occur is to protect the table with a binary semaphore. This would allow exactly one philosopher at a time to eat, but at the very least, deadlock and starvation would be avoided. Although this works, it is a suboptimal solution. There are five seats and five chopsticks and yet only one person is eating at a time. We can get better concurrency and use of the resources.
-
-Next idea: what if we limit the number of philosophers at the table concurrently to four? The pigeonhole principle applies here: if there are $k$ pigeonholes and more than $k$ pigeons, at least one pigeonhole must have at least two pigeons. Thus, at least one of the four philosophers can get two chopsticks~\cite{mte241}. Implementing the solution is easy; we have a general semaphore with a maximum and initial value of 4.
-
-Another idea: the problem above occurs because every philosopher tries to pick up the left chopstick first. If some of them try to pick up the left and some pick up the right first, then deadlock will not happen, either~\cite{osc}.
-
-The dining philosophers problem is a good springboard from which to launch into a much deeper discussion of deadlock, and starvation.
-
-
-\section*{Deadlock}
-We have already introduced the subject of deadlock and gave an informal definition as all processes being ``stuck'' (unable to proceed). A more formal definition is given in~\cite{osi}: ``the \textit{permanent} blocking of a set of processes that either compete for system resources or communicate with each other''. There is emphasis on permanent. It may be possible for all processes to be stuck temporarily, because one is waiting for some event (e.g., a read from disk), but this situation will resolve itself and is not deadlock. A set of processes is truly deadlocked when each process in the set is blocked on some event that can only be triggered by another blocked process in the set. In this case it is permanent, because none of the events can take place.
-
-A deadlock involves some conflicting needs for resources by two or more processes. Consider a traffic deadlock. Suppose four cars arrive at a four-way stop intersection at the same time. We can divide the intersection into four quadrants, labelled, a, b, c, and d. To drive straight through the intersection, any one vehicle will need at least two of the quadrants (the two directly in front of it). 
-
-\begin{center}
-\includegraphics[width=0.75\textwidth]{images/car-deadlock.png}\\
-An illustration of deadlock involving cars~\cite{osi}.
-\end{center}
-
-According to the Highway Traffic Act, whichever vehicle arrives at the stop sign first has the right of way. In the event that two vehicles arrive at the same time, a vehicle yields the right of way to the vehicle on its right. As long as three or fewer vehicles come to the stop sign at the same time, this works. If all four vehicles arrive at the same time, we have the potential for a problem. It is not a deadlock yet, because none of the processes are stuck yet, but it could happen. If all the drivers believe they should go first, we get the situation on the right, and we actually do have deadlock. This is very much like the dining philosophers problem; deadlock occurs if everyone tries to do the same thing at the same time.
-
-Of course, for deadlock to occur, we do not have to have symmetric processes trying to do the same thing at the same time. Given two semaphores, \texttt{a} and \texttt{b}, and two processes, we can have the following code that will sometimes, but not always lead to deadlock. If thread $P$ locks \texttt{a} and then there is a process switch, and \texttt{b} is locked by $Q$, both threads will be stuck. Each has one resource the other needs, but they are both blocked and waiting for the other. It is obvious when we compare threads $P$ and $Q$ like this side-by-side, but in reality the problem is not usually that easy to see.
+Let us keep track of the number of readers at any given time with a variable \texttt{readers}. We will need a way of protecting this variable from concurrent modifications, so there will have to be a binary semaphore \texttt{mutex}. We will also need one further semaphore, \texttt{roomEmpty}, as a way of indicating that the room is empty. A writer has to wait for the room to be empty (i.e., \texttt{wait} on the \texttt{roomEmpty} semaphore) before it can enter. The solution comes from~\cite{lbs}:
 
 \begin{multicols}{2}
-\textbf{Thread P}\vspace{-2em}
+\textbf{Writer}\vspace{-2em}
   \begin{verbatim}
-	 1. wait( a ) 
-	 2. wait( b )
-	 3. [critical section]
-	 4. post( a )
-	 5. post( b )
+	 1. wait( roomEmpty )
+	 2. [write data]
+	 3. post( roomEmpty )
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
   \end{verbatim}
 \columnbreak
-\textbf{Thread Q}\vspace{-2em}
+\textbf{Reader}\vspace{-2em}
   \begin{verbatim}
-	 1. wait( b ) 
-	 2. wait( a )
-	 3. [critical section]
-	 4. post( b )
-	 5. post( a )
+	 1. wait( mutex )
+	 2. readers++
+	 3. if readers == 1
+	 4.     wait( roomEmpty )
+	 5. end if
+	 6. post( mutex )
+	 7. [read data]
+	 8. wait( mutex )
+	 9. readers--
+	10. if readers == 0
+	11.     post( roomEmpty )
+	12. end if
+	13. post( mutex )
   \end{verbatim}
 \end{multicols}
 \vspace{-2em}
 
+The code for the writer is much simpler than that of the readers. The writer may only enter into the critical section if the room is empty. When it has finished, it signals that the room is empty. The writer can be certain that when it exits the critical section that there are no other threads in the room, because no thread may enter the room while the writer was there.
 
-\subsection*{Reusable and Consumable Resources}
-So, deadlock takes place when two processes or threads are competing for resources. We can generally classify a resource as either \textit{reusable} or \textit{consumable}. A reusable resource can be used by one process at a time, and is not depleted by that use. A process may lock the resource, make use of it, then release it such that other processes may acquire it. Processors, memory, files, and semaphores are all examples of reusable resources. If process $P$ gets resource A and then releases it, process $Q$ can acquire it. Thus, the example above involving $P$ and $Q$ is a deadlock involving reusable resources.
+The reader code is somewhat more complicated. The first reader that arrives encounters the situation that the room is empty, so it ``locks'' the room (waiting on the \texttt{roomEmpty} semaphore), and that will prevent writers from entering the room. Additional readers do not check if the room is empty; they just proceed to enter. When the last reader leaves the room, it signals that the room is empty (``unlocking it'' to allow a writer in). This pattern is sometimes called the \textit{light switch}, as in~\cite{mte241}: the first one into the room turns on the lights and the last one out turns them off again. 
 
-A consumable resource is one that is created and destroyed upon consumption. If the user presses the ``Z'' key on the keyboard, this generates an interrupt and produces the ``Z'' character in a buffer. A process that takes input will then consume that character (e.g., it goes into the \texttt{vi} editor window) and it is unavailable to other processes. Other things that are consumable resources: interrupts, posts, and messages. Deadlock is somewhat less likely when dealing with consumable resources, but in theory, all processes could be waiting to receive a message, if it is a blocking receive, and no process can send a message (because they are all waiting for some other process to send first).
+The reader code has that situation that makes us concerned about the possibility of deadlock: a wait on \texttt{roomEmpty} inside a critical section controlled by \texttt{mutex}. With a bit of reasoning, we can convince ourselves that there is no risk: the only situation in which a thread waits on \texttt{roomEmpty} is that a writer is currently in its critical section. No other reader thread can get the \texttt{mutex} lock. As long as the write operation takes finite time, eventually the writer will post the \texttt{roomEmpty} semaphore and the threads can continue. Deadlock is not a problem.
 
-\subsection*{Conditions for Deadlock}
-When a disaster happens, it is typically a result of a chain of things going wrong. If any one of those things did not happen, the disaster would be averted. This is referred to as ``breaking the chain''. There are four conditions for deadlock:
+There is, however, a second problem that we need to be concerned about. Suppose some readers are in the room, and a writer arrives. The writer must wait until all the readers have left the room. When each of the readers is finished, it exits the room. In the meantime, more readers arrive and enter the room. So even though each reader is in the room for only a finite amount of time, there is never a moment when the room has no readers in it. This undesirable situation is not deadlock, because the reader threads are not stuck, but the writer (and any subsequent writers) is (are) going to wait forever. This is a situation called \textit{starvation}: a thread never gets a chance to run.
 
-\begin{enumerate}
-	\item \textbf{Mutual Exclusion}: A resource belongs to, at most, one process at a time.
-	\item \textbf{Hold-and-Wait}: A process that is currently holding some resources may request additional resources and may be forced to wait for them.
-	\item \textbf{No Preemption}: A resource cannot be ``taken'' from the process that holds it; only the process currently holding that resource may release it.
-	\item \textbf{Circular-Wait}: A cycle in the resource allocation graph.
-\end{enumerate}
+Recall criterion 3 of the list of properties we want in any mutual exclusion solution: it must not be possible for a thread requiring access to the critical section to be delayed indefinitely. This problem is just as bad as deadlock in that if it is discovered, it eliminates a proposed solution as an acceptable option, even though starvation might only be an unlikely event. We must therefore improve on this solution such that there is no longer the possibility that a writer starves.
 
-If the first three conditions are true, deadlock is possible, but deadlock will only happen if the fourth condition is fulfilled. But what is a resource allocation graph? It is a directed graph that tells us the state of the system by representing the processes, the resources, and which resources are held by which processes. Consider the example below:
+Conceptually, the solution that accomplishes the goal looks something like this: when a writer arrives, any readers currently reading should be permitted to finish their read, but no new readers should be allowed to start reading. Thus, eventually, all the readers currently in the critical section will finish, the writer will get a turn, because the room is empty, and when the writer is done, all the readers that arrived after the writer will be able to enter.
 
-\begin{center}
-\includegraphics[width=0.20\textwidth]{images/rag1.png}\\
-A sample resource allocation graph~\cite{osc}.
-\end{center}
+A new binary semaphore is needed here, called \texttt{turnstile}. 
 
-A process is represented by a circle labelled $P_{n}$. A resource is a box labelled $R_{n}$ and contains one or more black circles, representing how many of that resource are available. A binary semaphore would therefore have one black circle; a general semaphore will have 1 or more. A directed edge from $P_{i}$ to $R_{j}$ is a request: a process requests that resource. A directed edge from $R_{j}$ to $P_{i}$ represents assignment - the process holds that resource. When a request is made, a request edge is inserted into the graph; if the request is fulfilled it is instantly turned into an assignment edge. When a resource is released, the assignment edge is deleted~\cite{osc}.
+\begin{multicols}{2}
+\textbf{Writer}\vspace{-2em}
+  \begin{verbatim}
+	 1. wait( turnstile )
+	 2. wait( roomEmpty )
+	 3. [write data]
+	 4. post( turnstile )
+	 5. post( roomEmpty )
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+  \end{verbatim}
+\columnbreak
+\textbf{Reader}\vspace{-2em}
+  \begin{verbatim}
+	 1. wait( turnstile )
+	 2. post( turnstile )
+	 3. wait( mutex )
+	 4. readers++
+	 5. if readers == 1
+	 6.     wait( roomEmpty )
+	 7. end if
+	 8. post( mutex )
+	 9. [read data]
+	10. wait( mutex )
+	11. readers--
+	12. if readers == 0
+	13.     post( roomEmpty )
+	14. end if
+	15. post( mutex )
+  \end{verbatim}
+\end{multicols}
+\vspace{-2em}
 
-If there are no cycles in the graph, then we can be certain that no process in the system is deadlocked. If a cycle exists, then some process may be deadlocked:
+As before, the writer code is simpler, so we will examine it first. When the writer arrives, it will wait on the turnstile. If it is not the first writer, subsequent writers will queue up there, but if proceeds then it will wait for the room to be empty. Because the writer has locked the turnstile, no new readers can enter. There may be an arbitrary number of readers currently in the room, but each is there for only a finite amount of time. These existing-readers will be allowed to finish and leave the room. Then the writer gets a turn. When the writer is done, it posts the turnstile, which might unblock a reader or another writer. 
 
-\begin{center}
-\includegraphics[width=0.20\textwidth]{images/rag2.png}\\
-A sample resource allocation graph with a deadlock~\cite{osc}.
-\end{center}
+Readers first get to the turnstile, and if they find it is locked, a writer is in its critical section. Thus, readers will queue at the turnstile if necessary, otherwise proceed. After that, the code is the same as we saw before: keep track of the number of readers and post if the room is empty or not empty.
 
-But the presence of a cycle, on its own, is not necessarily certain that there is a deadlock:
+Does this solution satisfy our goals of avoidance of deadlock and starvation? Starvation is fairly easy to assess: the first attempt at the solution had one scenario leading to starvation and this solution addresses it. Problem solved. You should be able to convince yourself that the solution as described cannot starve the writers or readers.
 
-\begin{center}
-\includegraphics[width=0.20\textwidth]{images/rag3.png}\\
-A sample resource allocation graph with a cycle, but no deadlock~\cite{osc}.
-\end{center}
+On to deadlock: the reader code is minimally changed from before; we have identified the turnstile code as not being a problem on its own (though its interactions with other threads need to be examined). The more dangerous block of code is on the side of the writer, because it has that pattern: two waits. If the writer is blocked on the \texttt{roomEmpty} semaphore, no readers or writers could advance past the turnstile and no writers. If the writer is blocked on that semaphore, it means there are readers in the room, and the readers will individually finish and leave (their progress is not impeded). Given that, the room will eventually become empty and the writer will be unblocked.
 
-In this case, $P_{4}$ and $P_{2}$ are not part of the cycle and when they release their held resources, the other two processes will be able to proceed.
 
-\section*{Dealing with Deadlock}
+Note that this solution does not give writers any particular priority: when a writer exits it posts \texttt{turnstile} and that may unblock a reader or a writer. If it unblocks a reader, a whole bunch of readers may enter before the next writer is unblocked and locks the turnstile again. That may or may not be desirable, depending on the application. In any event, it does mean it is possible for readers to proceed even if a writer is queued. If there is a need to give writers priority, there are several techniques for doing so~\cite{lbs}.
 
-There are four basic approaches to dealing with deadlock, each of which we will examine in turn.
-\begin{enumerate}
-	\item Ignore it.
-	\item Deadlock prevention.
-	\item Deadlock avoidance.
-	\item Deadlock detection.
-\end{enumerate}
 
-\subsection*{Deadlock Option 1: Ignore it}
-This option is certainly convenient: we simply pretend that deadlock can never happen, or if it does happen, it is someone else's fault. That said, this is the approach taken in Microsoft Windows, so it is a valid option. If two processes get deadlocked, the user may simply see no progress (or the ``not responding'' dialog) and have to open task manager and start killing processes. But the operating system designers can plausibly blame the problem on the program authors. Since we are the program authors we can't really pass the buck here. You can try to blame the users, but they'll tell you that your system shouldn't allow them to make mistakes in the first place. Well then.
+Let's modify the solution so that writers have priority over readers. Giving writers priority may potentially cause readers to starve, but you may ignore this. We will probably want to break up the \texttt{roomEmpty} semaphore into \texttt{noReaders} and \texttt{noWriters}. A reader in the critical section should hold the \texttt{noReaders} semaphore and a writer should hold \texttt{noWriters} and \texttt{noReaders}. 
 
-Setting aside the ``do-nothing'' option, let us move on to some approaches that actually deal with the problem.
+\begin{multicols}{2}
+\textbf{Writer}\vspace{-1em}
+  \begin{verbatim}
+     1. wait( writeMutex )
+     2. writers++
+     3. if writers == 1
+     4.     wait( noReaders )
+     5. end if
+     6. post( writeMutex )
+     7. wait ( noWriters )
+     8. [write data]
+     9. post( noWriters ) 
+    10. wait( writeMutex )
+    11. writers--
+    12. if writers == 0
+    13.    post( noReaders )
+    14. end if
+    15. post( writeMutex )     
+  \end{verbatim}
+\columnbreak
+\textbf{Reader}\vspace{-2em}
+  \begin{verbatim}
+     1. wait( noReaders )
+     2. wait( readMutex )
+     3. readers++
+     4. if readers == 1
+     5.    wait( noWriters )
+     6. end if
+     7. post( readMutex )
+     8. post( noReaders )
+     9. [read data]
+    10. wait( readMutex )
+    11. readers--
+    12. if readers == 0
+    13.     post( noWriters )
+    14. end if
+    15. post( readMutex )
+\end{verbatim}
+\end{multicols}
+\vspace{-2em}
 
-\subsection*{Deadlock Option 2: Deadlock Prevention}
+Yikes! The complexity for the writer increased dramatically. The reader it not all that different than it was before, however, and the writer now is to some extent the mirror image of the reader. 
 
-This approach is a way of preventing a deadlock from being possible. The first three conditions for deadlock (mutual exclusion, hold and wait, and no preemption) are all necessary for deadlock to be possible. If we eliminate one of these three pillars, deadlock is not possible and it is prevented from happening.
+\subsection*{Readers Writers Example} 
+Using the pseudocode as above, we can implement the readers-writers behaviour in a given program using only semaphores (optionally using a mutex to replace a semaphore). But in the pthread library there is support for readers-writers lock types, meaning we don't have to reinvent the wheel. We can probably well imagine the actual complexity of the previous solution, so it's our hope that the readers-writers lock would make our code simpler to read and harder to make mistakes.
 
-\paragraph{Mutual Exclusion.} This pillar cannot, generally speaking, be disallowed. The purpose of  mutual exclusion is to prevent errors like inconsistent state or crashes. Getting rid of mutual exclusion to rule out the possibility of deadlock is a cure that is worse than the disease. It is therefore not acceptable as a solution. 
+The type for the lock is \texttt{pthread\_rwlock\_t}. It is analogous, obviously, to the mutex type \texttt{pthread\_mutex\_t}. Let's consider the functions that we have:
 
-When it comes to your specific program, though, you might be able to make it so that mutual exclusion is not necessary. If you can give each thread, for example, its own copy of the data,  or you can find an algorithm that no longer requires locking a given resource, then by all means, use it! Locking and other mutual exclusion constructs are things we use because we must, not because we like to.
-
-\paragraph{Hold and Wait.} To prevent the hold-and-wait condition, we must guarantee that when a process requests a resource, it does not have any other resource. In a practical sense this does not mean that things can be requested only one at a time; that would be like telling the philosophers that when they have one chopstick already, they cannot request another.
-
-The operating system could operate under these rules, but we know that our usual commercial operating systems don't do this. We could imagine a world where things are different, but that's not very helpful when it comes to implementing the program we're trying to write. Even so, the idea of requesting everything up front is obviously not possible (at the time of opening a document you are not asked if you are going to use the printer sometime later, just in case), nor is giving up all resources before asking for more possible. A resource that cannot be easily released is memory, as released memory may be collected and reassigned by the operating system. Therefore we cannot release all resources, and releasing only some of the resources means that we cannot categorically rule out deadlock; we can only make it less likely to occur~\cite{mte241}.
-
-Another idea that might work is \textit{two-phase locking}. A process attempts to lock a group of resources at once, and if it does not get everything it needs, it releases the locks it received and tries again. Thus a process does not wait while holding resources. If a philosopher picks up a chopstick but is unable to acquire a second, she puts down the chopstick she has picked up and tries again. Although she may not be the one to eat next, at least not all philosophers are stuck holding one chopstick.
-
-Two phase locking is not applicable to our current model for semaphores, where there is no way to know the value of the semaphore and the operating system will block a process on a \texttt{wait} if some other thread is in the critical region. After the process is blocked on the semaphore, a second process will run, and the first process does not get the opportunity to release the resources it holds. If there exist requests for resources and mutual exclusion areas that return, perhaps, \texttt{true} if the resource is acquired and \texttt{false} if it is unavailable, this can work. Then the program is responsible for checking if any of the requests returned \texttt{false} and releasing any resources where the request returned \texttt{true}.
-
-Fortunately, we know of some routines that do just this: the \texttt{trylock} functions that were mentioned earlier but not expanded upon:
 \begin{lstlisting}[language=C]
-int pthread_mutex_trylock( pthread_mutex_t * mutex )
-int pthread_rwlock_tryrdlock( pthread_rwlock_t * rwlock )
-int pthread_rwlock_trywrlock( pthread_rwlock_t  * rwlock )
+pthread_rwlock_init( pthread_rwlock_t * rwlock, pthread_rwlockattr_t * attr )
+pthread_rwlock_rdlock( pthread_rwlock_t * rwlock )
+pthread_rwlock_tryrdlock( pthread_rwlock_t * rwlock )
+pthread_rwlock_wrlock( pthread_rwlock_t * rwlock )
+pthread_rwlock_trywrlock( pthread_rwlock_t  *  rwlock )
+pthread_rwlock_unlock( pthread_rwlock_t * rwlock )
+pthread_rwlock_destroy( pthread_rwlock_t * rwlock )
 \end{lstlisting}
 
-These functions return an integer and it's extremely important to check and see if the return code is 0, because that is the only way to know if the lock was acquired. The call is non-blocking so the code will carry on regardless. Consider below a code description of the dining philosophers if they used two-phase locking via the trylock routines. Assume that the mutex variables have been initialized appropriately. It should be possible to reason about this solution and demonstrate that (1) a philosopher can only eat if they have both chopsticks, and (2) deadlock does not occur.
+In general our syntax very much resembles that of the mutex (attribute initialization and destruction not shown but they do exist). There are some small noteworthy differences, other than obviously the different type of the structure passed. Whereas before we had functions for lock and trylock, we now have those split into readlock and writelock (each of which has its own trylock function). As before, we will return to the subject of how trylock works soon.
 
+In theory, the same thread may lock the same rwlock $n$ times; just remember to unlock it $n$ times as well.
+
+And speaking of unlock, there's no specifying whether you are releasing a read or write lock. This is because it is unnecessary; the implementation unlocks whatever type the calling thread was holding. Much like \texttt{close()}, if we can figure out what we're closing we don't need the caller of the function to specify what to do.
+
+As for whether readers get priority, the specification says this is implementation defined. If possible, for threads of equal priority, a writer takes precedence over a reader. But your system may vary.
+
+Consider the following example of the simple readers-writers (without writer priority and with risk of starvation) using the ``old'' way:
+
+\begin{multicols}{2}
 \begin{lstlisting}[language=C]
-int locked_both = 0;
-while( locked_both == 0 ) {
-  int locked1 = pthread_mutex_trylock( chopstick1 );
-  int locked2 = pthread_mutex_trylock( chopstick2 );
-  if (locked1 != 0 && locked2 == 0) {
-    pthread_mutex_unlock( chopstick2 );
-  } else if (locked1 == 0 && locked2 != 0 ) {
-    pthread_mutex_unlock( chopstick1 );
-  } else if (locked1 != 0 && locked2 != 0 ) {
-    /* Do nothing */
-  } else {
-    locked_both = 1;
-  }
+int readers;
+pthread_mutex_t mutex;
+sem_t roomEmpty;
+
+void init( ) {
+  readers = 0;
+  pthread_mutex_init( &mutex, NULL );
+  sem_init( &roomEmpty, 0, 1 );
 }
-eat( );
 
-pthread_mutex_unlock( chopstick1 );
-pthread_mutex_unlock( chopstick2 );
+void cleanup( ) {
+  pthread_mutex_destroy( &mutex );
+  sem_destroy( &roomEmpty );
+}
 \end{lstlisting}
 
-The idea of a process releasing resources that it is holding is the basis for the next solution: knocking down the ``no preemption'' pillar.
+\columnbreak
+
+\begin{lstlisting}[language=C]
+void* writer( void* arg ) {
+  sem_wait( &roomEmpty );
+  write_data( arg );
+  sem_post( &roomEmpty );
+}
+
+void* reader( void* read ) {
+  pthread_mutex_lock( &mutex );
+  readers++;
+  if ( readers == 1 ) {
+    sem_wait( &roomEmpty );
+  }
+  pthread_mutex_unlock( &mutex );
+  read_data( arg );
+  pthread_mutex_lock( &mutex );
+  readers--;
+  if ( readers == 0 ) {
+    sem_post( &roomEmpty );
+  }
+  pthread_mutex_unlock( &mutex );
+}
+\end{lstlisting}
+
+\end{multicols}
+
+Now see it as it would be with the use of a rwlock!
+
+\begin{multicols}{2}
+\begin{lstlisting}[language=C]
+pthread_rwlock_t rwlock;
+
+void init( ) {
+  pthread_rwlock_init( &rwlock, NULL );
+}
+
+void cleanup( ) {
+  pthread_rwlock_destroy( &rwlock );
+}
+\end{lstlisting}
+
+\columnbreak
+
+\begin{lstlisting}[language=C]
+void* writer( void* arg ) {
+  pthread_rwlock_wrlock( &rwlock );
+  write_data( arg );
+  pthread_rwlock_unlock( &rwlock );
+}
+
+void* reader( void* read ) {
+  pthread_rwlock_rdlock( &rwlock );
+  read_data( arg );
+  pthread_rwlock_unlock( &rwlock );
+}
+\end{lstlisting}
+
+\end{multicols}
+
+\subsection*{Seek and Destroy: the Search-Insert-Delete Problem}
+
+This is an extension of the readers-writers problem called the search-insert-delete problem. Instead of two types of thread, reader and writer, there are three types of thread: searchers, inserters, deleters. They operate on a shared linked list of data. 
+
+\textit{Searchers} merely examine the list; hence they can execute concurrently with each other. Searcher threads must call \texttt{void search( void* target )} where the argument to the searcher thread is the element to be found. These most closely resemble readers in the readers-writers problem. 
+
+\textit{Inserters} add new items to the end of the list; only one insertion may take place at a time. However, one insert can proceed in parallel with any number of searches. Inserter threads call \texttt{void insert( void* to\_insert )} where the argument to the inserter thread is the element to be inserted. Assume \texttt{insert} is written so the insertion can be done in parallel with the searches. Inserters resemble readers with an additional rule that only one of them can manipulate the list at a time. 
+
+\textit{Deleters} remove items from anywhere in the list. At most one deleter process can access the list at a time, and when the deleter is accessing the list, no inserters and no searchers may be accessing the list. Deleter threads call \texttt{void delete( void* to\_delete )} where the argument to the deleter thread is the element to be deleted. These most closely resemble writers in the readers-writers problem.
+
+It turns out we don't need to modify things too much too allow for this third kind of thread. We need to keep track of when there are ``no inserters'' and ``no searchers'' (some hints for our semaphores) and another mutex to go around the actual insertion... See the code implementation below.
+
+{\scriptsize
+\begin{multicols}{2}
+
+\begin{lstlisting}[language=C]
+pthread_mutex_t searcher_mutex;
+pthread_mutex_t inserter_mutex;
+pthread_mutex_t perform_insert;
+sem_t no_searchers;
+sem_t no_inserters;
+int searchers;
+int inserters;
 
 
-\paragraph{No Preemption.} If we violate this condition, it means that we do have preemption: forcible removal of resources from a process, by the operating system. Suppose a process $P_{1}$ holds $R_{1}$ and $R_{2}$ and wants to get $R_{3}$, but $R_{3}$ is unavailable. $P_{1}$ will be blocked by the operating system. If another process $P_{2}$ comes by and requests $R_{1}$ and $R_{2}$, the resources $R_{1}$ and $R_{2}$ are taken away from $P_{1}$. The resources are added to the list of things that $P_{1}$ is waiting for (so it is waiting for all three now). In the meantime, $P_{2}$ can use them and continue. $P_{1}$ will be unblocked when all three resources are once again available for it to acquire~\cite{osc}. 
+void init( ) {
+  pthread_mutex_init( &searcher_mutex, NULL );
+  pthread_mutex_init( &inserter_mutex, NULL );
+  pthread_mutex_init( &perform_insert, NULL );
+  sem_init( &no_inserters, 0, 1 );
+  sem_init( &no_searchers, 0, 1 );
+  searchers = 0;
+  inserters = 0;
+}
 
-This isn't really something we can do as program designers, because only the operating system really has the power to carry out. It's included for completeness, but is not anything we can actually implement ourselves.
+void* searcher_thread( void *target ) {
+  pthread_mutex_lock( &searcher_mutex );
+  searchers++;
+  if ( searchers == 1 ) {
+    sem_wait( &no_searchers );
+  }
+  pthread_mutex_unlock( &searcher_mutex );
+  
+  search( target );
+  
+  pthread_mutex_lock( &searcher_mutex );
+  searchers--;
+  if ( searchers == 0 ) {
+    sem_post( &no_searchers );
+  }
+  pthread_mutex_unlock( &searcher_mutex );
+}
+\end{lstlisting}
+\columnbreak
+\begin{lstlisting}[language=C]
+void* deleter_thread( void* to_delete ) {
+  sem_wait( &no_searchers );
+  sem_wait( &no_inserters );
+  
+  delete( to_delete );
+  
+  sem_post( &no_inserters );
+  sem_post( &no_searchers );
+}
 
-For preemption to work, however, the resource must be a resource of a type where the state can be saved and restored (e.g., the CPU with its registers). This is not applicable to all resources; if a printer is in use by $P_{1}$ it cannot be preempted and given to $P_{2}$, otherwise the printout will be a jumble. Thus, preemption is also not sufficient to prevent deadlock from ever transpiring, it once again only makes it less likely.
+
+void* inserter_thread( void *to_insert ) {
+  pthread_mutex_lock( &inserter_mutex );
+  inserters++;
+  if ( inserters == 1 ) {
+    sem_wait( &no_inserters );
+  }
+  pthread_mutex_unlock( &inserter_mutex );
+  
+  pthread_mutex_lock( &perform_insert );
+  insert( to_insert );
+  pthread_mutex_unlock( &perform_insert );
+  
+  pthread_mutex_lock( &inserter_mutex );
+  inserters--;
+  if ( inserters == 0 ) {
+    sem_post( &no_inserters );
+  }
+  pthread_mutex_unlock( &inserter_mutex );
+}
+\end{lstlisting}
+\end{multicols}
+}
+
+
 
 
 \input{bibliography.tex}

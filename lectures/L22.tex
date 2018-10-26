@@ -2,287 +2,394 @@
 
 \begin{document}
 
-\lecture{ 22 --- Condition Variables, Monitors, Atomic Types }{\term}{Jeff Zarnett}
+\lecture{ 22 --- Advanced Concurrency Problems }{\term}{Jeff Zarnett}
 
-\subsection*{Condition Variables}
-Condition variables are another way to achieve synchronization. Rather than designating critical areas and enforcing rules about how many threads may be in the critical area, a condition variable allows synchronization based on the value of the data. Instead of locking a mutex, checking a variable, and then unlocking the mutex, we could achieve the same goal without constantly polling. We can think of condition variables as ``events'' that occur (like interrupts from hardware when there is new data to read rather than polling to check periodically or constantly).
+\section*{Get a Pizza This!}
+Let's consider a more advanced concurrency problem. In~\cite{lbs} it's called the ``Cigarette Smokers Problem'', but smoking is bad for you so it's going to be the ``Pizza Makers Problem''. Pizza, while not exactly health food, is amazing. Delicious, delicious pizza.
 
-An event is similar to, but slightly different from, a counting semaphore. We have the option, when an event occurs, to signal either one thread waiting for that event to occur, or to broadcast (signal) to all threads waiting for the event~\cite{mte241}.
+A new show to be hosted by some famous TV chef personality is being pitched, and you're going to write a simulation of it. The show is about making pizza. A pizza requires three ingredients: dough, sauce, and cheese. All three ingredients are necessary to make a pizza (otherwise it does not meet the definition of a pizza).
 
-Consider the condition variable functions:
+Each contestant has an unlimited supply of one ingredient. Contestant A has an unlimited supply of dough, Contestant B has an unlimited supply of sauce, and Contestant C has an unlimited supply of cheese. Each contestant needs to get the two ingredients they do not have and then can make a pizza. They will continue to (try to) make pizza in a loop until time is up. At the beginning of the episode, the host places two different random ingredients out. Contestants can signal the host to ask for more ingredients, but they should not do so unless they actually need some. Each time the host is woken up (signalled), he again places two different random ingredients out. When an ingredient is placed on the table, the host posts on the associated semaphore. For example, if the host puts out cheese and sauce, then the host posts on both \texttt{cheese} and \texttt{sauce}.
 
+In this scenario, there are resources provided by some external system and the contestants are processes that want resources. But we shouldn't be wasteful: resources should only be requested when they are needed and processes should take only what they need. Applications should only wake up if they can do something useful.
+
+There are some restrictions, though, and they could make the problem either impossible or trivial. In the impossible version, you can't modify what the host does (which is sensible, because you don't control the other system) but you also cannot use conditional (if) statements, which is pretty ridiculous. In the trivial version, the host tells which contestants whose turn it is, which is boring but also unrealistic, because again it requires the host system to know too much about the contestants. The interesting version has just the restriction that we can't control the host behaviour~\cite{lbs}. And he is a TV chef personality, after all, they do wacky things.
+
+Consider the following solution. All semaphores start at 0, except for \texttt{host} which starts as 1 (so the host will run the first time). Does this work?
+
+\begin{multicols}{3}
+\textbf{Contestant A}
 \begin{lstlisting}
-pthread_cond_init( pthread_cond_t *cv, pthread_condattr_t *attributes );
-pthread_cond_wait( pthread_cond_t *cv, pthread_mutex_t *mutex );
-pthread_cond_signal( pthread_cond_t *cv );
-pthread_cond_broadcast( pthread_cond_t *cv );
-pthread_cond_destroy( pthread_cond_t *cv );
+wait( sauce )
+get_sauce()
+wait( cheese )
+get_cheese()
+make_pizza( )
+post( host )
 \end{lstlisting}
-
-To initialize a \texttt{pthread\_cond\_t} (condition variable type), the function is \texttt{pthread\_cond\_init} and to destroy them, \texttt{pthread\_cond\_destroy}. As with threads and a mutex, we can initialize them with attributes, and there are functions to create and destroy the attribute structures, too. But the default attributes will be fine, at least in this course.
-
-Condition variables are always used in conjunction with a mutex. To wait on a condition variable, the function \texttt{pthread\_cond\_wait} takes two parameters: the condition variable and the mutex. This routine should be called only while the mutex is locked. It will automatically release the mutex while it waits for the condition; when the condition is true then the mutex will be automatically locked again so the thread may proceed. The programmer then unlocks the mutex when the thread is finished with it~\cite{pthreads}. Obviously, failing to lock and unlock the mutex before and after using the condition variable, respectively, can result in problems.
-
-In addition to the expected \texttt{pthread\_cond\_signal} function that signals a provided condition variable, there is also \texttt{pthread\_cond\_broadcast} that signals all threads waiting on that condition variable. It's this ``broadcast'' idea that makes the condition variable more interesting than the simple ``signalling'' pattern we covered much earlier on.
-
-
-Let us now examine a code example from~\cite{pthreads} which has been cut down a bit to make it more readable:
-
-\begin{lstlisting}[language=C]
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#define NUM_THREADS  3
-#define COUNT_LIMIT 12
-
-int count = 0;
-pthread_mutex_t count_mutex;
-pthread_cond_t count_threshold_cv;
-
-void* inc_count( void* arg ) {
-  for (int i = 0; i < 10; i++ ) {
-    pthread_mutex_lock( &count_mutex );
-    count++;
-    if ( count == COUNT_LIMIT ) {
-      printf( "Condition Fulfilled!\n" );
-      pthread_cond_signal( &count_threshold_cv );
-      printf( "Sent signal.\n" );
-    }
-    pthread_mutex_unlock( &count_mutex );
-  }
-  pthread_exit( NULL );
-}
-
-void* watch_count( void *arg ) {
-  pthread_mutex_lock( &count_mutex );  
-  if ( count < COUNT_LIMIT ) {
-    pthread_cond_wait( &count_threshold_cv, &count_mutex );
-    printf( "Watcher has woken up.\n" );
-    /* Do something useful here now that condition is fulfilled. */
-  }
-  pthread_mutex_unlock( &count_mutex );
-  pthread_exit( NULL );
-}
-
-int main( int argc, char **argv ) {
-  pthread_t threads[3];
-
-  pthread_mutex_init( &count_mutex, NULL );
-  pthread_cond_init ( &count_threshold_cv, NULL );
-
-  pthread_create( &threads[0], NULL, watch_count, NULL );
-  pthread_create( &threads[1], NULL, inc_count, NULL );
-  pthread_create( &threads[2], NULL, inc_count, NULL );
-
-  for ( int i = 0; i < NUM_THREADS; i++ ) {
-    pthread_join(threads[i], NULL);
-  }
-  
-  pthread_mutex_destroy( &count_mutex );
-  pthread_cond_destroy( &count_threshold_cv );
-  pthread_exit( NULL );
-}
-\end{lstlisting}
-
-It should be noted that if a thread signals a condition variable that an event has occurred, but no thread is waiting for that event, the event is ``lost''.  Because an event that takes place when no thread is listening is simply lost, it is (almost always) a logical error to signal or broadcast on a condition variable before some thread is waiting on it. This is sometimes called the ``lost wakeup problem'', because threads don't get woken up if they weren't waiting for this. Maybe it's not as dire as that, however, because sometimes an event is broadcast but nobody is interested and that's fine. 
-
-The condition variable with broadcast can be used to replace some of the synchronization constructs we've seen already. Consider the barrier pattern from earlier. There are $n$ threads and we wait for the last one to arrive. Then the last thread signals to unlock the barrier and then each thread calls post to unblock the next thread until all of them are through. This is a lot of calls and maybe it would be better to make it a broadcast instead. Remember the simple barrier (one phase rather than two), on the left, and then the condition variable on the right:
-
-\begin{multicols}{2}
-  \begin{verbatim}
-	1. wait( mutex )
-	2. count++
-	3. if count == n
-	4.     post( barrier )
-	5. end if
-	6. post( mutex )
-	7. wait( barrier )
-	8. post( barrier )
-  \end{verbatim}
 \columnbreak
-  \begin{verbatim}
-	1. wait( mutex )
-	2. count++
-	3. if count < n
-	4.     cond_wait( barrier, mutex )
-	5. else 
-	6.     cond_broadcast( barrier )
-	7. end if
-	8. post( mutex )
-  \end{verbatim}
+\textbf{Contestant B}
+\begin{lstlisting}
+wait( dough )
+get_dough()
+wait( cheese )
+get_cheese()
+make_pizza( )
+post( host )
+\end{lstlisting}
+\columnbreak
+\textbf{Contestant C}
+\begin{lstlisting}
+wait( sauce )
+get_sauce()
+wait( dough )
+get_dough()
+make_pizza( )
+post( host )
+\end{lstlisting}
 \end{multicols}
 
-The \texttt{wait} takes place before the post on \texttt{mutex}. That looks strange, doesn't it? What's important to remember is that we give up the mutex \texttt{lock} when we wait on the condition variable so the fact that we don't get to the unlock statement first does not cause a problem. So we are alright. The last thread, doesn't wait on the condition at all because there's no need to: it knows that it is last and there's nothing to wait for so it should proceed.
+No. Deadlock can easily occur. Suppose the host puts out sauce and dough. If contestant B takes the dough and contestant A takes the sauce, then both of them are blocked and nobody can proceed and nobody gets pizza.
 
-Okay, let's think about how to put that to use in an actual code example. Assume that \texttt{count}, \texttt{lock} and \texttt{cv} are initialized correctly as they should be. 
+Part of the problem here is that a contestant doesn't have a good way to assess what the ingredients are before going up there. And once there, if it finds that the ingredients match someone else's needs, we don't call that contestant over. That would be clever, but to make this work we would need a way to ``check'' what ingredients are there and semaphores don't let us do that. If we want to do that, we'd have to break the rule about not modifying the host's behaviour. Can we work with what we have?
 
+Imagine now that each contestant gets a helper. The job of the helper is to, well, help their contestant to make pizza by figuring out whose turn it is. For this there are boolean variables \texttt{dough\_present}, \texttt{sauce\_present}, and \texttt{cheese\_present} that are all initialized to \texttt{false}. They are protected by a semaphore (called \texttt{mutex}). The helpers update that variable, and based on the information available, signal which contestant should come up to the table and take ingredients. Each contestant now has a semaphore (such as \texttt{contestantA} for contestant A) which the helpers will post on. Contestants are still responsible for telling the host to put out more ingredients.
+
+\begin{multicols}{3}
+\textbf{Helper 1}
+\begin{lstlisting}
+wait( sauce )
+wait( mutex )
+if dough_present  
+  dough_present = false;
+  post( contestantC )
+else if cheese_present
+  cheese_present = false;
+  post( contestantA )
+else
+  sauce_present = true;
+end if  
+post( mutex )
+\end{lstlisting}
+\columnbreak
+\textbf{Helper 2}
+\begin{lstlisting}
+wait( dough )
+wait( mutex )
+if sauce_present  
+  sauce_present = false;
+  post( contestantC )
+else if cheese_present
+  cheese_present = false;
+  post( contestantB )
+else
+  dough_present = true;
+end if  
+post( mutex )
+\end{lstlisting}
+\columnbreak
+\textbf{Helper 3}
+\begin{lstlisting}
+wait( cheese )
+wait( mutex )
+if dough_present  
+  dough_present = false;
+  post( contestantB )
+else if sauce_present
+  sauce_present = false;
+  post( contestantA )
+else
+  cheese_present = true;
+end if  
+post( mutex )
+\end{lstlisting}
+\end{multicols}
+
+So let's analyze Helper 1. Each of the other helpers does the same thing but for a different ingredient. In this case, the helper is woken up when sauce is placed on the table. It then locks the mutex so that it can manipulate the shared variables of what ingredients are present. Now we decide what to do here. If the current helper is the first one to run, then all the variables will be false, so we'll end up at the else block and just set \texttt{sauce\_present} to true and then let the next helper run. If \texttt{dough\_present} is true, then Helper 2 has already run and we know that dough is present on the table. With both sauce and dough present, we know that the ingredients present match the needs of Contestant C. If \texttt{cheese\_present} is true then Helper 3 has already run and the ingredients present match the needs of Contestant A. 
+
+Obviously, each of the other helpers will signal the appropriate contestant based on its assessment of the state of the ingredients. 
+
+\begin{multicols}{3}
+\textbf{Contestant A}
+\begin{lstlisting}
+wait( contestantA )
+get_sauce()
+get_cheese()
+make_pizza( )
+post( host )
+\end{lstlisting}
+\columnbreak
+\textbf{Contestant B}
+\begin{lstlisting}
+wait( contestantB )
+get_dough()
+get_cheese()
+make_pizza( )
+post( host )
+\end{lstlisting}
+\columnbreak
+\textbf{Contestant C}
+\begin{lstlisting}
+wait( contestantC )
+get_sauce()
+get_dough()
+make_pizza( )
+post( host )
+\end{lstlisting}
+\end{multicols}
+
+The contestant code is pretty much trivial now: wait until a helper signals, then go take your ingredients and make a pizza. Once the pizza is in the oven, indicate that you are ready for more ingredients.
+
+The generalized version of the problem is what happens when the host puts out ingredients periodically, without a need to be signalled to ask for more. How do we modify the solution to deal with that?
+
+Obviously if there is no longer a need for the contestants to signal that they want more resources then the \texttt{post( host )} statements in the contestant code has to be removed. But what about the helpers?
+
+Instead of boolean variables to indicate the presence or absence of an ingredient what we need instead is an integer counter to know how many there are. So let's call them \texttt{num\_dough}, \texttt{num\_sauce}, and \texttt{num\_cheese}, and they all start as zero.
+
+\begin{multicols}{3}
+\textbf{Helper 1}
+\begin{lstlisting}
+wait( sauce )
+wait( mutex )
+if num_dough > 0  
+  num_dough--
+  post( contestantC )
+else if num_cheese > 0
+  num_cheese--
+  post( contestantA )
+else
+  num_sauce++
+end if  
+post( mutex )
+\end{lstlisting}
+\columnbreak
+\textbf{Helper 2}
+\begin{lstlisting}
+wait( dough )
+wait( mutex )
+if num_sauce > 0  
+  num_sauce--
+  post( contestantC )
+else if num_cheese > 0
+  num_cheese--
+  post( contestantB )
+else
+  num_dough++
+end if  
+post( mutex )
+\end{lstlisting}
+\columnbreak
+\textbf{Helper 3}
+\begin{lstlisting}
+wait( cheese )
+wait( mutex )
+if num_dough > 0 
+  num_dough--
+  post( contestantB )
+else if num_sauce > 0
+  num_sauce--
+  post( contestantA )
+else
+  num_cheese++
+end if  
+post( mutex )
+\end{lstlisting}
+\end{multicols}
+
+Now instead of setting the variables to true and false, the variables tracking the ingredients are incremented and decremented. Otherwise not much has changed. This pattern is referred to as the ``scoreboard''~\cite{lbs} -- there are variables keeping track of the state of the system which are viewable from all threads. As threads go about their actions, they take a look at the current state (the scoreboard) and decide how to act based on that.
+
+\section*{The Barbershop Problem}
+Consider the ``Barbershop Problem'', originally proposed by Dijkstra. A variant of this appears in~\cite{osc}. A barbershop is a place where customers get their hair cut. A barbershop consists of a waiting area with $n$ chairs, and a barber chair.
+
+ If there are no customers to be served, the barber goes to sleep. If a customer enters the barbershop and all chairs are occupied, then the customer leaves the shop. If the barber is busy, but chairs are available, then the customer sits in one of the free chairs. If the barber is asleep, the customer wakes up the barber. 
+ 
+ Customer threads should call \texttt{get\_hair\_cut()} when it is their turn. If the shop is full, the customer should \texttt{return} (exit/leave). The barber thread will call \texttt{cut\_hair}. The barber can cut only one person's hair at a time, so there should be exactly one thread calling \texttt{get\_hair\_cut()} concurrently. You can assume that external forces cause customers to appear and the barber to keep working (so you do not need to write any loops). Assume \texttt{n} is initialized to an appropriate value.
+
+
+We need an integer counter for customers waiting called \texttt{customers} that starts at 0. We will also have a mutex for controlling access to \texttt{customers} called \texttt{mutex} (it obviously starts at 1). Finally, two semaphores, \texttt{customer} and \texttt{barber} that both start at 0.
+
+As for the solution:
+\begin{multicols}{2}
+\textbf{Customer}
+  \begin{lstlisting}
+wait( mutex )
+if customers == n
+    signal( mutex )
+    return
+end if
+customers++
+signal( mutex )
+
+signal( customer )
+wait( barber )
+get_hair_cut()
+
+wait( mutex )
+customers--
+signal( mutex )
+\end{lstlisting}
+\columnbreak
+\textbf{Barber}
+  \begin{lstlisting}
+wait( customer )
+signal( barber )
+cut_hair()
+  \end{lstlisting}
+\end{multicols}
+
+
+The barber code is much simpler, so let's start there. The barber waits for there to be a customer. When there is one, the barber calls the customer forward by signalling on \texttt{barber}, and then cuts hair. Simple enough.
+
+As for the customer, \texttt{customers} is shared data, so its access should be protected by \texttt{mutex}. If we find that the number of customers is already $n$ -- that is, the waiting area is full, the customer should leave. But not without unlocking \texttt{mutex}! If the customer forgot to do that then no more customers could enter. That's a problem. Otherwise the count of customers is increased and the customer signals the semaphore \texttt{customer}. This will wake up the barber, if the barber is sleeping, but also indicates the number of customers waiting. Then the customer must wait for the barber. When the customer gets called forward by the barber, the customer can get their hair cut. Finally, when leaving, the customer decrements the number of customers counter. 
+
+Let's look over this for a risk of deadlock. We don't see anywhere, really, the nested-waits pattern that usually indicates trouble. There isn't really any scenario where a customer can get blocked waiting for another customer or the barber, and the barber code is very simple. 
+
+As for starvation, it also won't happen. Assuming there are actually customers, the barber will have work to do. And the customers will wait for a finite period before they get their hair cut. The size of the waiting area is limited so we expect that a customer doesn't get delayed indefinitely. It is possible for them to wait quite a while, though, but they will eventually get a turn. 
+
+We can maybe say that customers who give up in frustration are disappointed but that's better than making them wait forever. If they are told they won't get service today, they can go to a different barbershop or come again some other time. That's why there's the limit on the waiting area at all. In the scenario the barber is only human and can only cut so many people's hair in a day. The exact number will vary based on how long each hair cut takes, which depends on the person whose hair is being cut. But there is a limit of some sort: at some point the barber will go home. And only so many people can fit into the waiting room anyway: if there are too many, then nobody can move around (and this violates fire code!).
+
+This is actually a good lesson for services in general. They have a certain capacity, and when things are overloaded it's helpful to tell clients that they are unable to take any more requests right now. Clients can then choose what to do (and it's usually either ``wait a while and try again'' or ``go to a different service''). And you can! If the game that you want to play requires a server and all servers are busy, you can play a different game (or go outside, or who knows what!).
+
+
+\subsection*{Chemistry: Building H$_{2}$O}
+There are two kinds of thread, \texttt{oxygen()} and \texttt{hydrogen()}. As you will recall from basic chemistry, water, H$_{2}$O, requires two hydrogen modules and one oxygen module. To assemble the desired molecule (water) a group rendezvous pattern is needed to make each thread wait until all ingredients are present in the correct amounts. As each thread passes the barrier, it should call the function \texttt{bond()} which makes the water. Your solution must function so that all threads for one molecule invoke \texttt{bond()} before any of the threads from the next molecule do. 
+
+To clarify, if an oxygen thread arrives at the barrier when no hydrogen threads are present, it has to wait for two hydrogen threads to arrive. If a hydrogen thread arrives a the barrier when no other threads are waiting, it has to wait for an oxygen thread and another hydrogen thread. It is not necessary for the threads to know what other threads they are matched with, as long as the correct elements are present in the correct proportions. 
+
+In the example, we'll assume the \texttt{oxygen} and \texttt{hydrogen} threads are created and started correctly and in the correct proportions. The code for the creation of those two types of threads is not shown for space reasons. The reusable two-phase barrier from earlier has also been converted into C code.
+ 
+The oxygen queue and hydrogen queue start as ``locked'' so we'll only signal the threads when they are going to proceed. Before that we have a scoreboard pattern, where threads take a look at the state of the system and decide what to do.
+
+\begin{multicols}{2}
+\begin{lstlisting}[firstline=0, language=C]
+int oxygen;
+int hydrogen;
+pthread_mutex_t barrier_mutex;
+sem_t turnstile;
+int barrier_count;
+int barrier_N;
+sem_t bond;
+sem_t oxygen_queue;
+sem_t hydrogen_queue;
+
+void barrier_enter( ) {
+  pthread_mutex_lock( &barrier_mutex );
+  barrier_count++;
+  if ( barrier_count == barrier_N ) {
+    sem_post( &turnstile );
+  }
+  pthread_mutex_unlock( &barrier_mutex );
+  sem_wait( &turnstile );
+  sem_post( &turnstile );            
+}
+
+void barrier_exit( ) {
+  pthread_mutex_lock( &barrier_mutex );
+  barrier_count--;
+  if ( barrier_count == 0 ) {
+    sem_wait( &turnstile );
+  }
+  pthread_mutex_unlock( &barrier_mutex );
+}
+
+
+\end{lstlisting}
+\columnbreak
 \begin{lstlisting}[language=C]
-int count;
-pthread_mutex_t lock;
-pthread_cond_t cv; 
+int main( void ) {
+  oxygen = 0;
+  hydrogen = 0;
+  barrier_count = 0;
+  barrier_N = 3;
 
-void barrier( ) {
-  pthread_mutex_lock( &lock );
-  count++;
-  if ( count < NUM_THREADS ) {
-    pthread_cond_wait( &cv, &lock );
+  pthread_mutex_init( &barrier_mutex, NULL );
+  sem_init( &barrier_turnstile, 0, 0 );
+  
+  sem_init( &bond, 0, 1 );
+  sem_init( &oxygen_queue, 0, 0 );
+  sem_init( &hydrogen_queue, 0, 0 ); 
+
+  /* Creation of oxygen and hydrogen threads
+   not shown for space reasons */
+
+  pthread_mutex_destroy( &barrier_mutex );
+  sem_destroy( &barrier_turnstile );
+  sem_destroy( &bond );
+  sem_destroy( &oxygen_queue );
+  sem_destroy( &hydrogen_queue );   
+
+  pthread_exit( 0 );
+}
+
+\end{lstlisting}
+\end{multicols}
+
+\begin{multicols}{2}
+\begin{lstlisting}[language=C]
+void* oxygen( void* ignore ) {
+  sem_wait( &bond );
+  oxygen++;
+  
+  if( hydrogen >= 2 ){
+    sem_post( &hydrogen_queue );
+    sem_post( &hydrogen_queue );
+    hydrogen -= 2;
+    sem_post( &oxygen_queue );
+    oxygen--;
   } else {
-    pthread_cond_broadcast( &cv );
+    sem_post( &bond );
   }
-  pthread_mutex_unlock( &lock );
+  
+  sem_wait( &oxygen_queue );
+  bond();
+
+  barrier_enter();
+  barrier_exit();
+
+  sem_post( &bond );
+  
+  pthread_exit( NULL )
 }
 \end{lstlisting}
-
-If every thread calls \texttt{barrier()} before going on to whatever is next, they will wait until the last thread arrives -- as they should. Broadcast wakes up all the other threads. It's possible to use a for loop to signal on the condition variable $n$ times but that mostly defeats the purpose of using the condition variable instead of a regular semaphore, doesn't it?
-
-\subsection*{Monitors}
-A condition variable can be used to create a \textit{monitor}, a higher level synchronization construct. Just as in object-oriented programming we package up data and functions inside a class to make errors less likely and to improve the design, when we use a monitor we are packaging up the shared data and operations on that data to avoid problems of synchronization and concurrency.
-
-The objective of the monitor is to make it so that programmers do not need to code the synchronization part directly, making it less likely a programmer makes an error. There are numerous steps where you can get it wrong in a typical program. Look at:
-
+\columnbreak
 \begin{lstlisting}[language=C]
-void foo( ) {
-  pthread_mutex_lock( &l );
-  /* Read some data */
-  if ( condition ) {
-    printf( "Cannot continue due to reasons...\n" );
-    return;
+void* hydrogen( void* ignore ) {
+  sem_wait( &bond );
+  hydrogen++;
+  
+  if( hydrogen >= 2 && oxygen >= 1 )
+    sem_post( &hydrogen_queue );
+    sem_post( &hydrogen_queue );
+    hydrogen -= 2;
+    sem_post( &oxygen_queue );
+    oxygen--;
+  } else {
+    sem_post( &bond );
   }
-  /* More stuff */
-   
-  pthread_mutex_unlock( &l );
+  
+  sem_wait( &hydrogen_queue );
+  bond();
+  
+  barrier_enter();
+  barrier_exit();
+  
+  pthread_exit( NULL )
 }
 \end{lstlisting}
-
-In this case, there is control flow that could lead to exiting this function \texttt{foo} without unlocking the mutex \texttt{l}. Sure, when I cut the remaining code out and just replace it with some comments so the control flow that causes the problem here is obvious, but in a real code example the function in question is likely to be in the hundreds of lines and it's easy to overlook something. 
-
-The idea of monitors should be familiar to you if you have used Java synchronization constructs, notably the \texttt{synchronized} keyword. In Java we can declare a method to be \texttt{synchronized}, adding it after the access modifier keyword (public, private, etc) in the function definition, and then there is a lock created around that method. Only one thread can be inside that method at a time; if a second would like to call that method on the same instance, it will be placed in the entry set for the lock: a set of threads waiting for the lock to become available~\cite{osc}. 
-
-\begin{lstlisting}[language=Java]
-public synchronized void doSomething() {
-    // Synchronized area
-}
-\end{lstlisting}
+\end{multicols}
 
 
-Note that in Java we can make a method \texttt{synchronized} or define a block as synchronized:
+Let's analyze the solution then, starting with oxygen threads. When it enters, it waits on the \texttt{bond} semaphore, which in this case is used somewhat like a mutex. If there are at least two hydrogen threads waiting, then, we can unblock two of them, signal the oxygen queue, and update the counters. If there are not two hydrogens waiting, then we just signal \texttt{bond} so that the next thread will arrive. Then the thread can get in line at the oxygen queue.
 
-\begin{lstlisting}[language=Java]
-public void exampleMethod() {
-    synchronized( object ) { // Lock must be acquired to enter this block
-           // Critical section 
-    } // Lock is automatically released.
-}
-\end{lstlisting}
+The hydrogen code is more or less the same, but the if-condition is different since it's not enough for 1 hydrogen to be present (we need at least two). If we have what we need, signal the queues to release the needed molecules, and we are ready to go. If not, get in line.
 
-This sort of ``automatic'' locking and releasing is intended to simplify the process of writing multithreaded code and abstract away some of the details of mutual exclusion.
+When threads are released from the oxygen queue and hydrogen queue respectively, they proceed forward to the \texttt{bond()} step, and afterwards there is a barrier enter followed by exit to wait for all of them to be finished. All we really need is for all three threads to be done with \texttt{bond()} before they can exit so the barrier enter and exit happen one after the other.
 
-Monitors don't have to be written in Java (or a similar language) but they very commonly appear in object-oriented programming languages because of the goal of packaging up your data with the associated synchronization constructs looks a lot like Object-Oriented Programming: package up the data with its associated functions. Moreover, in an object-oriented language thanks to things like encapsulation (i.e., \texttt{private} variables), it's somewhat easier to ``force'' all access to be through the appropriate monitor.
+Now it may be that when a thread arrives it unblocks some thread ahead of it in line. So if the oxygen that arrives is the 2nd oxygen and there is already one waiting ahead of it, that first one proceeds. That's okay -- one molecule of water is as good as any other so we don't really care which oxygen ends up in its composition.
 
-\subsection*{Atomic Types}
+It is a little strange that the hydrogen threads don't post on \texttt{bond}. Isn't this a problem? It turns out no, because the oxygen threads post on it unconditionally. The reasoning on this is not too complicated. When a thread arrives but the water molecule cannot be formed, whether it is oxygen or hydrogen, a post on \texttt{bond} takes place. If, however, the thread arriving is the last one necessary for bonding to take place, then one oxygen and two hydrogen proceed. Whoever waited on \texttt{bond} does not matter, as long as one of the threads that went into the water molecule posts on it before leaving. As the chemical composition of water has one oxygen, the job is assigned to this molecule. If we put it in hydrogen we might post on it twice.
 
-Frequently we have a code pattern that looks something like this:
-
-\begin{lstlisting}[language=C]
-pthread_mutex_lock( lock );
-shared_var++;
-pthread_mutex_unlock( lock );
-\end{lstlisting}
-
-While is is fully correct, if this happens frequently there is a lot of locking and unlocking on the same mutex, just to do the increment. So there's a fair amount of overhead on this. Thinking back to the ``test and set'' type of instruction from earlier, wouldn't it be nice if we could do that sort of thing for something like incrementing a variable? We can! 
-
-The Linux kernel provides operations that are guaranteed to execute atomically, to avoid simple race conditions. In a uniprocessor system, the CPU cannot be interrupted until the operation is finished; in a multiprocessor system, the variable is locked until the operation is finished. There are two types of atomic operations: those that operate on integers and those that operate on a single bit in a bitmap. On some architectures, the atomic operations are translated into uninterruptible assembly instructions; on others, the memory bus is locked to ensure the operation is atomic~\cite{osi}.
-
-Rather than just using an integer for atomic integer operations, there is a defined type \texttt{atomic\_t}, ensuring that only atomic operations can be used on this data type and that atomic operations can only be used on that data type. This prevents programming errors and hides architecture-specific implementation details.
-
-The following table gives an overview of the atomic integer and bitmap operations, from~\cite{lkd}. These are, however, linux specific, and not necessarily available in a general system. In the C11 (2011) standard, atomic types were finally introduced as part of the language specification itself. But before this we just had implementation-specific options:
-
-\begin{center}
-\begin{tabular}{l|l}
-	\textbf{Function} & \textbf{Description}\\\hline
-
-	\texttt{atomic\_t ATOMIC\_INIT( int i )} & At declaration, initialize an \texttt{atomic\_t} to \texttt{i}\\\hline
-
-\texttt{int atomic\_read( atomic\_t *v )} &  Read the integer value of \texttt{v}\\\hline
-
-\texttt{void atomic\_set( atomic\_t *v, int i )} & Set \texttt{v} equal to \texttt{i}\\\hline
-
-\texttt{void atomic\_add( int i, atomic\_t *v )} & Add \texttt{i} to \texttt{v}\\\hline
-
-\texttt{void atomic\_sub( int i, atomic\_t *v )} & Subtract \texttt{i} from \texttt{v}\\\hline
-
-\texttt{void atomic\_inc( atomic\_t *v )} & Add 1 to \texttt{v}\\\hline
-
-\texttt{void atomic\_dec( atomic\_t *v )} & Subtract 1 from \texttt{v}\\\hline
-
-\texttt{int atomic\_sub\_and\_test( int i, atomic\_t *v )} & Subtract \texttt{i} from \texttt{v}; return true if 0; otherwise false\\\hline
-
-\texttt{int atomic\_add\_negative( int i, atomic\_t *v )} & Add \texttt{i} to \texttt{v}; return true if negative; otherwise false\\\hline
-
-\texttt{int atomic\_dec\_and\_test( atomic\_t *v )} & Decrement \texttt{v} by 1; return true if 0; otherwise false\\\hline
-
-\texttt{int atomic\_inc\_and\_test( atomic\_t *v )} & Increment \texttt{v} by 1; return true if 0; otherwise false\\ \hline\hline
-
-\texttt{void set\_bit( int n, void *addr )} &  Set the $n^{th}$ bit starting from \texttt{addr}\\\hline
-
-\texttt{void clear\_bit( int n, void *addr )} &  Clear the $n^{th}$ bit starting from \texttt{addr}\\\hline
-
-\texttt{void change\_bit( int n, void *addr )} &  Flip the value of the $n^{th}$ bit starting from \texttt{addr}\\\hline
-
-\texttt{int test\_and\_set\_bit( int n, void *addr )} &  Set $n^{th}$ bit starting from \texttt{addr}; return previous value\\\hline
-
-\texttt{int test\_and\_clear\_bit( int n, void *addr )} &  Clear $n^{th}$ bit starting from \texttt{addr}; return previous value\\\hline
-
-\texttt{int test\_and\_change\_bit( int n, void *addr )} &  Flip $n^{th}$ bit starting from \texttt{addr}; return previous value\\\hline
-
-\texttt{int test\_bit( int n, void *addr )} &  Return value of $n^{th}$ bit starting from \texttt{addr}\\\hline
-
-\end{tabular}
-\end{center}
-
-Atomic operations are helpful for scenarios like a single variable being modified and read. But atomic operations are not always ideal. Consider this:
-
-\begin{lstlisting}[language=C]
-struct point {
-  atomic_t x;
-  atomic_t y;
-};
-atomic_set( p1->x, 0 );
-atomic_set( p1->y, 0 );
-
-/* Somewhere else in the program */
-atomic_set( p1->x, 25 );
-atomic_set( p1->y, 30 );
-\end{lstlisting}
-
-Although the set of each of \texttt{x} and \texttt{y} is atomic, the operation as a whole is not. The write of \texttt{x} could succeed and then a read of both in a different thread could take place before the write of \texttt{y}, meaning that a reader would see (25, 0) when that's probably not valid. Similarly, the state could be totally corrupted if another thread did atomic writes of (10, 15) in between the two, leading to a final state of (10, 30). 
-
-When a number of writes need to take place as a ``package'', then a mutex type is the appropriate choice. 
-
-\paragraph{Spinlocks.}
-Another common technique for protecting a critical section in Linux is the \textit{spinlock}. This is a handy way to implement constant checking to acquire a lock. Unlike semaphores where the process is blocked if it fails to acquire the lock, a thread will constantly try to acquire the lock. The implementation is an integer that is checked by a thread; if the value is 0, the thread can lock it (set the value to 1) and continue; if it is nonzero, it constantly checks the value until the value becomes 0. As you know, this is very inefficient; it would be better to let another thread execute, except in the circumstances where the amount of time waiting on the lock might be less than it would take to block the process, switch to another, and unblock it when the value changes~\cite{osi}.
-
-\begin{lstlisting}[language=C]
-spin_lock( &lock )
-    /* Critical Section */
-spin_unlock( &lock )
-\end{lstlisting}
-
-In addition to the regular spinlock, there are \textit{reader-writer-spinlocks}. Like the readers-writers problem discussed earlier, the goal is to allow multiple readers but give exclusive access to a writer. This is implemented as a 24-bit reader counter and an unlock flag, with the meaning defined as follows~\cite{osi}.
-
-\begin{center}
-\begin{tabular}{l|l|l}
-	\textbf{Counter} & \textbf{Flag} & \textbf{Interpretation}\\\hline
-	0 & 1 & The spinlock is released and available. \\
-	0 & 0 & The spinlock has been acquired for writing.\\
-	$n$ ($n > 0$) & 0 & The spin lock has been acquired for reading by $n$ threads.\\
-	$n$ ($n > 0$) & 1 & Invalid state.\\
-\end{tabular}
-\end{center}
-
-There are further additional details related to use of spinlocks, which can of course be explored by reading the Linux kernel documentation.
-
+These are by no means all the1 concurrency problems in the world. There are many more in~\cite{lbs} that could be considered. But for now we will leave it here, before  we get into really obscure problems...
 
 \input{bibliography.tex}
 

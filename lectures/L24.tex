@@ -1,228 +1,277 @@
-\input{header.tex}
+\include{header}
 
 \begin{document}
 
-\lecture{ 24 --- Concurrency in File Systems }{\term}{Jeff Zarnett}
+\lecture{ 24 --- Of Asgard \& Hel }{\term}{Jeff Zarnett}
 
-\section*{Concurrency in File Systems}
+\section*{Norse Mythology}
+Everything came into creation in the gap between fire and ice, and the World Tree (Yggdrasil) connects the nine worlds. Asgard is the home of the \AE sir, the Norse gods. Helheim, or simply Hel, is the underworld where the dead go upon their death. In Hel or Asgard (it's not entirely clear), there is Valhalla, hall of the honoured dead. Those who die in battle and are judged worthy will be carried to Valhalla by the Valkyries. There they will reside until they are called upon to aid in Odin's fight with the wolf Fenrir in Ragnar\"ok\footnote{German: G\"otterd\"ammerung - ``Twilight of the gods''}, the doom of the gods\footnote{Spoiler alert: this isn't going to end well for Odin.}. For the curious, humans live in the ``middle realm'', Midg\aa rd, surrounded by the serpent Jormungand, who will fight against Thor in  Ragnar\"ok. Thor will kill the serpent, but the serpent's poison will also finish off Thor\footnote{Sorry if I've just spoiled the plot of a Marvel movie.}.
 
-To understand the idea of concurrency in file systems, we need to peel back the interface a bit and have at least a high-level understanding of their implementation. File can be of arbitrary size (although in a particular file system there may be a limit), so they have to be allocated on disk in some way. 
+Aside from my obvious passion about the subject, why are we talking about Norse Mythology? We're going to examine some very useful tools for programming called Valgrind and Helgrind (also Cachegrind). Note that the -grind endings on those are pronounced like ``grinned''. Where do they take their names from? Valgrind is the gateway to Valhalla; a gate that only the worthy can pass. Helgrind is the gateway to, well, Hel. Which despite being the source of the English word ``Hell'', is not the place where sinners go. It's just the place where the dead go.
 
-The contiguous allocation strategy means that a file occupies a set of contiguous blocks on disk. So a file is allocated, starting at block $b$ and is $n$ blocks in size, the file takes up blocks $b, b+1, b+2, ..., b+(n-1)$. But for a sufficiently large file, it might be difficult to find a place to put it. And we also don't know how to predict the size of a file, so how much space do we leave for where to put it?
+But all of these, in program form, are analysis tools for your (usually) C and C++ programs. They are absolute murder on performance, but they are wonderful for finding errors in your program. To use them you will start the tool of your choice and instruct it to invoke your program. The target program then runs under the ``supervision'' of the tool. This results in running dramatically slower than normal, but you get additional checks and monitoring of the program. It's important to enable debugging symbols in your compile (\texttt{-g} option if using \texttt{gcc}) if you want stack traces to be useful.
 
-Linked allocation is a solution to the problems of contiguous allocation: instead of a file being all in consecutive blocks, we maintain a linked list of the blocks, and the blocks themselves may be located anywhere on the disk. The directory listing just has a pointer to the first and last blocks (head and tail of the linked list). Unfortunately, however, accessing block $i$ of a file is no longer as simple as computing an offset from the first block; it requires following $i$ pointers (a pain). If we want to go to the middle of a file, why do we have to load every block on the way there?
 
-There's a compromise approach: indexed allocation. The idea of indexed allocation is to take all the pointers and put them into one location: an index block. So, the first block of the file contains a whole bunch of pointers. To get to block $i$, just go to index $i$ of the index block and we can get the location of block $i$ much more efficiently than we could in linked allocation. All pointers to blocks start as null, and when we add a new block, add its corresponding entry into the index block~\cite{osc}. See the diagram below:
+\subsection*{Valgrind (or Memcheck) }
+Valgrind is the base name of the project and by default what it's going to do is run the memcheck tool. The purpose of memcheck is to look into all memory reads, writes, and to intercept and analyze every call to \texttt{malloc}/\texttt{free} and \texttt{new}/\texttt{delete}. Thus, memcheck will check all memory accesses and allocations/deallocations, and can find problems like:
+\begin{itemize}
+	\item Accessing uninitialized memory
+	\item Reading off the end of an array
+	\item Memory leaks (failing to free allocated memory)
+	\item Incorrect freeing of memory (double free calls or a mismatch)
+	\item Incorrect use of C standard functions like \texttt{memcpy}
+	\item Using memory after it's been freed.
+	\item Asking for an invalid number of bytes in an allocation (negative\textinterrobang)
+\end{itemize}
 
-\begin{enumerate}
-	\item \textbf{Linked Scheme}: An index block is a disk block, and we can link together several index blocks. The last entry in the index block is either null or a pointer to the next index block.
-	\item \textbf{Multilevel Index}: A variant of the linked scheme that has multiple levels. The first level block points to the second level block; the second level block points to the actual file data. This can go to as many levels are necessary based on the maximum file size. If a block is 4~KB, we can have 1024 4-byte pointers, so two levels would allow a maximum file size of up to 4~GB.
-	\item \textbf{Combined Scheme}: The all-of-the-above option. This is used in UNIX. Keep the first 15 pointers of the index block in the inode structure; 12 of them point directly to file data. The next three pointers refer to indirect blocks. The 13th is an index block containing the addresses of blocks with data. The 14th points to a double indirect block (addresses of blocks containing addresses of blocks). The 15th points to a triple indirect block\footnote{Yo dawg, we heard you like index blocks...}.
+These errors will be reported to the console when they occur. Ideally, this will help you find the source of the problem. 
+
+I decided to run Valgrind with memcheck against the solution I wrote to the ECE~254 S15 exam question for searching an array using pthreads. I am happy to report that memcheck reports that the official solution has no memory leaks. If you do things right, you get something that looks like the example below. 
+\begin{lstlisting}
+jz@Loki:~/ece254$ valgrind ./search
+==8476== Memcheck, a memory error detector
+==8476== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
+==8476== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
+==8476== Command: /usr/local/bin/search
+==8476== 
+usage: search [arguments] [options]
+arguments:
+         for text
+         in directory
+options:
+         -c | --case-sensitive
+         -s | --show-filenames-only
+==8476== 
+==8476== HEAP SUMMARY:
+==8476==     in use at exit: 0 bytes in 0 blocks
+==8476==   total heap usage: 0 allocs, 0 frees, 0 bytes allocated
+==8476== 
+==8476== All heap blocks were freed -- no leaks are possible
+==8476== 
+==8476== For counts of detected and suppressed errors, rerun with: -v
+==8476== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+\end{lstlisting}
+
+Okay, everything going perfectly is unlikely in anything other than a small program. The exam question I used this on is something like 62 lines (including blanks). So it's a trivial program. But I'll sabotage it a bit so we get a more interesting result. Suppose I delete from the code two of the \texttt{free()} calls.
+
+\begin{lstlisting}
+jz@Loki:~/ece254$ valgrind ./search 
+==8678== Memcheck, a memory error detector
+==8678== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
+==8678== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
+==8678== Command: ./search
+==8678== 
+Found at 11 by thread 1 
+Found at 22 by thread 3 
+==8678== 
+==8678== HEAP SUMMARY:
+==8678==     in use at exit: 1,614 bytes in 4 blocks
+==8678==   total heap usage: 17 allocs, 13 frees, 2,822 bytes allocated
+==8678== 
+==8678== LEAK SUMMARY:
+==8678==    definitely lost: 0 bytes in 0 blocks
+==8678==    indirectly lost: 0 bytes in 0 blocks
+==8678==      possibly lost: 0 bytes in 0 blocks
+==8678==    still reachable: 1,614 bytes in 4 blocks
+==8678==         suppressed: 0 bytes in 0 blocks
+==8678== Rerun with --leak-check=full to see details of leaked memory
+==8678== 
+==8678== For counts of detected and suppressed errors, rerun with: -v
+==8678== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+\end{lstlisting}
+
+If you take the program's suggestion to use \verb+--leak-check=full+ then you end up with a bit more detail about where you made the mistake. Of course, it's important to know where to look; in the example below, lines 49 and 24 in the file \texttt{search.c} are the locations of the \texttt{malloc} calls that lack a matching call to \texttt{free}. It can't tell you where the call to \texttt{free} should go, only where the memory that isn't freed was allocated.
+
+\begin{lstlisting}
+==8553== 16 bytes in 4 blocks are definitely lost in loss record 1 of 2
+==8553==    at 0x4C2AB80: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==8553==    by 0x40084D: search (search.c:49)
+==8553==    by 0x4E3F181: start_thread (pthread_create.c:312)
+==8553==    by 0x514F47C: clone (clone.S:111)
+==8553== 
+==8553== 48 bytes in 4 blocks are definitely lost in loss record 2 of 2
+==8553==    at 0x4C2AB80: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==8553==    by 0x40074E: main (search.c:24)
+
+\end{lstlisting}
+
+But it's also important to learn what to ignore (or what's out of our hands). I decided to deploy Valgrind on the solution to the producer-consumer problem from ECE~254 and I ended up with a result that says:
+
+\begin{lstlisting}
+==8734==      possibly lost: 544 bytes in 2 blocks
+\end{lstlisting}
+
+Hmm. Let's dig into that with the \verb+--leak-check=full+ option:
+
+\begin{lstlisting}
+==8734== 272 bytes in 1 blocks are possibly lost in loss record 1 of 2
+==8734==    at 0x4C2CC70: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==8734==    by 0x4012E54: _dl_allocate_tls (dl-tls.c:296)
+==8734==    by 0x4E3FDA0: pthread_create@@GLIBC_2.2.5 (allocatestack.c:589)
+==8734==    by 0x400A57: main (mutex.c:64)
+\end{lstlisting}
+
+Looking in the file, at that line, we see a call to \texttt{pthread\_create} and this is therefore probably nothing we need to do anything about. Or is it? In-class example will tell...
+
+From the Valgrind FAQ, how to read the leak summary:
+\begin{itemize}
+	\item \textbf{Definitely lost}: a clear memory leak. Fix it.
+	\item \textbf{Indirectly lost}: a problem with a pointer based structure (e.g., you've lost the head of the linked list, but the rest of the list is indirectly lost.) Generally, fixing the definitely lost items should be enough to clear up the indirectly lost stuff.
+	\item \textbf{Possibly lost}: the program is leaking memory unless weird things are going on with pointers where you're pointing them to the middle of an allocated block.
+	\item \textbf{Still reachable}: this is memory that was still allocated that might otherwise have been freed, but references to it exist so it at least wasn't lost.
+	\item \textbf{Suppressed}: you can configure the tool to ignore things and those will appear in the suppressed category.
+\end{itemize}
+
+
+
+\subsection*{Helgrind}  
+The purpose of Helgrind is to detect errors in the use of POSIX pthreads. In a way, Helgrind is a pretty neat tool for improving performance, even though it doesn't actually directly speed anything up. When we take a single-threaded program and split it off into a multithreaded program, we may introduce a lot of errors (or at least, introduce the possibility of a lot of errors). Truthfully, humans are not very good at parallel thinking; we are very much sequential. But a program that is fast and wrong is probably less useful than one that is slow and correct. Can we make it faster and still have it be correct? That's the goal of Helgrind: after you parallelize your code, it will do some automatic checking of the code to determine where, if anywhere, there are concurrency problems. It can't prove that your program is correct (if only) but it can at least catch some of the common problems you might introduce when writing a parallel program. Helgrind classifies errors into three basic categories:
+
+\begin{enumerate}[noitemsep]
+	\item Misuses of the pthreads API;
+	\item Lock ordering problems; and
+	\item Data races.
 \end{enumerate}
 
-With that out of the way, we can show a visual representation of an inode. This is just another sort of data structure, except it is stored in persistent storage. It will be helpful to keep this in mind. When we lock a file, implicitly we need to know which inode we are locking.
+The first category does not require much explanation. These are just some programming errors related to the pthread API calls. Some examples from~\cite{helgrind}:
 
-\begin{center}
-	\includegraphics[width=0.6\textwidth]{images/unix-inode.png}\\
-	The UNIX inode. Triple indirection is left to the reader's imagination~\cite{osc}.
-\end{center}
-
-We already discussed the use of \texttt{flock()} to lock a file, and this locks the entire file. There exists another way to lock a file, using \texttt{fcntl}, in which case we can lock only a part of a file, specifically a byte range of that file. This is referred to as \textit{record locking}.
-
-Locking just a part of the file allows for more concurrency: if a process is writing the beginning of the file, another one can be writing the end of the file and these don't overlap so the second write does not need to wait. Let's see how to do that. The function is found in the header \texttt{fcntl.h}. Here's the function signature:
-
-\begin{lstlisting}[language=C]
-int fcntl( int file_descriptor, int command, ... /* struct flock * flockptr */ )
-\end{lstlisting}
-
-This one looks strange! It turns out that \texttt{fcntl} can do a lot of things, and only sometimes the third argument is needed. So it is a \texttt{...} (list of args) but we would only fill it with one \texttt{struct flock} if we need to based on the value of \texttt{command}. They could have just overloaded this function, but, well, here we are. 
-
-The \texttt{struct flock} has the following definition~\cite{apunix}:
-\begin{lstlisting}[language=C]
-struct flock {
-  short  l_type;   /* F_RDLCK, F_WRLCK, or F_UNLCK */
-  short  l_whence; /* SEEK_SET, SEEK_CUR, or SEEK_END */
-  off_t  l_start;  /* offset in bytes, relative to l_whence */
-  off_t  l_len;    /* length, in bytes; 0 means lock to EOF */
-  pid_t  l_pid;    /* returned with F_GETLK */
-};
-\end{lstlisting}
-
-Much like the readers-writers locks, the types of locks are read and write. The compatibility matrix is exactly what you would expect: read locks are compatible with other read locks; write locks are not compatible with any other lock. And finally, to unlock, you still use the set-lock functionality, but with type \texttt{F\_UNLCK}. This sort of locking scheme is vulnerable to deadlock, as it's possible for a process to lock file 1 and need file 2 while another process has a lock on file 2 and needs the lock on file 1. 
-
-The value of \texttt{l\_whence} is going to be one of the three constants named in the comment above. This refers to where the offset begins. \texttt{SEEK\_SET} means at the start of the file. So if you specify \texttt{SEEK\_SET} and an offset of \texttt{1000} it means the locked region begins 1000 bytes after the start of the file. \texttt{SEEK\_END} means the relative point is the end of the file. Finally, \texttt{SEEK\_CUR} means based on the current position in the file (if you've positioned within the file using \texttt{seek()} this makes sense).
-
-It is possible for a locked region to extend past the end of the file. This is used when appending to the file, so you don't have to know in advance how much you plan to append to the file. If 0 is given for the length that does include anything appended to the file as well.
-
-
-For \texttt{command}, our choices are~\cite{apunix}:
-\begin{itemize}
-	\item \texttt{F\_GETLK} -- Determine if the lock described by \texttt{flockptr} is blocked by some other lock. If a lock exists, the content of \texttt{flockptr} is overwritten with the data of the lock; if no lock exists then the \texttt{l\_type} field is set to \texttt{F\_UNLCK}.
-	\item \texttt{F\_SETLK} -- Set the lock as described by \texttt{flockptr}. If the lock cannot be acquired then the return value of the function returns an error and \texttt{errno} are set. This is ``trylock''-behaviour and can be used to avoid the possibility of a deadlock.
-	\item \texttt{F\_SETLKW} -- A blocking version of the \texttt{F\_SETLK} command. If the region we want to lock is currently in use then the caller gets blocked.
+\begin{itemize}[noitemsep]
+	\item Unlocking a mutex that is unlocked;
+	\item Deallocation of memory with a locked mutex in it; or
+	\item Thread exit while holding a lock.
 \end{itemize}
+\ldots and many more.
 
-When unlocking a region, just as for locking, you can specify what part of the file you would like to unlock. Partial unlocking is unusual, but why not? The system will combine or split locks as appropriate, based on what is to be locked or unlocked.
+A quick example of an error message from Helgrind, also from~\cite{helgrind}:
 
-Let's do some examples on how to use this structure and system call. The first example is how to lock a file and then how to unlock it:
-
-\begin{lstlisting}[language=C]
-int write_lock_file( int file_descriptor ) {
-
-  struct flock fl;
-  fl.l_type = F_WRLOCK;
-  fl.l_start = 0;
-  fl.l_whence = SEEK_SET;
-  fl.l_len = 0;
-  
-  return fcntl( fd, F_SETLK, &fl );
-}
-
-int unlock_file( int file_descriptor ) {
-
-  struct flock fl;
-  fl.l_type = F_UNLCK;
-  fl.l_start = 0;
-  fl.l_whence = SEEK_SET;
-  fl.l_len = 0;
-  
-  return fcntl( fd, F_SETLK, &fl );
-}
+\begin{lstlisting}
+Thread #1 unlocked a not-locked lock at 0x7FEFFFA90
+   at 0x4C2408D: pthread_mutex_unlock (hg_intercepts.c:492)
+   by 0x40073A: nearly_main (tc09_bad_unlock.c:27)
+   by 0x40079B: main (tc09_bad_unlock.c:50)
+  Lock at 0x7FEFFFA90 was first observed
+   at 0x4C25D01: pthread_mutex_init (hg_intercepts.c:326)
+   by 0x40071F: nearly_main (tc09_bad_unlock.c:23)
+   by 0x40079B: main (tc09_bad_unlock.c:50)
 \end{lstlisting}
 
-Obviously if you wished to have a different type of lock or to only lock a specific range, then you would need different values in the structure. Now for checking if a given part of a file is locked:
 
-\begin{lstlisting}[language=C]
-int fd = open ( "example.txt", O_RDONLY );
-struct flock lock;
 
-lock.l_type = F_RDLOCK;
-lock.l_start = 1024;
-lock.l_whence = SEEK_SET;
-lock.l_len = 256;
+The second category of errors should be familiar to you from earlier as a source of potential deadlock.
 
-fcntl( fd, F_GETLK, &lock );
-if ( lock.l_type == F_UNLCK ) {
-	/* Lock is unlocked; we may proceed */
-} else if ( lock.l_type = F_WRLOCK ) {
-  /* File is write locked by a different process */
-  printf( "File locked by process ID %d.\n", lock.l_pid );
-  return -1;
-}
+\begin{multicols}{2}
+\textbf{Thread P}\vspace{-2em}
+  \begin{verbatim}
+	 1. wait( a ) 
+	 2. wait( b )
+	 3. [critical section]
+	 4. signal( a )
+	 5. signal( b )
+  \end{verbatim}
+\columnbreak
+\textbf{Thread Q}\vspace{-2em}
+  \begin{verbatim}
+	 1. wait( b ) 
+	 2. wait( a )
+	 3. [critical section]
+	 4. signal( b )
+	 5. signal( a )
+  \end{verbatim}
+\end{multicols}
+\vspace{-2em}
+
+In this case, if the interleaving of these happens to work out in a couple of particular ways, then we get deadlock because thread P holds mutex \texttt{a} and thread Q holds mutex \texttt{b} and each waits for the mutex that the other one has. The example is slightly silly, of course, because it's super easy to see; in normal code they would probably be separated by some number of lines, and the mutexes will probably not be called \texttt{a} and \texttt{b} (isn't using meaningful variable names one of those things you were supposed to learn to do in introductory programming\textinterrobang) and there therefore will not necessarily be an obvious (alphabetical) order.
+
+Helgrind builds a directed graph of lock acquisitions. When a thread acquires a lock, Helgrind checks to see whether a cycle exists. If so, then there is potential for a deadlock~\cite{helgrind}. Helgrind will report as an error the initial order (the first order seen is the one viewed as ``correct'') and the ``incorrect'' order that is the source of the potential problem. Really, though, all that matters is consistency---following the same order. You may change either of the acquisition orders to match the other. See the example below~\cite{helgrind}:
+
+\begin{lstlisting}
+Thread #1: lock order "0x7FF0006D0 before 0x7FF0006A0" violated
+
+Observed (incorrect) order is: acquisition of lock at 0x7FF0006A0
+   at 0x4C2BC62: pthread_mutex_lock (hg_intercepts.c:494)
+   by 0x400825: main (tc13_laog1.c:23)
+
+ followed by a later acquisition of lock at 0x7FF0006D0
+   at 0x4C2BC62: pthread_mutex_lock (hg_intercepts.c:494)
+   by 0x400853: main (tc13_laog1.c:24)
+
+Required order was established by acquisition of lock at 0x7FF0006D0
+   at 0x4C2BC62: pthread_mutex_lock (hg_intercepts.c:494)
+   by 0x40076D: main (tc13_laog1.c:17)
+
+ followed by a later acquisition of lock at 0x7FF0006A0
+   at 0x4C2BC62: pthread_mutex_lock (hg_intercepts.c:494)
+   by 0x40079B: main (tc13_laog1.c:18)
 \end{lstlisting}
 
-Checking on things with \texttt{F\_GETLK} is really for information purposes only: you should not make decisions about whether to proceed based on this, because of course the sequence of ``read of the value and then whatever operation you'd like to do next'' is not atomic. Instead, use the command \texttt{F\_SETLK} and actually try to set the lock. If \texttt{-1} is returned then locking was not successful. Or, if the plan is to wait, use \texttt{F\_SETLKW} as one would expect.
+The third category we have discussed already. Recall the earlier definition of a race condition. This is a difficult problem to find sometimes; what Helgrind will do is examine where multiple threads are accessing shared memory without the use of locks. Let's cut to the chase and see it in action:
 
-It's important to remember that \texttt{fcntl} changes some values of the \texttt{struct lock} so if you wanted to re-use it you need to make sure to reset it as appropriate. So if you want to use the same \texttt{struct lock} to unlock the thing that you locked, you can, just do so carefully.
 
-I'll also take a minute to mention \texttt{lockf}: it is a simplified way of locking a file. While \texttt{fcntl} is more flexible, sometimes all we need is the simple version. According to the documentation:
-
-\begin{lstlisting}[language=C]
-int lockf( int file_descriptor, int command, off_t length );
+\begin{lstlisting}
+jz@Loki:~/ece459$ valgrind --tool=helgrind ./datarace
+==10389== Helgrind, a thread error detector
+==10389== Copyright (C) 2007-2013, and GNU GPL'd, by OpenWorks LLP et al.
+==10389== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
+==10389== Command: ./datarace
+==10389== 
+==10389== ---Thread-Announcement------------------------------------------
+==10389== 
+==10389== Thread #1 is the program's root thread
+==10389== 
+==10389== ---Thread-Announcement------------------------------------------
+==10389== 
+==10389== Thread #2 was created
+==10389==    at 0x515543E: clone (clone.S:74)
+==10389==    by 0x4E44199: do_clone.constprop.3 (createthread.c:75)
+==10389==    by 0x4E458BA: pthread_create@@GLIBC_2.2.5 (createthread.c:245)
+==10389==    by 0x4C30C90: ??? (in /usr/lib/valgrind/vgpreload_helgrind-amd64-linux.so)
+==10389==    by 0x40068D: main (datarace.c:12)
+==10389== 
+==10389== ----------------------------------------------------------------
+==10389== 
+==10389== Possible data race during read of size 4 at 0x60104C by thread #1
+==10389== Locks held: none
+==10389==    at 0x40068E: main (datarace.c:13)
+==10389== 
+==10389== This conflicts with a previous write of size 4 by thread #2
+==10389== Locks held: none
+==10389==    at 0x40065E: child_fn (datarace.c:6)
+==10389==    by 0x4C30E26: ??? (in /usr/lib/valgrind/vgpreload_helgrind-amd64-linux.so)
+==10389==    by 0x4E45181: start_thread (pthread_create.c:312)
+==10389==    by 0x515547C: clone (clone.S:111)
+==10389== 
+==10389== ----------------------------------------------------------------
+==10389== 
+==10389== Possible data race during write of size 4 at 0x60104C by thread #1
+==10389== Locks held: none
+==10389==    at 0x400697: main (datarace.c:13)
+==10389== 
+==10389== This conflicts with a previous write of size 4 by thread #2
+==10389== Locks held: none
+==10389==    at 0x40065E: child_fn (datarace.c:6)
+==10389==    by 0x4C30E26: ??? (in /usr/lib/valgrind/vgpreload_helgrind-amd64-linux.so)
+==10389==    by 0x4E45181: start_thread (pthread_create.c:312)
+==10389==    by 0x515547C: clone (clone.S:111)
+==10389== 
+==10389== 
+==10389== For counts of detected and suppressed errors, rerun with: -v
+==10389== Use --history-level=approx or =none to gain increased speed, at
+==10389== the cost of reduced accuracy of conflicting-access information
+==10389== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)
 \end{lstlisting}
 
-The command options can be:
-\begin{itemize}
-	\item \texttt{F\_LOCK} -- Acquire an exclusive lock on the (section of the) file.
-	\item \texttt{F\_TLOCK} -- Try to acquire an exclusive lock (try-lock behaviour).
-	\item \texttt{F\_ULOCK} -- Unlock the indicated section of the file.
-	\item \texttt{F\_TEST} -- Check if (a section of) the file is locked; 0 if it is unlocked and -1 if the file is locked.
-\end{itemize}
+Note that we get two stack traces here: we have a read after write, and a write after write. Why? Because the operation in question is \texttt{var++} which necessitates fetching the current value of \texttt{var} (reading it) and incrementing it (then writing it back).
 
+How does Helgrind work? It examines the use of the standard threading primitives---lock, unlock, signal/post, wait, etc. Anything that implies there might be an ordering between events is taken and added to a directed acyclic graph that represents these dependencies. If memory is accessed from two different threads and there is no path through this directed acyclic graph that indicates an ordering, then Helgrind reports a race~\cite{helgrind}. Obviously, at least one of these accesses must be a write. (Recall: there is no read after read dependency).
 
-The length is an offset, and is based off the current position in the file. If zero is provided then it locks the whole file.
+Also cool: you can ask Helgrind to try to tell you about variable names (if it can) with the command line option \texttt{--read-var-info=yes}. Then it will tell you something interesting like:
 
-Two further notes: The file is automatically unlocked when the file descriptor is closed. And, on some systems \texttt{lockf} just calls \texttt{fcntl} but on some others they use different mechanisms. So don't mix and match. If you lock a file with one function, unlock it with the matching one.
-
-It is noteworthy that both kinds of lock are ``advisory'' only. That is, like the use of a semaphore or mutex, it only is really effective if everyone involved in accessing the shared resource follows the proper protocol and checks if access is permitted or not. Mandatory locks do exist, but are hard to use and are not recommended. Did you really want to know about mandatory locking? Well, check out this kernel.org documentation as to why you shouldn't, but also how it works if you must: \url{https://www.kernel.org/doc/Documentation/filesystems/mandatory-locking.txt}.
-
-\subsection*{Using A File as a Lock}
-
-We can use the very existence of a file as a way of controlling concurrency. For example, \texttt{git} places a file \texttt{index.lock} in a particular directory to indicate that an operation is in progress so two different \texttt{git} clients do not operate on the same repository at the same time. So that is one strategy: check if the file is present; if it is, the resource is ``locked'', if no such file is present then it is ``unlocked''. 
-
-If we want to check, we just try to \texttt{open()} the file, but unless we are careful this can lead to a problem if two processes want to create the file: if they both call \texttt{open}, they both might succeed. To get around this, we need to use the \texttt{flags} parameter of the call to open the file. See below.
-
-\begin{lstlisting}[language=C]
-int open(const char *filename, int flags);  /* Returns a file descriptor if successful, -1 on error */
-int rename(const char *old_filename, const char *new_filename); /* Returns 0 on success , operates atomically */
-int remove(const char *filename) ; /* Deletes a file or directory, returns 0 on success, operates atomically */ 
+\begin{lstlisting}
+==10454== Location 0x60104c is 0 bytes inside global var "var"
+==10454== declared at datarace.c:3
 \end{lstlisting}
 
-When opening a file the following flags may be used for the \texttt{flags} parameter (and can be combined with bitwise OR, the \texttt{|} operator):
-
-\begin{tabular}{l|l}
-	\textbf{Value} & \textbf{Meaning} \\ \hline
-	\texttt{O\_RDONLY} & Open the file read-only \\ \hline
-	\texttt{O\_WRONLY} & Open the file write-only \\ \hline
-	\texttt{O\_RDWR} & Open the file for both reading and writing \\ \hline
-	\texttt{O\_APPEND} & Append information to the end of the file \\ \hline
-	\texttt{O\_TRUNC} & Initially clear all data from the file \\ \hline
-	\texttt{O\_CREAT} & Create the file \\ \hline	
-	\texttt{O\_EXCL} & If used with \texttt{O\_CREAT}, the caller MUST create the file; if the file exists it will fail \\ 	
-\end{tabular}
-
-We can combine the use of \texttt{open} with \texttt{rename} to get lock-like behaviour between different programs that share nothing except a common file system. The \texttt{open} call should be used to create the lock file, and fail if the file already exists. If we want we can use \texttt{remove} to delete the lock file if we want to let the next process try, but there's an alternative option: \texttt{rename}.
-
-Because the \texttt{rename} function is also atomic, we can use it too, and just rename the existing lock file rather than creating it and deleting it every time. Then programs that want their turn should use \texttt{rename}; if a process or thread does succeed in renaming the file it is that process or thread's turn; otherwise, they have to wait. To unlock, just change the name back. Consider this simple example that uses threads (rather than processes):
-
-\begin{lstlisting}[language=C]
-#include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <pthread.h>
-
-#define NUM_THREADS 10
-
-int lock_fd;
-int shared = 0;
-
-void* run( void* arg ) {
-  int* id = (int*) arg;
-  while( rename( "file.lock", "file.locked" ) == -1 ) {
-    printf("Thread %d waiting.\n", *id); 
-  }
-
-  printf("Thread %d in critical section.\n", *id);
-  printf("Shared incremented from %d", shared);
-  shared++;
-  printf(" to %d.\n", shared);
-  rename("file.locked", "file.lock"); /* Unlock */
-
-  free( arg );
-  pthread_exit(NULL);
-}
-
-void* writer( void* arg ) {
-  /* Write data implementation not shown */
-  pthread_exit(NULL);
-}
-
-
-int main( int argc, char** argv ) {
-  lock_fd = open( "file.lock", O_CREAT | O_EXCL );  
-  if (lock_fd == -1 ) {
-   printf( "File creation failed.\n");
-   return -1;
-  }
-
-  pthread_t threads[NUM_THREADS];
-  for (int i = 0; i < NUM_THREADS; i++) {
-    int * id = malloc( sizeof( int ) );
-    *id = i;
-    pthread_create( &threads[i], NULL, run, id );
-  }
-  for (int i = 0; i < NUM_THREADS; i++) {
-    pthread_join( threads[i], NULL );
-  }
-  close( lock_fd );
-  remove( "file.lock" );
-
-  return 0;
-}
-\end{lstlisting}
+These will give you indications of where you need to introduce synchronization of some kind (semaphore, mutex, condition variable, etc). The authors of Helgrind assume that if it tells you where the problem is, you will figure out what variables are affected and how to properly prevent data races. You might find this frustrating, in the sense of a serial complainer who thinks that he or she can just moan about what's wrong without bringing forward any suggestions about how to fix the problems. 
 
 \input{bibliography.tex}
 

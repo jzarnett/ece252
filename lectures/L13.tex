@@ -2,185 +2,199 @@
 
 \begin{document}
 
-\lecture{ 13 --- Semaphores }{\term}{Jeff Zarnett}
+\lecture{ 13 --- Concurrency: Synchronization and Atomicity }{\term}{Jeff Zarnett}
 
-\section*{Mutual Exclusion through Messages}
+\section*{Synchronization}
+If a computer only ever did exactly one thing at a time (one process, one thread) we would have no concurrency and therefore no concurrency (co-ordination) problems. We have seen already, however, that in a system with multiple processes or multiple threads we have concurrency: more than one thread or process is making progress. And if the system is multicore, we can have parallelism: more than one thread or process actually executing on a CPU in a given instant. Either or both of these can lead to various problems.
 
-The earlier definition of mutual exclusion said only that one thread may be in the critical section at a time. This is the minimum, but there are additional desirable properties that will be used to evaluate any solution~\cite{osi}:
+The author of an application does not decide when a thread runs and when a thread switch will occur; these are things the operating system will decide. And the operating system does not usually give much thought to whether it is a convenient or inconvenient time to run a given thread.
+
+The common English usage of the word ``synchronization'' refers to making two or more things happen at exactly the same time, but what we mean when we talk about synchronization in the computer sense is more general: it means we want some relationship between events, and the relationship can be before, during, after~\cite{lbs}. There are two definitions that we need to consider at this point.
+
+The first is \textit{serialization}: we want there to be some sort of order of events. What we would like is to be certain that Event $A$ takes place before Event $B$. We have already examined some examples of this, where we have a thread or process that \texttt{wait}s on another. The merge sort algorithm, if implemented with two threads that sort the sublists and one thread that merges the results, necessarily implies that the merge thread has to wait for the sorting threads to finish. Thus the sorting (event $A$) must take place before the merging (event $B$). Or we could phrase it that $B$ must happen after $A$.
+
+The other thing we often want is \textit{mutual exclusion}: events $C$ and $D$ must not happen at the same time. This is something we've referenced a few times before now, often phrased as the fact that we need some sort of co-ordination. In the discussion of inter-process communication, we said we might have an area of memory that is shared between two processes. If two processes can write to this area, there is some possibility that they both try to access the same place at the same time. If we have mutual exclusion, we are certain that $P_{1}$ writing to the shared area (event $C$) does not happen at the same time as $P_{2}$ tries to read it (event $D$).
+
+
+
+\subsection*{Serialization through Messages}
+
+Suppose we have two people, Alice and Bob (these are the standard names in computer examples...) who work at the Springfield Nuclear Power Plant in Sector 7G, though they work in separate offices and cannot easily see one another. Alice works the day shift and Bob works the night shift. Suppose also that due to safety regulations, that Alice cannot go home until Bob has arrived and begun working. This is a situation where we would like serialization: the event of Bob's arrival must take place before the event of Alice's departure. 
+
+How can we get such behaviour? Well, the simple solution is that Alice stays at her desk and will not leave until she gets a call from Bob. Bob doesn't call until he's arrived at the office. This is a very simple scenario, but message passing is a valid solution for a lot of synchronization problems and it's the sort of thing we do in real life all the time: ``Text me when you get here'' or ``Call me when you've finished''. 
+
+If we are certain that Bob arrives before Alice departs, we can say that these events are \textit{sequential}, because we know the order of events. At some point during the workday, Alice ate lunch, and at some point before work, Bob ate lunch. But we have no idea who ate lunch first, so we say they ate lunch \textit{concurrently}. The formal, strict definition of concurrent is: two events are concurrent if we cannot tell by looking at the program which will happen first~\cite{lbs}. 
+
+In common parlance, when we say something happened concurrently, it means they happened at the same time (Alice and Bob both had lunch at 12:00). In this context, concurrency is not the same as saying that they happened at the exact same time; it's saying that we do not know (and cannot guarantee) an order of events. It's possible that Alice had lunch at 12:00 and Bob had lunch at 13:00 or they both ate at 12:00 or Alice had lunch at 13:30 and Bob had lunch at 12:15. We do not know. The order of concurrent events may change on two runs of the program; this is what we call nondeterminism.
+
+In a non-deterministic program, we cannot tell just by looking at the program what the execution order would be. If we have two concurrent events, one in which the program prints ``1'' to the console and one in which the program prints ``2'' to the console, these could happen in any order. So we might see the output as ``12'' or ``21''. Which one will happen? Without some form of co-ordination, it could be either. This non-determinism makes it difficult to analyze a program. If ``12'' is the correct output but ``21'' occurs only very rarely, finding the cause and fixing it might be very painful~\cite{lbs}. 
+
+This is, incidentally, what is referred to as a ``Heisenbug'' (a portmanteau of Heisenberg and Bug). This has nothing to do with the ``Breaking Bad'' TV show, but with Werner Heisenberg (the physicist) and his scientific principle of uncertainty that says: if we precisely know the position of a particle we know nothing about its momentum and vice versa. The Heisenbug is frustrating because the harder we try to track it down, the less likely it is to occur.
+
+
+\subsection*{Shared Data and Atomic Operations}
+We noted earlier that the need for co-ordination in inter-process communication arises from the fact that some area of memory is shared. We also know that all the threads of a process share the same data: in the merge sort algorithm the sorting and merging routines both operate on the same data array. Let's examine a simpler example (from~\cite{lbs}) where a shared variable \texttt{x} is manipulated by two threads $A$ and $B$, in pseudocode:
+
+\begin{multicols}{2}
+\textbf{Thread A}\vspace{-2em}
+	\begin{verbatim}
+	A1. x = 5
+	A2. print x
+	\end{verbatim}
+\columnbreak
+\textbf{Thread B}\vspace{-2em}
+	\begin{verbatim}
+	B1. x = 7
+	
+	\end{verbatim}
+\end{multicols}
+
+This is non-deterministic code: there is no co-ordination mechanism here so we cannot say what order these statements will occur. Some possible outcomes are: 5 is printed out and is the final value; 7 is printed out and is the final value, or 5 is printed out and 7 is the final value. Note that there is no way we can print out 7 and get a final value of 5, because we can be certain that statement A1 executes before A2; the problem is we do not know where in relation to the two A-statements that statement B1 will execute.
+
+This example uses more than one thread, but we do not even need multiple threads to have a concurrency problem; just having interrupts in the system is sufficient.
+
+Consider an application that is used to count occurrences of some event (whatever it is). We will store the count in a variable \texttt{count} and we will provide some facility for the user to reset the counter (the reset button). Each time we detect the event, we increment \texttt{count} with statement of \texttt{count++;} which seems like one single statement.
+
+Even a seemingly simple operation like \texttt{count++;} is broken down into a series of smaller operations. You've just detected an event. Let's assume the current value of the variable is 4. Thus we want to increment the variable, which will require three steps.
+
 \begin{enumerate}
-	\item Mutual exclusion must apply (this criterion eliminated most of the flag examples earlier).
-	\item A thread that halts outside the critical section must not interfere with other threads (the strict alternation routine, even if implemented with Test-and-Set, would fail on this criterion).
-	\item It must not be possible for a thread requiring access to a critical section to be delayed indefinitely (the situation where all threads get stuck, each thinking another is in the critical section, would fail this criterion).
-	\item When no thread is in the critical section, a thread that requests access should be allowed to enter right away (no unnecessary waiting).
-	\item No assumptions are made about what the threads will do or the number of processors in the system (so it should be a general solution, not a special case).
-	\item A thread remains inside the critical section for a finite time only (this is more of an assumption than a criterion, but our solution must provide a way to indicate the thread has left the critical section).
+	\item Read the current value of \texttt{count} (read 4)
+	\item Add 1 to the value (now it's 5)
+	\item Write the changed value back to memory (write 5)
 \end{enumerate}
 
-Recall from earlier the example of the employees Alice and Bob who worked at the Springfield Nuclear Power Plant in Sector 7G.  Suppose there is a third employee at the power plant, Charlie, who works on the day shift at the same time as Alice. Safety rules say that at least one of them has to monitor the safety of the reactor at all times and therefore they cannot both take lunch at the same time. If we cannot predict when lunch begins or how long it will last, how can Alice and Charlie co-ordinate to make sure they don't take lunch at the same time?
+Now imagine an interrupt comes at the worst possible time. The interrupt is generated by the reset button: it's supposed to set the value of count to zero.
 
-A possible solution: before Alice gets up from her desk to go for lunch, she calls Charlie. If he does answer, she may proceed. If Charlie does not answer, Alice will know he is not at his desk and she cannot leave at the moment. She can call again, constantly, until she reaches Charlie (busy-waiting), but this ties up a phone line nonstop and is effort intensive for Alice. If she doesn't want to do that, at this point she has two options: one is to simply wait some period of time (perhaps 15 minutes) and call again in the hopes that at that time Charlie will be back from lunch. A better approach would be for Alice to leave a message in Charlie's voice mail box, asking him to call her back when he has finished lunch. Then Alice can go about her work until she gets a call from Charlie and as soon as that happens, she may step out for lunch.
+\begin{enumerate}
+	\item Read the current value of \texttt{count} (read 4)
+	\item Add 1 to the value (now it's 5)
+	\item INTERRUPT (control goes to the interrupt handler)
+	\item Write 0 to the variable (write 0)
+	\item END INTERRUPT (control returns to where it was before the interrupt)
+	\item Write the changed value back to memory (write 5)
+\end{enumerate}
 
-Busy waiting has already been found inadequate as a solution. It wastes CPU time that another process or thread could be putting to productive use. The approach of ``wait 15 minutes and try again'' might be adequate for Alice as a human, but for the computer it is not ideal. If thread $B$ is in the critical section when $A$ tries to get in, and $A$ then sleeps for 2000~ms before trying again, this at least means $A$ is not wasting CPU cycles while it tries futilely to ask ``is it my turn now? Now? Now? Now? Now? Now?'', but if $B$ is finished after 20 ms, then thread $A$ waits unnecessarily for 1980~ms. 
+At the end of this execution sequence, the variable \texttt{count} shows 5, but it should show 0 (or 1), which is certainly wrong. The user pressed the reset button but the count did not reset! If the reset interrupt had occurred before reading the variable, the count would have been reset, and then an event detected and the count goes up to 1. If the interrupt had occurred after writing the value 5 to the variable we would see the count set to 0 as is expected. If it occurred after the read but before the write, there is an error and the changes the interrupt handler made were lost.
 
-What we want is something that resembles the call-when-finished semantics of Alice leaving a message and Charlie calling her back. That solution is called the Semaphore.
+This problem arises because the instruction \texttt{count++} is really three things (read, add, write) and can be interrupted at any time. When we are performing an operation that cannot be interrupted, we say it is \textit{atomic}: indivisible. Although since about 1945, we have been able to split the atom (proving that atoms themselves are divisible and that humans are very good at finding ways to make things explode) the use of the word atomic in this context is not about nuclear physics but references the other meaning that stems from Greek word \textit{atomos}, meaning indivisible (or more literally, not-cuttable). 
 
-\section*{Semaphore}
-A semaphore, outside of the context of computing, is a system of signals used for communication. Before ships had radios, when two friendly ships were in visual range, they would communicate with one another through flag semaphores, which is a fancy way of saying each ship had someone holding certain flags in a specific position. Thus the two ships could co-ordinate at a distance, even if the distance was limited to visual range. This worked dramatically better than many alternatives (e.g., shouting).
+Though there are usually some atomic operations available to us in a given system, we cannot be certain that all operations are indivisible. In fact, the opposite is likely to be true: we can be certain there are some operations that are non-atomic. Therefore we need to make sure at the very least that one operation on the shared variable is finished before the next begins.
 
-The computer semaphore was invented in 1965 by Edsger Dijkstra, a brilliant Dutch computer scientist who is sometimes maligned in textbooks as being eccentric or unusual.  He described a data structure that can be used to solve synchronization problems via messages in~\cite{semaphores}. Although the version we use now is not exactly the same as the original description, even 50+ years later, the core idea is unchanged.
+A thought: can we do this with serialization? That is, can we make sure that the \texttt{count++} operation completes before the \texttt{count = 0} operation? That would eliminate the problem of the reset being ignored. Unlike the scenario where Alice waits for Bob to get to work before she leaves, in this case there is no obvious order between the events: the user may press the reset button at any time, even if no event has just occurred. Similarly, the event may be detected even if the user is nowhere around and not going to press the reset button. Our concept of serialization requires that there exists a correct order: first this, then that. Here, where both orders are valid, we need the other approach: mutual exclusion (also called \textit{mutex}).
 
-We will begin with the \textit{binary semaphore}: this is a variable that has two values, 0 and 1. It can be initialized to 0 or to 1. The semaphore has two operations: \texttt{wait} and \texttt{post}. In the original paper, \texttt{wait} was called \texttt{P} and \texttt{signal} was called \texttt{V}, but the names in common usage have become a little more descriptive. Mind you, if you can read/write Dutch as I can, the names make some sense: \texttt{P} is short for \textit{proberen}, ``to test'', and \texttt{V} is short for \textit{verhogen}, ``to raise'' or ``to increment''. But, for historical reasons as much as any other, the traditional lingua franca of computers is English, so the English names have tended to dominate. Furthermore, \texttt{post} is also called \texttt{signal} in many textbooks.
+With mutual exclusion, we do not know or enforce any particular order of events, but what we do care about is that we do not have multiple threads trying to update the variable at the same time. It would mean that the action to reset \texttt{count} to zero would have to wait until the \texttt{count++} operation was completely finished (or vice versa) before it gets to execute. 
 
-The \texttt{wait} operation on the semaphore is how a program tries to enter the critical section. When \texttt{wait} is called, if the semaphore value is 1, set it to 0 and this thread may enter the critical section and continue. If the semaphore is 0, some other thread is in the critical section and the current thread must \textit{wait} its turn. The thread that called \texttt{wait} will be blocked by the operating system, just as if it asked for memory or a disk operation. This is sometimes referred to as decrementing the semaphore (because the value changes from 1 to 0).
+\subsection*{Mutual Exclusion through Flags}
+So we have identified shared data as a potential source of error. A section of code that should be accessed by a maximum of one thread at a time is referred to as a \textit{critical section}. The purpose of mutual exclusion is to ensure that at most one thread is in the critical section at a time. If we ever have more than one thread in the critical section at a time, something has gone terribly wrong. But on the other hand, the critical section is supposed to do something useful, so we cannot solve the problem by not allowing any thread to access it ever.
 
-The \texttt{post} operation is how a program sends the message that it is finished with the critical section. When this is called, if the semaphore is 1, do nothing; if the semaphore is 0 and there is a task blocked awaiting that semaphore, that task may be unblocked; else set the semaphore to 1. This is also sometimes called incrementing the semaphore.
+It is the responsibility of the programmer to identify what critical sections, if any, exist in the program, and to protect them with mutexes. Some analysis tools may exist to identify shared data, but ultimately the best analysis tool is taking a careful look. Critical sections should be as short as possible (but enclose all shared data accesses). The critical section is something that cannot be run in parallel, so it increases the magnitude of the $S$ term in Amdahl's Law, limiting the speed increase we can get from multiple threads and cores. Besides, it would be impolite to make other threads and processes wait unnecessarily.
 
-If this is still confusing, consider the following analogy. Suppose you like coffee, and going to a particular coffee shop because there you can get your drink exactly the way you like it: half caf, no whip, extra hot, extra foam, two shot, soy milk latte\footnote{For the record, the author drinks tea, black.}. After this delightful beverage it may be the case that you need to use the washroom. The washroom is locked at such places, so to get in you will need the key, which is available by asking one of the employees. If nobody is currently in the washroom, you will get the key and can proceed. If it is currently occupied, you will have to wait. When the key is returned, if anyone is waiting, the employee will give the key to the first person in line for the washroom; otherwise he or she will put the key away behind the counter.
+Our first approach then, is to have a variable to indicate if the critical section is currently in use. Suppose we have two threads:
 
-Observe that the operating system is needed to make this work: if thread $A$ attempts to wait on a semaphore that some other thread already has, it will be blocked and the operating system knows not to schedule it to run until it is unblocked. When thread $B$ is finished and posts to the semaphore it is holding, that will unblock $A$ and allow it to run again.
+\begin{multicols}{2}
+\textbf{Thread A}\vspace{-2em}
+	\begin{verbatim}
+	A1. while ( turn != 0 ) {
+	A2.    /* Wait for my turn */
+	A3. }
+	A4. /* critical section */
+	A5. turn = 1;
+	\end{verbatim}
+\columnbreak
+\textbf{Thread B}\vspace{-2em}
+	\begin{verbatim}
+	B1. while ( turn != 1 ) {
+	B2.   /* Wait for my turn */
+	B3. }
+	B4. /* critical section */
+	B5. turn = 0;
+	\end{verbatim}
+\end{multicols}
 
-Note also that the semaphore does not provide any facility to ``check'' the current value. Thus a thread does not know in advance if it will block when it waits on the semaphore. It can only wait and may be blocked or may proceed directly into the critical section if there is no other thread in there at the moment.
+This scheme enforces strict alternation: first it is the turn of thread $A$, then the turn of thread $B$, then back to $A$, and so on. What if thread $A$ is to run more often than $B$? If thread $B$ terminates then thread $A$ will be stuck forever because the variable \texttt{turn} will always be saying that it is thread $B$'s turn. This solution is obviously not satisfactory. Another approach then:
 
-When a thread signals a semaphore, it likewise does not know if any other thread(s) are waiting on that semaphore. There is no facility to check this, either. When thread $A$ signals a semaphore, if another thread $B$ is waiting, $B$ will be unblocked and either thread $A$ or thread $B$ may continue execution (or both, if it is a SMP system), or another unrelated thread may be the one to continue execution. We have no way of knowing.
+\begin{multicols}{2}
+\textbf{Thread A}\vspace{-2em}
+	\begin{verbatim}
+	A1. while ( busy == true ) {
+	A2.    /* Wait for my turn */
+	A3. }
+	A4. busy = true;
+	A5. /* critical section */
+	A6. busy = false;
+	\end{verbatim}
+\columnbreak
+\textbf{Thread B}\vspace{-2em}
+	\begin{verbatim}
+	B1. while ( busy == true ) {
+	B2.    /* Wait for my turn */
+	B3. }
+	B4. busy = true;
+	B5. /* critical section */
+	B6. busy = false;
+	\end{verbatim}
+\end{multicols}
 
-On the subject of observation, note that nothing about the semaphore as so defined protects against certain ``bad'' behaviour. Suppose thread $C$ would like to enter the critical section. The programmer of this task is malicious as well as impatient: ``my task is FAR too important to wait for those other processes and threads,'' he says, as he implements his code such that before he waits on the semaphore, he posts to it. Even though $A$ or $B$ might be in the critical section, the semaphore gets incremented so he is more or less certain that his program will now get to enter the critical section. It's not foolproof: if there are other threads waiting, they might get woken up to proceed instead of $C$; much depends on the scheduler. Nevertheless, this is really bad: one process can wreak all kinds of havoc by letting another process into the critical section. Though the example here makes the author of thread $C$ a scheming villain (because the example is funnier that way), such a situation may occur without malicious intent if it is simply the result of a programming error.
 
-The problem identified in the previous paragraph is usually solved by supplementing the basic binary semaphore. A data structure called a \textit{mutex} (from \textbf{mut}ual \textbf{ex}clusion) is a binary semaphore with an additional rule enforced: only the thread that has called \texttt{wait} may \texttt{post} to that semaphore. This adds a small amount of extra bookkeeping to the semaphore, but this is a reasonable price to pay.
+The problem with flags is that when we have a statement like \texttt{while (busy == true)} followed by \texttt{busy = true;} these are two distinct steps: read of \texttt{busy} and write of \texttt{busy} and a process switch could occur between the read and the write, which is the worst possible timing (as far as we are concerned). If the switch happens at the bad time then threads $A$ and $B$ will both be in the critical section at the same time. This solution is also not satisfactory.
 
-\subsection*{Example: Linked List Integrity}
-We will now examine a situation where a semaphore helps to prevent a synchronization error. This example comes from~\cite{mte241}. Imagine we have a shared linked list defined as:
+What if instead of using one flag variable, we use an array where each thread writes to its own boolean variable?
+
+\begin{multicols}{2}
+\textbf{Thread A}\vspace{-2em}
+	\begin{verbatim}
+	A1. flag[0] = true;
+	A2. while ( flag[1] ) {
+	A3.    /* Wait for my turn */
+	A4. }
+	A5. /* critical section */
+	A6. flag[0] = false;
+	\end{verbatim}
+\columnbreak
+\textbf{Thread B}\vspace{-2em}
+	\begin{verbatim}
+	B1. flag[1] = true;
+	B2. while ( flag[0] ) {
+	B3.    /* Wait for my turn */
+	B4. }
+	B5. /* critical section */
+	B6. flag[1] = false;
+	\end{verbatim}
+\end{multicols}
+
+Once again, this strategy is defeated by an untimely process switch: if statement A1 sets \texttt{flag[0]} to true and there is a switch to thread $B$, setting \texttt{flag[1]} to true, now both processes are stuck. Neither can advance, because each is waiting for the other to set its \texttt{flag} variable to false. This is, perhaps, slightly better than two threads in the critical section, but we have two threads that are permanently stuck now. This is also not satisfactory: although we want to forbid two threads from being in the critical section at the same time, keeping all threads out forever is not a good solution either.
+
+The attempts at solution we have attempted so far have all been foiled by an untimely process switch, which will be triggered by an interrupt. This presents a possible solution: disabling interrupts. If interrupts are disabled, then interrupts generated from the user as well as the normal thread switches the scheduler would perform will not occur. Disabling interrupts is a crude solution, however, because during the time in which interrupts are disabled, the system will be unable to respond to user input or other events (e.g., a fire alarm or detection of an incoming missile!). If an error is encountered in the critical section and the program is terminated, the system is effectively stuck because no other program will be able to run.
+
+It gets worse: if we have multiple processors the disabling interrupts will not be sufficient~\cite{osi}. But maybe we're on the right track by getting hardware involved: the problem is we would like to read and maybe write a variable in such a way that cannot be interrupted. The hardware designers were aware of the problem and have kindly provided a facility to help us out: the \textit{Test-and-Set} instruction. 
+
+\subsection*{Test-and-Set}
+The Test-and-Set instruction is a special machine instruction that is performed in a single instruction cycle and is therefore not interruptible. It is therefore an atomic read and write. The idea is that the Test-and-Set instruction returns a boolean value. When run, it will examine the flag variable (in this example, \texttt{i}) and if it is zero, it will set it to 1 and return true. If \texttt{i} is currently set to 1, it will return false. The meaning of the return value is clear: if it is true, it is the current thread's turn to enter the critical section. The Test-and-Set instruction is not actually implemented like this, but a description of its functionality in C is:
 
 \begin{lstlisting}[language=C]
-typedef struct single_node {
-  void *element;
-  struct single_node *next;
-} single_node_t;
-
-typedef struct single_list {
-  single_node_t *head;
-  single_node_t *tail;
-  int size;
-} single_list_t;
-
-
-void single_list_init( single_list_t *list ) {
-  list->head = NULL;
-  list->tail = NULL;
-  list->size = 0;
-}
-
-bool push_front( single_list_t *list, void *obj ) {
-  single_node_t *tmp = malloc( sizeof( single_node_t ) );
-  
-  if ( tmp == NULL ) {
+boolean test_and_set( int* i ) {
+  if ( *i == 0 ) {
+    *i = 1;
+    return true;
+  } else {
     return false;
   }
-  
-  tmp->element = obj;
-  tmp->next = list->head;
-  list->head = tmp;
-
-  if ( list->size == 0 ) {
-     list->tail = tmp;
-  }
-  
-   ++( list->size );
-   return true;
 }
 \end{lstlisting}
 
-If only one thread can access this data structure, we do not have a problem, but it was a shared linked list. Suppose a thread runs and tries to add an element $A$ to the list using the \texttt{push\_front} function. Right before the increment of the \texttt{size} field takes place there is a process switch. At this point, the new node has been allocated and initialized, the pointers of \texttt{head} and \texttt{tail} have been updated, but \texttt{size} is 0. 
-
-\begin{center}
-\includegraphics[width=0.25\textwidth]{images/linkedlist1.png}\\
-The linked list at the time of the thread switch~\cite{mte241}.
-\end{center}
-
-Now, the second thread executes and wants to add $B$ to the linked list. In the conditional statement, \texttt{list->size == 0} evaluates to true. Thus, the \texttt{tail} pointer is updated.
-
-\begin{center}
-\includegraphics[width=0.35\textwidth]{images/linkedlist2.png}\\
-The linked list after the second thread adds $B$~\cite{mte241}.
-\end{center}
-
-When the first thread gets to run again, it will resume where it left off: it increments the \texttt{size} integer, leaving the final state: \texttt{head} and \texttt{tail} both point to element $B$, even though there is element $A$ in the list.
-
-\begin{center}
-\includegraphics[width=0.35\textwidth]{images/linkedlist3.png}\\
-The linked list after the first thread resumes~\cite{mte241}.
-\end{center}
-
-This is an \textit{inconsistent state}: the linked list has two elements in it but the \texttt{tail} pointer is wrong. An attempt to remove an element from the list will reveal the problem, which can manifest in a few ways, depending on how the removal routine is implemented. If we try to remove the front element we might check that \texttt{head} and \texttt{tail} are equal, and that may give the mistaken impression that $B$ is the last element in the list, so we ``lose'' $A$ and it becomes a memory leak. Or perhaps the \texttt{head} pointer will be updated but \texttt{tail} will still point to $B$ even after it has been freed, which can result in a segmentation fault or invalid access.
-
-\subsection*{Semaphore Syntax}
-
-Binary semaphores are useful, and we can generalize this concept to what is known as a \textit{counting} or \textit{general} semaphore. Instead of having only the values 0 and 1, the setup routine for the counting semaphore allows the choice of an integer value and this is the maximum value. A thread that waits on that semaphore will decrement the integer by 1; a thread that signals on the semaphore will increment the integer by 1. If a thread attempts to wait on a semaphore and the decrement operation makes the integer value negative, the calling thread is blocked. If, however, the semaphore is, for example, initialized with 5 and the current value is 2, a thread that waits on that general semaphore will not be blocked.
-
-In UNIX, the semaphores are always general. So, the functions are:
+Now, to make use of the \texttt{test\_and\_set} routine. Let us assume we have an integer variable called \texttt{busy} that is initialized at program startup to 0. The implementation is the same for both threads so there is no need to show them side by side.
 
 \begin{lstlisting}[language=C]
-sem_init( sem_t* semaphore, int shared, int initial_value);
-sem_destroy( sem_t* semaphore )
-sem_wait( sem_t* semaphore )
-sem_post( sem_t* semaphore )
+while ( !test_and_set( busy ) ) {
+   /* Wait for my turn */
+}
+/* critical section */
+busy = 0;
 \end{lstlisting}
 
-Of these functions, the only one where the parameters are not obvious is the initialization routine. The parameter \texttt{shared} will be set to either 0 or 1: 1 if the semaphore is to be shared between processes (e.g., using shared memory), 0 otherwise. I'll also take a moment also to point out the importance of getting the initial value correct. If we choose the wrong initial value then our program might get stuck of we might not get the mutual exclusion behaviour we are supposed to have.
+Finally, we have something that will provide mutual exclusion without the risk that the threads will all get stuck because each thinks another is in the critical section. This is good, but can be improved. The \texttt{while} loop that is constantly checking the value with the Test-and-Set instruction is an example of \textit{busy-waiting}. A given thread is constantly checking and checking and checking the instruction, and this is a waste of time and effort. Thread $A$ will not get into the critical section while thread $B$ is in there and asking constantly does not make $B$ get the job done any faster, just as a child asking ``are we there yet?'' does not improve the speed at which he or she gets to his or her destination.
 
-\subsection*{Applying the Semaphore to the Linked List}
-
-Now that we have the appropriate syntax we can apply it to the linked list example from this section. We will add to the linked list structure (\texttt{struct single\_list}) a semaphore: \texttt{sem\_t sem;}. In the initialization routine, we need to call the initialization method: \texttt{sem\_init( \&( list->sem ), 0, 1 );}
-
-Finally, the \texttt{semaphore\_wait} and \texttt{semaphore\_signal} operations need to be added to \texttt{push\_front} at the start and end of the critical section, respectively. Recall from earlier that we want the critical section to be as small as it can be. Putting it all together:
-
-\begin{lstlisting}[language=C]
-typedef struct single_node {
-  void *element;
-  struct single_node *next;
-} single_node_t;
-
-typedef struct single_list {
-  single_node_t *head;
-  single_node_t *tail;
-  int size;
-  sem_t sem;
-} single_list_t;
-
-void single_list_init( single_list_t *list ) {
-  list->head = NULL;
-  list->tail = NULL;
-  list->size = 0;
-
-  sem_init( &( list->sem ), 0, 1 );
-}
-
-bool push_front( single_list_t *list, void *obj ) {
-  single_node_t *tmp = malloc( sizeof( single_node_t ) );
-  
-  if ( tmp == NULL ) {
-    return false;
-  }
-  
-  tmp->element = obj;
-  
-  sem_wait( &( list->sem ) ); {
-    tmp->next = list->head;
-    list->head = tmp;
-
-    if ( list->size == 0 ) {
-       list->tail = tmp;
-    }
-    ++( list->size );
-  
-  } sem_post( &( list->sem ) );  
-  
-  return true;
-}
-\end{lstlisting}
-
-Strictly speaking, the braces (\{ \}) to enclose the critical region (between the wait and signal operations) are not necessary. This is just a use of C syntax to make it more obvious what the critical region is and to make it harder to make a mistake.
-
-The critical section here just encloses the modification of the shared linked list. In theory one might put the wait and signal operations at the start and end of the entire function, respectively. This is, however, suboptimal: it forces unnecessary waiting. In this specific example, including the call to \texttt{malloc} is especially bad; the memory allocation itself can block if insufficient memory is available. Thus the process currently in the critical section is blocked and that means no other thread can enter the critical section. This might result in the system getting totally stuck~\cite{mte241}.
+It is less wasteful of resources and effort if the \texttt{while} loop contains some instructions saying it should wait a little while before checking again (a sleep instruction). Serialization was achievable through messages; and they can be used to get mutual exclusion. This is the topic to be examined next.
 
 
 \input{bibliography.tex}

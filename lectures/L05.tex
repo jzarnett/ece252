@@ -154,9 +154,18 @@ int main( int argc, char** argv ) {
 \end{lstlisting}
 
 
-\subsection*{Signals} 
+\section*{The Fork Bomb}
 
-UNIX systems use signals to indicate events (e.g., the \texttt{Ctrl-C} on the console), which is a form of event-driven programming. Signals also are things like exceptions (division by zero, segmentation fault), etc. A signal may be \textit{synchronous} if the signal occurs as a result of the program execution (e.g., dividing by zero); it is \textit{asynchronous} if it comes from outside the process (e.g., the user pressing \texttt{Ctrl-C} or one process or thread sending a signal to another). Signals are, in the end, interrupts with a certain integer ID.
+We will take a slight digression from the general topic of processes to discuss a denial-of-service attack against UNIX systems that is called the ``Fork Bomb''. The idea behind the attack is to call \texttt{fork} repeatedly until the number of processes spawned is too high for the system to manage and it either crashes or is so slow that no useful work can get done. As you can imagine, this is caused by repeatedly calling \texttt{fork}. Each time a program does so, there are now two processes running, each of which calls \texttt{fork}. There are then $2^{n}$ processes after each of $n$ invocations and this exponential growth will soon crash up against the limits of the system.
+
+A system configured to defend against this may impose limits on (1) the total number of processes a user may create; and (2) the rate at which a user may spawn a new process.
+
+Note: do not attempt this on anything other than your personal computer at home. It is a denial of service attack and would certainly count as misuse of resources on any system. Accordingly, trying to do it will very likely result in a ban. Getting banned from using university computer resources is not conducive to completing your degree.
+
+
+\section*{Signals} 
+
+UNIX systems use signals to indicate events (e.g., the \texttt{Ctrl-C} on the console). Signals also are things like exceptions (division by zero, segmentation fault), etc. A signal may be \textit{synchronous} if the signal occurs as a result of the program execution (e.g., dividing by zero); it is \textit{asynchronous} if it comes from outside the process (e.g., the user pressing \texttt{Ctrl-C} or one process or thread sending a signal to another). Signals are, in the end, interrupts with a certain integer ID.
 
 By default, the kernel will handle any signal that is sent to a process with the default handler. The behaviour of the default handler may be to ignore the signal, but some signals (segmentation fault) will result in termination of the process. 
 
@@ -182,20 +191,11 @@ Here are some of the many signals described in the POSIX.1-1990 standard:
 
 Alternatively, a process may inform the operating system it is prepared to handle the signal itself (such as doing some cleanup when the \texttt{Ctrl-C} is received instead of just dying). In any event, a signal needs to be handled, even if the handling is to ignore it. Note that the signals \texttt{SIGKILL} and \texttt{SIGSTOP} cannot be caught, blocked, or ignored.
 
-In UNIX, to deliver a signal to a process, the command is:\\
-\texttt{kill( pid\_t pid, int signal )}\\
-Yes, to send a signal, even if it's not a kill signal, the command is kill.
-
-On the command line, the command to send a signal is also \texttt{kill} followed by a process ID. Normally a command like \texttt{kill 24601} will send \texttt{SIGHUP} to a process, which will, by default, kill the process. The process has an opportunity to clean things up if it wants to. If the process is still stuck, you can ``force'' kill the process by sending \texttt{SIGKILL} with the command \texttt{kill -9 24601}. The \texttt{-9} parameter says to send signal 9 (\texttt{SIGKILL}) rather than the default 1 (\texttt{SIGHUP}). Some users are eager to jump to \texttt{kill -9} whenever a process is stuck, but it's usually worthwhile to attempt a less severe killing (\texttt{SIGHUP} or \texttt{Ctrl-C}) so that the process can at least try to clean up.
+On the command line, the command to send a signal is also\texttt{kill} followed by a process ID. Normally a command like \texttt{kill 24601} will send \texttt{SIGHUP} to a process, which will, by default, kill the process. The process has an opportunity to clean things up if it wants to. If the process is still stuck, you can ``force'' kill the process by sending \texttt{SIGKILL} with the command \texttt{kill -9 24601}. The \texttt{-9} parameter says to send signal 9 (\texttt{SIGKILL}) rather than the default 1 (\texttt{SIGHUP}). Some users are eager to jump to \texttt{kill -9} whenever a process is stuck, but it's usually worthwhile to attempt a less severe killing (\texttt{SIGHUP} or \texttt{Ctrl-C}) so that the process can at least try to clean up.
 
 
-\section*{The Fork Bomb}
+A signal is, interestingly, a form of inter-process communication: you are sending a signal from one process to another, even if it's your terminal doing the sending. When we have more than one process, we might want them to communicate, so we should look into how to make that happen.
 
-We will take a slight digression from the general topic of processes to discuss a denial-of-service attack against UNIX systems that is called the ``Fork Bomb''. The idea behind the attack is to call \texttt{fork} repeatedly until the number of processes spawned is too high for the system to manage and it either crashes or is so slow that no useful work can get done. As you can imagine, this is caused by repeatedly calling \texttt{fork}. Each time a program does so, there are now two processes running, each of which calls \texttt{fork}. There are then $2^{n}$ processes after each of $n$ invocations and this exponential growth will soon crash up against the limits of the system.
-
-A system configured to defend against this may impose limits on (1) the total number of processes a user may create; and (2) the rate at which a user may spawn a new process.
-
-Note: do not attempt this on anything other than your personal computer at home. It is a denial of service attack and would certainly count as misuse of resources on any system. Accordingly, trying to do it will very likely result in a ban. Getting banned from using university computer resources is not conducive to completing your degree.
 
 \input{bibliography.tex}
 

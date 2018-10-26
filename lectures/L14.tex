@@ -2,327 +2,186 @@
 
 \begin{document}
 
-\lecture{ 14 --- Synchronization Patterns}{\term}{Jeff Zarnett}
+\lecture{ 14 --- Semaphores }{\term}{Jeff Zarnett}
 
-\section*{Synchronization Patterns}
+\section*{Mutual Exclusion through Messages}
 
-There are a number of common synchronization patterns that occur frequently and we can use semaphores to solve them. These synchronization patterns are ways of co-ordinating two threads or processes. We have already examined serialization and mutual exclusion, but there are many more. Throughout this section we will use pseudocode and something like ``Statement A1'' could be any valid statement in the program; what exactly it does is not important as the semaphore is a general solution. The examples in this section come from~\cite{lbs}.
-
-\subsection*{Signalling}
-Recall from earlier the example with Alice and Bob at the power plant. This was postling: Bob sends a post to Alice to indicate that he has arrived to work and Alice may go home. Signalling can be used in general as a way of indicating that something has happened. Suppose we have a semaphore named \texttt{sem}, initialized to 0.
-
-\begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
-  \begin{verbatim}
-	1. Statement A1
-	2. post( sem )
-  \end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
-  \begin{verbatim}
-	1. wait( sem )
-	2. Statement B2
-  \end{verbatim}
-\end{multicols}
-\vspace{-2em}
-
-If $B$ gets to the \texttt{wait} statement first, it will be blocked (as the semaphore is 0) and cannot proceed until someone posts on that semaphore. When $A$ does call \texttt{post}, then $B$ may proceed. If instead $A$ gets to the \texttt{post} statement first, it will post and the semaphore value will be 1. Then, when $B$ gets to the \texttt{wait} statement, it can proceed without delay. Regardless of the actual order that the threads run, we are certain that statement A1 will execute before statement B2.
-
-Note that this is a situation where it makes sense for a thread to post a semaphore even if it is not the thread that waited on that semaphore. Thus, sometimes, the semaphore is appropriate and the mutex structure is not necessary in every circumstance.
-
-\subsection*{Rendezvous}
-The rendezvous is an expansion of the post pattern so that it works both ways: two threads should be at the same point before either of them may proceed (they ``meet up''). Given the following code:
-
-\begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
-  \begin{verbatim}
-	1. Statement A1
-	2. Statement A2
-  \end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
-  \begin{verbatim}
-	1. Statement B1
-	2. Statement B2
-  \end{verbatim}
-\end{multicols}
-\vspace{-2em}
-
-The desirable property is that A1 should take place before B2 and that B1 should take place before A2. As each thread must wait for the other, two semaphores will be needed: one to indicate that $A$ has arrived and one for $B$. We will assign them the names \texttt{aArrived} and \texttt{bArrived} and initialize both to 0. A first attempt at a solution:
-
-\begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
-  \begin{verbatim}
-	1. Statement A1
-	2. wait( bArrived )
-	3. post( aArrived )
-	4. Statement A2
-  \end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
-  \begin{verbatim}
-	1. Statement B1
-	2. wait( aArrived )
-	3. post( bArrived )
-	4. Statement B2
-  \end{verbatim}
-\end{multicols}
-\vspace{-2em}
-
-
-The problem here should be obvious: thread $A$ gets to the \texttt{wait} statement and will wait until $B$ posts its arrival before it can proceed. Thread $B$ gets to its \texttt{wait} statement and will wait until $A$ posts its arrival before it will proceed. Unfortunately, each thread is waiting for the other to post and neither of them can get to the actual \texttt{post} statement because they are both blocked. 
-
-Neither thread can proceed. The situation can never be resolved, because there is no external force (e.g., a hardware interrupt that means the data has been read from a device) that would cause one or the other to be unblocked. This is a situation called \textit{deadlock}, and it is a subject that will receive a great deal of examination later on. For now, an informal definition is: all threads are permanently stuck. Obviously, this is undesirable.
-
-What if instead, the threads reverse the order and post first before waiting?
-
-\begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
-  \begin{verbatim}
-	1. Statement A1
-	2. post( aArrived )
-	3. wait( bArrived )
-	4. Statement A2
-  \end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
-  \begin{verbatim}
-	1. Statement B1
-	2. post( bArrived )
-	3. wait( aArrived )
-	4. Statement B2
-  \end{verbatim}
-\end{multicols}
-\vspace{-2em}
-
-This solution works: if $A$ gets to the rendezvous point first, it posts its arrival and waits for $B$. If $B$ gets there first, it posts its arrival and waits for $A$. Whichever gets there last will post and unblock the other, before it calls \texttt{wait} and will be able to proceed directly because the first thread to arrive already postled. 
-
-A variation on this can also work where only one thread posts first and the other thread posts second. This is shown below:
-
-\begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
-  \begin{verbatim}
-	1. Statement A1
-	2. wait( bArrived )
-	3. post( aArrived )
-	4. Statement A2
-  \end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
-  \begin{verbatim}
-	1. Statement B1
-	2. post( bArrived )
-	3. wait( aArrived )
-	4. Statement B2
-  \end{verbatim}
-\end{multicols}
-\vspace{-2em}
-
-While this solution will not result in deadlock, it is somewhat less efficient than the previous: it may require an extra switch between processes. If $A$ arrives at the \texttt{wait} statement, it waits; then $B$ posts and must then wait for $A$'s post (it cannot proceed right away even though it got there second). After $A$ gets to run again it may proceed to post and unblock $B$. For the most part, we are usually satisfied as long as we are certain that deadlock will not occur that a given solution is acceptable. Nevertheless, the previous solution is provably better and is what programmers want to implement.
-
-\subsection*{Mutual Exclusion}
-We saw previously the motivation and concept of mutual exclusion through messages in the linked list example. The general form in pseudocode is of course:
-
-\begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
-  \begin{verbatim}
-	1. wait( mutex )
-	2. critical section
-	3. post( mutex )
-  \end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
-  \begin{verbatim}
-	1. wait( mutex )
-	2. critical section
-	3. post( mutex )
-  \end{verbatim}
-\end{multicols}
-\vspace{-2em}
-
-The mutex semaphore is originally initialized to 1 (unlike the previous examples where it started at 0), so whichever thread gets to the \texttt{wait} statement first will proceed immediately and not be blocked at all. If the semaphore were initialized to 0 then neither thread could ever get to the \texttt{post} statement or ever get into the critical section (deadlock).
-
-Note that both threads $A$ and $B$ are identical here, which was not always the case in previous examples. This is a \textit{symmetric} solution. It is easier to make predictions about the behaviour of the threads when they all do the same thing. If the different threads have different sections of code, they are \textit{asymmetric}. The symmetric solutions very often scale well: we could have arbitrarily many threads executing in that same pattern, as long as they all wait on the semaphore before entering the critical section, we can be sure mutual exclusion is enforced.
-
-\subsection*{Multiplex}
-In addition to the binary semaphore, we also discussed the general semaphore. If the general semaphore is initialized to $n$, then at most $n$ threads can be in the critical section at a time. This pattern is more common than it might appear at first glance. Restaurants have a certain number of tables and seats. If more people wish to dine than there are seats available, those customers must wait until some seats become available (other customers leave). Restaurants generally want to pack in as many seats as possible, but fire safety regulations set a maximum occupancy for a given space.
-
-In a computer related example, suppose that the system has a problem that when too many concurrent database requests are happening. The queries become slow and eventually time out. A potential solution is to protect all database accesses with a binary semaphore, so only one database query can run at any time. Analysis may reveal that this is too restrictive a policy; perhaps we can execute 5 queries concurrently without any slowdown. Then initialize the semaphore with a value of 5, allowing at most 5 threads into the critical section at any time.
-
-Now, to represent this in pseudocode. This is a symmetric solution, so it will work for arbitrarily many threads (and showing $A$ and $B$ side by side is not necessary).
-
-\textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
-	1. wait( mutex )
-	2. critical section
-	3. post( mutex )
-  \end{verbatim}
-\vspace{-2em}
-
-This looks exactly like the solution for mutual exclusion, as it should. The only difference is how many threads can enter the critical section at a time (1 vs. many). 
-
-
-\subsection*{Barrier}
-The barrier pattern is a generalization of the rendezvous pattern; a way of having more than two threads meet up at the same point before any can proceed. Given $n$ threads, each of which knows that the total number of threads is $n$, when the first $n-1$ threads arrive, they should wait until the $n$th arrives. As a solution we might consider a variable to keep track of the number of threads that have reached the appropriate point. Because this variable is shared data, modification of it should be in a critical section.  Thus we will have a semaphore, initialized to 1, called \texttt{mutex} to protect that counter. Then we will have a second semaphore, \texttt{barrier} that will be the place where threads wait until the $n$th thread arrives.
-
-
-\textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
-	1. wait( mutex )
-	2. count++
-	3. post( mutex )
-	4. if count == n
-	5.     post( barrier )
-	6. end if
-	7. wait( barrier )
-  \end{verbatim}
-\vspace{-2em}
-
-When the $n$th thread arrives, it unlocks the barrier (posts it) and then may proceed. Unfortunately, this is not a solution, because it will lead to some threads being permanently stuck. If there is more than one thread waiting at the barrier, the first thread will be unblocked when the $n$th thread posts on it. However, after that, there are no other \texttt{post} statements and therefore the other threads waiting are stuck forever, waiting for a post that will never come.
-
-Perhaps the idea occurred to you that the $n$th thread to arrive should post $n-1$ times:
-
-\textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
-	1. wait( mutex )
-	2. count++
-	3. post( mutex )
-	4. if count == n
-	5.     for i from 1 to  n
-	6.         post( barrier )
-	7.     end for
-	8. end if
-	9. wait( barrier )
-  \end{verbatim}
-\vspace{-2em} 
-
-This is a solution that allows all of the $n$ threads to proceed (none get stuck), but it is less than ideal. The thread that runs last is very likely the lowest priority thread (if it were high priority it would likely have run first) and therefore when it posts on the semaphore, the thread that has just been unblocked will be the next to run. Then the system switches back, at some later time, to the thread currently unblocking all the others. Thus, in the worst case, there are $2n$ process switches, when it could be accomplished with just $n$~\cite{mte241}. Have each thread unblock the next:
-
-\textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
-	1. wait( mutex )
-	2. count++
-	3. post( mutex )
-	4. if count == n
-	5.     post( barrier )
-	6. end if
-	7. wait( barrier )
-	8. post( barrier )
-  \end{verbatim}
-\vspace{-2em}
-
-This pattern of a wait followed immediately by a post is a common pattern called a \textit{turnstile}. The analogy should be familiar to anyone who has travelled by subway (e.g., in Toronto or NYC): a turnstile allows one person at a time to go through. A turnstile pattern allows one thread at a time to proceed through, but can be locked to bar all threads from proceeding. Initially the turnstile in the above example is locked, and the $n$th thread unlocks it and permits all $n$ threads to go through.
-
-Alert readers may have noticed something that causes some minor distress: on line 4 in this solution (and the previous, suboptimal one), we are reading the value of \texttt{count}, a shared variable, without the protection of a semaphore. Is this dangerous? Yes, but the alternative is, in this specific instance, worse. Consider this instead:
-
-\textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
-	1. wait( mutex )
-	2. count++
-	3. if count == n
-	4.     post( barrier )
-	5. end if
-	6. wait( barrier )
-	7. post( barrier )
-	8. post( mutex )
-  \end{verbatim}
-\vspace{-2em}
-
-The problem here is deadlock once again. The first thread waits on \texttt{mutex} and then goes to wait on the \texttt{barrier} semaphore. At this point, the first thread is blocked. When a second thread comes along, it will wait on \texttt{mutex} but can get no further because the first thread has not postled on it. The counter will be 1, but cannot get past 1. The condition of \texttt{count} equalling $n$ can never be true. Thus, all the threads are stuck. This is a common source of deadlock: blocking on a semaphore while inside a critical region.
-
-\subsection*{The Reusable Barrier}
-The barrier solution we have is good (as long as we can live with the read of the \texttt{count} variable outside of a mutual exclusion protection), but the way it is implemented now, \texttt{count} can increase but never decrease. Once the barrier is open, it can never be closed again. Programs very often do the same thing repeatedly, so a one-time use barrier is not ideal; it would be better to have a reusable barrier. One way to deal with this is to decrement \texttt{count} after the rendezvous has taken place. The line labelled ``critical point'' is the section of code that must wait until all the threads have rendezvoused\footnote{In the immortal words of Bill Watterson, author of \textit{Calvin and Hobbes}: ``verbing weirds language.''}.
-
-
-\textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
-	 1. wait( mutex )
-	 2. count++
-	 3. post( mutex )
-	 4. if count == n
-	 5.     post( turnstile )
-	 6. end if
-	 7. wait( turnstile )
-	 8. post( turnstile )
-	 9. [critical point]
-	10. wait( mutex )
-	11. count--
-	12. post( mutex )
-	13. if count == 0
-	14.     wait( turnstile )
-	15. end if
-  \end{verbatim}
-\vspace{-2em}
-
-There are two problems with the above implementation. Suppose thread $n-1$ is about to execute line 4 (the comparison of \texttt{count}) and then there is a process switch and the $n$th thread comes to this point. Both of them will find that \texttt{count} is equal to $n$ and therefore both threads will post the turnstile. The same problem occurs on line 13: more than one thread may wait on the turnstile, resulting in deadlock. Let us fix that:
-
-
-\textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
-	 1. wait( mutex )
-	 2. count++
-	 3. if count == n
-	 4.     post( turnstile )
-	 5. end if
-	 6. post( mutex )
-	 7. wait( turnstile )
-	 8. post( turnstile )
-	 9. [critical point]
-	10. wait( mutex )
-	11. count--
-	12. if count == 0
-	13.     wait( turnstile )
-	14. end if
-	15. post( mutex )
-  \end{verbatim}
-\vspace{-2em}
-
-This solves the problem previously identified by putting the checks of \texttt{count} inside the critical section controlled by \texttt{mutex}. Unfortunately, there is another problem that can occur here: suppose one particular thread gets through the second mutex but is running in a loop and gets back through the first mutex again. This would be like one thread being one ``lap'' ahead of the others. We can prevent this by having two turnstiles: first all threads wait at the first turnstile until the last gets there and lets them through. Then all threads wait at a second turnstile until the last gets there and lets them all through again. The form of the solution represented visually, is:
-
-\begin{center}
-\includegraphics[width=0.75\textwidth]{images/reusable-barrier.png}\\
-	A visual representation of the group rendezvous with two turnstiles~\cite{mte241}.
-\end{center}
-
-From left to right, the seven steps of the diagram are~\cite{mte241}:
+The earlier definition of mutual exclusion said only that one thread may be in the critical section at a time. This is the minimum, but there are additional desirable properties that will be used to evaluate any solution~\cite{osi}:
 \begin{enumerate}
-	\item The threads arrive at the rendezvous.
-	\item The $n$th thread arrives at the rendezvous.
-	\item That last thread unlocks the first turnstile and locks the second turnstile.
-	\item The threads pass through the first turnstile.
-	\item The $n$th thread passes through the first turnstile; it may not have been the last to arrive at the first turnstile.
-	\item The thread that just arrived locks the first turnstile and unlocks the second.
-	\item The threads leave the rendezvous.
+	\item Mutual exclusion must apply (this criterion eliminated most of the flag examples earlier).
+	\item A thread that halts outside the critical section must not interfere with other threads (the strict alternation routine, even if implemented with Test-and-Set, would fail on this criterion).
+	\item It must not be possible for a thread requiring access to a critical section to be delayed indefinitely (the situation where all threads get stuck, each thinking another is in the critical section, would fail this criterion).
+	\item When no thread is in the critical section, a thread that requests access should be allowed to enter right away (no unnecessary waiting).
+	\item No assumptions are made about what the threads will do or the number of processors in the system (so it should be a general solution, not a special case).
+	\item A thread remains inside the critical section for a finite time only (this is more of an assumption than a criterion, but our solution must provide a way to indicate the thread has left the critical section).
 \end{enumerate}
 
-\textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
-	 1. wait( mutex )
-	 2. count++
-	 3. if count == n
-	 4.     wait( turnstile2 )
-	 5.     post( turnstile1 )
-	 6. end if
-	 7. post( mutex )
-	 8. wait( turnstile1 )
-	 9. post( turnstile1 )
-	10. [critical point]
-	11. wait( mutex )
-	12. count--
-	13. if count == 0
-	14.     wait( turnstile1 )
-	15.     post( turnstile2 )
-	16. end if
-	17. post( mutex )
-	18. wait( turnstile2 )
-	19. post( turnstile2 )
-  \end{verbatim}
-\vspace{-2em}
+Recall from earlier the example of the employees Alice and Bob who worked at the Springfield Nuclear Power Plant in Sector 7G.  Suppose there is a third employee at the power plant, Charlie, who works on the day shift at the same time as Alice. Safety rules say that at least one of them has to monitor the safety of the reactor at all times and therefore they cannot both take lunch at the same time. If we cannot predict when lunch begins or how long it will last, how can Alice and Charlie co-ordinate to make sure they don't take lunch at the same time?
 
-This solution can also be called a \textit{two-phase barrier} because all threads have to wait twice: once at each turnstile.
+A possible solution: before Alice gets up from her desk to go for lunch, she calls Charlie. If he does answer, she may proceed. If Charlie does not answer, Alice will know he is not at his desk and she cannot leave at the moment. She can call again, constantly, until she reaches Charlie (busy-waiting), but this ties up a phone line nonstop and is effort intensive for Alice. If she doesn't want to do that, at this point she has two options: one is to simply wait some period of time (perhaps 15 minutes) and call again in the hopes that at that time Charlie will be back from lunch. A better approach would be for Alice to leave a message in Charlie's voice mail box, asking him to call her back when he has finished lunch. Then Alice can go about her work until she gets a call from Charlie and as soon as that happens, she may step out for lunch.
 
-%\subsection*{Queue}
-%The final synchronization pattern we will examine is the queue. Imagine the road test procedure for getting a driver's license. This requires a trip to the ministry of transportation to meet up with an examiner; then a driver will drive the vehicle around with the examiner in the passenger seat, and the examiner evaluates the driver's performance. At the test centre, there are two queues: one for drivers and one for examiners. When a driver arrives and wants to take the test, if there is an examiner available, they may proceed; otherwise the driver has to wait. If it is an unusually slow day and the examiner gets to the front of the queue and there are no drivers ready to take the test, the examiner has to wait. We will need two semaphores to implement this.
+Busy waiting has already been found inadequate as a solution. It wastes CPU time that another process or thread could be putting to productive use. The approach of ``wait 15 minutes and try again'' might be adequate for Alice as a human, but for the computer it is not ideal. If thread $B$ is in the critical section when $A$ tries to get in, and $A$ then sleeps for 2000~ms before trying again, this at least means $A$ is not wasting CPU cycles while it tries futilely to ask ``is it my turn now? Now? Now? Now? Now? Now?'', but if $B$ is finished after 20 ms, then thread $A$ waits unnecessarily for 1980~ms. 
+
+What we want is something that resembles the call-when-finished semantics of Alice leaving a message and Charlie calling her back. That solution is called the Semaphore.
+
+\section*{Semaphore}
+A semaphore, outside of the context of computing, is a system of signals used for communication. Before ships had radios, when two friendly ships were in visual range, they would communicate with one another through flag semaphores, which is a fancy way of saying each ship had someone holding certain flags in a specific position. Thus the two ships could co-ordinate at a distance, even if the distance was limited to visual range. This worked dramatically better than many alternatives (e.g., shouting).
+
+The computer semaphore was invented in 1965 by Edsger Dijkstra, a brilliant Dutch computer scientist who is sometimes maligned in textbooks as being eccentric or unusual.  He described a data structure that can be used to solve synchronization problems via messages in~\cite{semaphores}. Although the version we use now is not exactly the same as the original description, even 50+ years later, the core idea is unchanged.
+
+We will begin with the \textit{binary semaphore}: this is a variable that has two values, 0 and 1. It can be initialized to 0 or to 1. The semaphore has two operations: \texttt{wait} and \texttt{post}. In the original paper, \texttt{wait} was called \texttt{P} and \texttt{signal} was called \texttt{V}, but the names in common usage have become a little more descriptive. Mind you, if you can read/write Dutch as I can, the names make some sense: \texttt{P} is short for \textit{proberen}, ``to test'', and \texttt{V} is short for \textit{verhogen}, ``to raise'' or ``to increment''. But, for historical reasons as much as any other, the traditional lingua franca of computers is English, so the English names have tended to dominate. Furthermore, \texttt{post} is also called \texttt{signal} in many textbooks.
+
+The \texttt{wait} operation on the semaphore is how a program tries to enter the critical section. When \texttt{wait} is called, if the semaphore value is 1, set it to 0 and this thread may enter the critical section and continue. If the semaphore is 0, some other thread is in the critical section and the current thread must \textit{wait} its turn. The thread that called \texttt{wait} will be blocked by the operating system, just as if it asked for memory or a disk operation. This is sometimes referred to as decrementing the semaphore (because the value changes from 1 to 0).
+
+The \texttt{post} operation is how a program sends the message that it is finished with the critical section. When this is called, if the semaphore is 1, do nothing; if the semaphore is 0 and there is a task blocked awaiting that semaphore, that task may be unblocked; else set the semaphore to 1. This is also sometimes called incrementing the semaphore.
+
+If this is still confusing, consider the following analogy. Suppose you like coffee, and going to a particular coffee shop because there you can get your drink exactly the way you like it: half caf, no whip, extra hot, extra foam, two shot, soy milk latte\footnote{For the record, the author drinks tea, black.}. After this delightful beverage it may be the case that you need to use the washroom. The washroom is locked at such places, so to get in you will need the key, which is available by asking one of the employees. If nobody is currently in the washroom, you will get the key and can proceed. If it is currently occupied, you will have to wait. When the key is returned, if anyone is waiting, the employee will give the key to the first person in line for the washroom; otherwise he or she will put the key away behind the counter.
+
+Observe that the operating system is needed to make this work: if thread $A$ attempts to wait on a semaphore that some other thread already has, it will be blocked and the operating system knows not to schedule it to run until it is unblocked. When thread $B$ is finished and posts to the semaphore it is holding, that will unblock $A$ and allow it to run again.
+
+Note also that the semaphore does not provide any facility to ``check'' the current value. Thus a thread does not know in advance if it will block when it waits on the semaphore. It can only wait and may be blocked or may proceed directly into the critical section if there is no other thread in there at the moment.
+
+When a thread signals a semaphore, it likewise does not know if any other thread(s) are waiting on that semaphore. There is no facility to check this, either. When thread $A$ signals a semaphore, if another thread $B$ is waiting, $B$ will be unblocked and either thread $A$ or thread $B$ may continue execution (or both, if it is a SMP system), or another unrelated thread may be the one to continue execution. We have no way of knowing.
+
+On the subject of observation, note that nothing about the semaphore as so defined protects against certain ``bad'' behaviour. Suppose thread $C$ would like to enter the critical section. The programmer of this task is malicious as well as impatient: ``my task is FAR too important to wait for those other processes and threads,'' he says, as he implements his code such that before he waits on the semaphore, he posts to it. Even though $A$ or $B$ might be in the critical section, the semaphore gets incremented so he is more or less certain that his program will now get to enter the critical section. It's not foolproof: if there are other threads waiting, they might get woken up to proceed instead of $C$; much depends on the scheduler. Nevertheless, this is really bad: one process can wreak all kinds of havoc by letting another process into the critical section. Though the example here makes the author of thread $C$ a scheming villain (because the example is funnier that way), such a situation may occur without malicious intent if it is simply the result of a programming error.
+
+The problem identified in the previous paragraph is usually solved by supplementing the basic binary semaphore. A data structure called a \textit{mutex} (from \textbf{mut}ual \textbf{ex}clusion) is a binary semaphore with an additional rule enforced: only the thread that has called \texttt{wait} may \texttt{post} to that semaphore. This adds a small amount of extra bookkeeping to the semaphore, but this is a reasonable price to pay.
+
+\subsection*{Example: Linked List Integrity}
+We will now examine a situation where a semaphore helps to prevent a synchronization error. This example comes from~\cite{mte241}. Imagine we have a shared linked list defined as:
+
+\begin{lstlisting}[language=C]
+typedef struct single_node {
+  void *element;
+  struct single_node *next;
+} single_node_t;
+
+typedef struct single_list {
+  single_node_t *head;
+  single_node_t *tail;
+  int size;
+} single_list_t;
+
+
+void single_list_init( single_list_t *list ) {
+  list->head = NULL;
+  list->tail = NULL;
+  list->size = 0;
+}
+
+bool push_front( single_list_t *list, void *obj ) {
+  single_node_t *tmp = malloc( sizeof( single_node_t ) );
+  
+  if ( tmp == NULL ) {
+    return false;
+  }
+  
+  tmp->element = obj;
+  tmp->next = list->head;
+  list->head = tmp;
+
+  if ( list->size == 0 ) {
+     list->tail = tmp;
+  }
+  
+   ++( list->size );
+   return true;
+}
+\end{lstlisting}
+
+If only one thread can access this data structure, we do not have a problem, but it was a shared linked list. Suppose a thread runs and tries to add an element $A$ to the list using the \texttt{push\_front} function. Right before the increment of the \texttt{size} field takes place there is a process switch. At this point, the new node has been allocated and initialized, the pointers of \texttt{head} and \texttt{tail} have been updated, but \texttt{size} is 0. 
+
+\begin{center}
+\includegraphics[width=0.25\textwidth]{images/linkedlist1.png}\\
+The linked list at the time of the thread switch~\cite{mte241}.
+\end{center}
+
+Now, the second thread executes and wants to add $B$ to the linked list. In the conditional statement, \texttt{list->size == 0} evaluates to true. Thus, the \texttt{tail} pointer is updated.
+
+\begin{center}
+\includegraphics[width=0.35\textwidth]{images/linkedlist2.png}\\
+The linked list after the second thread adds $B$~\cite{mte241}.
+\end{center}
+
+When the first thread gets to run again, it will resume where it left off: it increments the \texttt{size} integer, leaving the final state: \texttt{head} and \texttt{tail} both point to element $B$, even though there is element $A$ in the list.
+
+\begin{center}
+\includegraphics[width=0.35\textwidth]{images/linkedlist3.png}\\
+The linked list after the first thread resumes~\cite{mte241}.
+\end{center}
+
+This is an \textit{inconsistent state}: the linked list has two elements in it but the \texttt{tail} pointer is wrong. An attempt to remove an element from the list will reveal the problem, which can manifest in a few ways, depending on how the removal routine is implemented. If we try to remove the front element we might check that \texttt{head} and \texttt{tail} are equal, and that may give the mistaken impression that $B$ is the last element in the list, so we ``lose'' $A$ and it becomes a memory leak. Or perhaps the \texttt{head} pointer will be updated but \texttt{tail} will still point to $B$ even after it has been freed, which can result in a segmentation fault or invalid access.
+
+\subsection*{Semaphore Syntax}
+
+Binary semaphores are useful, and we can generalize this concept to what is known as a \textit{counting} or \textit{general} semaphore. Instead of having only the values 0 and 1, the setup routine for the counting semaphore allows the choice of an integer value and this is the maximum value. A thread that waits on that semaphore will decrement the integer by 1; a thread that signals on the semaphore will increment the integer by 1. If a thread attempts to wait on a semaphore and the decrement operation makes the integer value negative, the calling thread is blocked. If, however, the semaphore is, for example, initialized with 5 and the current value is 2, a thread that waits on that general semaphore will not be blocked.
+
+In UNIX, the semaphores are always general. So, the functions are:
+
+\begin{lstlisting}[language=C]
+sem_init( sem_t* semaphore, int shared, int initial_value);
+sem_destroy( sem_t* semaphore )
+sem_wait( sem_t* semaphore )
+sem_post( sem_t* semaphore )
+\end{lstlisting}
+
+Of these functions, the only one where the parameters are not obvious is the initialization routine. The parameter \texttt{shared} will be set to either 0 or 1: 1 if the semaphore is to be shared between processes (e.g., using shared memory), 0 otherwise. I'll also take a moment also to point out the importance of getting the initial value correct. If we choose the wrong initial value then our program might get stuck of we might not get the mutual exclusion behaviour we are supposed to have.
+
+\subsection*{Applying the Semaphore to the Linked List}
+
+Now that we have the appropriate syntax we can apply it to the linked list example from this section. We will add to the linked list structure (\texttt{struct single\_list}) a semaphore: \texttt{sem\_t sem;}. In the initialization routine, we need to call the initialization method: \texttt{sem\_init( \&( list->sem ), 0, 1 );}
+
+Finally, the \texttt{semaphore\_wait} and \texttt{semaphore\_signal} operations need to be added to \texttt{push\_front} at the start and end of the critical section, respectively. Recall from earlier that we want the critical section to be as small as it can be. Putting it all together:
+
+\begin{lstlisting}[language=C]
+typedef struct single_node {
+  void *element;
+  struct single_node *next;
+} single_node_t;
+
+typedef struct single_list {
+  single_node_t *head;
+  single_node_t *tail;
+  int size;
+  sem_t sem;
+} single_list_t;
+
+void single_list_init( single_list_t *list ) {
+  list->head = NULL;
+  list->tail = NULL;
+  list->size = 0;
+
+  sem_init( &( list->sem ), 0, 1 );
+}
+
+bool push_front( single_list_t *list, void *obj ) {
+  single_node_t *tmp = malloc( sizeof( single_node_t ) );
+  
+  if ( tmp == NULL ) {
+    return false;
+  }
+  
+  tmp->element = obj;
+  
+  sem_wait( &( list->sem ) ); {
+    tmp->next = list->head;
+    list->head = tmp;
+
+    if ( list->size == 0 ) {
+       list->tail = tmp;
+    }
+    ++( list->size );
+  
+  } sem_post( &( list->sem ) );  
+  
+  return true;
+}
+\end{lstlisting}
+
+Strictly speaking, the braces (\{ \}) to enclose the critical region (between the wait and signal operations) are not necessary. This is just a use of C syntax to make it more obvious what the critical region is and to make it harder to make a mistake.
+
+The critical section here just encloses the modification of the shared linked list. In theory one might put the wait and signal operations at the start and end of the entire function, respectively. This is, however, suboptimal: it forces unnecessary waiting. In this specific example, including the call to \texttt{malloc} is especially bad; the memory allocation itself can block if insufficient memory is available. Thus the process currently in the critical section is blocked and that means no other thread can enter the critical section. This might result in the system getting totally stuck~\cite{mte241}.
+
 
 \input{bibliography.tex}
 
