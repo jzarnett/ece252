@@ -2,137 +2,94 @@
 
 \begin{document}
 
-\lecture{29 --- Asynchronous I/O}{\term}{Jeff Zarnett, based on original by Patrick Lam}
+\lecture{ 29 --- Asynchronous I/O }{\term}{Jeff Zarnett}
 
 \section*{Asynchronous (non-blocking) I/O}
-
-\begin{center}
-   ``Asynchronous I/O, for example, is often infuriating.''\\
-\hfill --- Robert Love. {\em Linux System Programming, 2nd ed, } page 215.
-
-\end{center}
-
-To motivate the need for non-blocking I/O, consider some of the usual I/O code:
+Cnsider some of the usual file read code:
 
 \begin{lstlisting}[language=C]
-    fd = open(...);
-    read(...);
-    close(fd);
+int fd = open( "example.txt", O_RDONLY );
+int bytes_read = read( fd, buffer, num_bytes );
+close( fd );
 \end{lstlisting}
 
-As we discussed much earlier, the \texttt{read} call is blocking, as expected. So, your program waits for the I/O operation to be complete before continuing on to the next statements (whatever they are). This is sometimes, but not always, sensible. 
+As we discussed much earlier, the \texttt{read} call is blocking, as expected. So, your program waits for the I/O operation to be complete before continuing on to the next statements (whatever they are). This is sometimes, but not always, sensible. If you need the data in the next statement, you can't go on until the data is present.
 
 If you are waiting for the bus, do you stare off blankly into space while waiting for it to arrive? Probably not. More likely you pull out your phone and start to use it for something. Whether that is productive or not (e.g., answering a project e-mail or liking posts on Facebook) is up to you, but you are doing something and making use of the time. 
 
-Our main solution until now is threads: if one thread gets blocked on the I/O the other ones can continue and is fine. But maybe you don't want to use threads, or maybe you can't due to: race conditions, thread stack size overhead, or limitations on the maximum number of threads. The last one might seem ridiculous but in some embedded system you may not have the option to make new threads. 
+Our main solution until now is threads: if one thread gets blocked on the I/O the other ones can continue and is fine. But maybe you don't want to use threads, or maybe you can't due to: race conditions, thread stack size overhead, or limitations on the maximum number of threads. The last one might seem ridiculous, but in some embedded system you may not have the option to make new threads (or at least not as many as you want). 
 
 Sometimes, also, your programming language (e.g., Javascript) doesn't allow you to make multiple threads and you really have no choice but to use asynchronous I/O. It's a useful tool to have in the toolbox so let's get into it.
 
 The simplest example:
 
 \begin{lstlisting}[language=C]
-    fd = open(..., O_NONBLOCK);
-    read(...); // returns instantly!
-    close(fd);
+int fd = open( "example.txt", O_RDONLY | O_NONBLOCK );
+int bytes_read = read( fd, buffer, num_bytes ); /* Returns instantly! */
+close( fd );
 \end{lstlisting}
 
-In principle, the {\tt read} call is supposed to return instantly,
-whether or not results are ready. That was easy! Well, not so much. The {\tt O\_NONBLOCK} flag actually only has the desired behaviour on sockets. The semantics of {\tt O\_NONBLOCK} is for I/O calls to not block, in the sense that they should never wait for data while there is no data available. But unfortunately, files \textit{always} have data available. 
+If we opened the file in non-blocking, the \texttt{read} call returns instantly. Whether or not results are ready. Unfortunately, this doesn't work here. The \texttt{O\_NONBLOCK} option is not helpful, because this call says we should not wait for data when there is no data available. But a file \textit{always} has data available. It might take a long time to load it up from disk, but the data is there. Do we know any scenarios where we don't have data always available?
 
-\paragraph{Conceptual view: non-blocking I/O.} Fundamentally,
-there are two ways to find out whether I/O is ready to be queried:
-polling (under UNIX, implemented via {\tt select}, {\tt poll},
-and {\tt epoll}) and interrupts (under UNIX, signals). Under Linux, there are  {\tt aio} calls to be able to send requests to the I/O subsystem asynchronously and not, for instance, wait for the disk to spin up and deliver the data to you. But that's implementation specific. 
+Sure! Sockets. If we haven't received something, we would get blocked waiting for some data to arrive. But we can change that behaviour on a socket if we wish, by setting the socket to be nonblocking~\cite{getaddrinfo}:
+
+\begin{lstlisting}[language=C]
+sockfd = socket( PF_INET, SOCK_STREAM, 0 );
+fcntl( sockfd, F_SETFL, O_NONBLOCK );
+\end{lstlisting}
+
+This means that calls to \texttt{accept()}, \texttt{recv()}, or \texttt{recvfrom()} would not block. If you call those and there's no data to receive, you get back a return value of \texttt{-1} and \texttt{errno} is going to be either \texttt{EAGAIN} or \texttt{EWOULDBLOCK}. Sadly, the specification does not say which it would be, so the fully correct approach is to check for both. Not great, but it's how we are sure.
+
+Suppose that you are writing a server application that's going to listen on several sockets. This is a common enough scenario. You could have different threads listening on their individual sockets but -- see the reasoning above as to why we might not have that option. And we no longer have to! 
+
+But if we are a server and there aren't any incoming requests, what exactly are we supposed to do with our time? If we just poll each socket using, for example, \texttt{accept()}, this amounts to tight polling and is CPU intensive and wastes the CPU's time. But we don't want to get blocked on a particular socket either, because what if it's not the one where the next packet arrives? What we need is a third option.
+
+\paragraph{Third option: \texttt{select()}.} Our wish is granted. The third option is called \texttt{select()} -- it allows us to monitor a group of sockets, telling us about the state of each of them. A socket could be ready for a read, ready for a write (of small size -- you can't write a huge chunk to a socket without getting blocked at some point), or whether an exception has occurred. So actually, select works on three sets of sockets:
+
+\begin{lstlisting}[language=C]
+ int select( int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout );
+\end{lstlisting}
+
+If we call this function, we'll get blocked until something happens on one of the sockets so that it becomes ``ready'' -- data is available to read, space is available to write, etc. or until we reach a timeout. While blocked, we could also get interrupted by something (e.g., a signal).
+
+The first parameter, \texttt{nfds}, is supposed to be the value of the highest number file descriptor in any of the three sets plus 1. So. It has come to this. One of the problems with \texttt{select()} is that it is pretty... arcane. According to the documentation, the reason why it is this, is because \texttt{select()} will scan through all the file descriptors from 0 up to \texttt{nfds-1} to figure out if we care about them. 
+
+What's this about? Well, the \texttt{fd\_set} structure can have up to 1024 file descriptors, and is actually implemented as a bitfield; by specifying the highest file descriptor that we are interested in, the kernel can stop looking once we reached the last one (and the \texttt{fd\_set} structure doesn't have to be a linked list or array or anything large!)~\cite{apunix}.
+
+Well, we were going to have to figure out what the \texttt{fd\_set} means anyway. it represents a set of file descriptors, just as the name says.  There are then four functions for manipulating a set:
+
+\begin{lstlisting}
+void FD_ZERO( fd_set *set ); /* Clear the set */
+void FD_SET( int fd, fd_set *set ); /* Add fd to the set */
+void FD_CLR( int fd, fd_set *set ); /* Remove fd from the set */
+int  FD_ISSET( int fd, fd_set *set); /* Tests if fd is a part of the set */ 
+\end{lstlisting}
+
+When we create a new set, we should first initialize it with a \texttt{FD\_ZERO} call. That could also be used to reset it, if desired, at some later point. Then we can add file descriptors that we want to have. To add one, use \texttt{FD\_SET} with the file descriptor to add; to remove one that has been added, use \texttt{FD\_CLR} with the file descriptor to remove. 
+
+But that last one, \texttt{FD\_ISSET}, is a little different. It's not as if we would forget whether we put a file descriptor in the set. It's really for us to see what happens after \texttt{select()} is called -- we can find out whether a given file descriptor is in a particular set or not.
+
+We don't have to use all three of \texttt{readfds}, \texttt{writefds}, and \texttt{exceptfds} in a call to \texttt{select()} if we do not need them all. If we have only read sockets, we put them all in the \texttt{readfds} set and can just give \texttt{NULL} or empty \texttt{fd\_set}s in for the other parameters~\cite{getaddrinfo}.
+
+Finally, there is a timeout parameter: we can specify a maximum amount of time we  are willing to wait. If nothing happens before the timeout amount of time occurs, then \texttt{select()} returns. The format of this is a fairly simple structure \texttt{struct timeval}: 
+
+\begin{lstlisting}[language=C]
+struct timeval {
+  long tv_sec; /* seconds */
+  long tv_usec; /* microseconds */
+};
+\end{lstlisting}
+
+If both fields of the \texttt{struct timeval} are zero, then \texttt{select()} returns immediately; if the pointer to it is \texttt{NULL} then there is no timeout and we will wait as long as it takes for something -- anything -- to happen.
+
+When \texttt{select()} returns, however that happened, some if not all of the parameters other than \texttt{nfds} got updated. The file descriptors passed in are modified in-place to see if they changed status.  And the \texttt{struct timeval} parameter may (but also may not) be updated to reflect how much time was left before the timeout. Because different systems may or may not change this value, it is not safe to re-use and should be overwritten if you plan to use that structure again.
 
 
-The key idea is to give {\tt epoll} a bunch of file descriptors and
-wait for events to happen. In particular:
-     \begin{itemize}
-       \item create an epoll instance ({\tt epoll\_create1});
-       \item populate it with file descriptors ({\tt epoll\_ctl}); and
-       \item wait for events ({\tt epoll\_wait}).
-     \end{itemize}
-Let's run through these steps in order.
-
-\paragraph{Creating an {\tt epoll} instance.} Just use the API:
-    \begin{lstlisting}[language=C]
-   int epfd = epoll_create1(0);
-    \end{lstlisting}
-
-The return value {\tt epfd} is typed like a UNIX file
-descriptor---{\tt int}---but doesn't represent any files; instead, use
-it as an identifier, to talk to {\tt epoll}.
-
-The parameter ``{\tt 0}'' represents the flags, but the only available flag
-is {\tt EPOLL\_CLOEXEC}. Not interesting to you.
-
-\paragraph{Populating the {\tt epoll} instance.} Next, you'll want
-{\tt epfd} to do something. The obvious thing is to add some {\tt fd}
-to the set of descriptors watched by {\tt epfd}:
-    \begin{lstlisting}[language=C]
-   struct epoll_event event;
-   int ret;
-   event.data.fd = fd;
-   event.events = EPOLLIN | EPOLLOUT;
-   ret = epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
-    \end{lstlisting}
-
-You can also use {\tt epoll\_ctl} to modify and delete descriptors from {\tt epfd}; read the manpage to find out how.
-
-\paragraph{Waiting on an {\tt epoll} instance.} Having completed
-the setup, we're ready to wait for events on any file descriptor in {\tt epfd}.
-    \begin{lstlisting}[language=C]
-  #define MAX_EVENTS 64
-
-  struct epoll_event events[MAX_EVENTS];
-  int nr_events;
-
-  nr_events = epoll_wait(epfd, events, MAX_EVENTS, -1);
-    \end{lstlisting}
-
-The given {\tt -1} parameter means to wait potentially forever;
-otherwise, the parameter indicates the number of milliseconds to wait.
-(It is therefore ``easy'' to sleep for some number of milliseconds by
-starting an {\tt epfd} and using {\tt epoll\_wait}; takes two function
-calls instead of one, but allows sub-second latency.)
-
-Upon return from {\tt epoll\_wait}, we know that we have {\tt
-  nr\_events} events ready.
-
-\subsection*{Level-Triggered and Edge-Triggered Events}
-One relevant concept for these polling APIs is the concept of
-\emph{level-triggered} versus \emph{edge-triggered}.  The default {\tt
-  epoll} behaviour is level-triggered: it returns whenever data is
-ready. One can also specify (via {\tt epoll\_ctl}) edge-triggered
-behaviour: return whenever there is a change in readiness.
-
-%\paragraph{Another Live Demo.} Now let's run some code (socket.c) that creates a
-%server and reads from it, in either level-triggered mode or edge-triggered mode.
-
-One would think that level-triggered mode would return from {\tt read}
-whenever data was available, while edge-triggered mode would return
-from {\tt read} whenever new data came in. Level-triggered does behave
-as one would guess: if there is data available, {\tt read()} returns
-the data. However, edge-triggered mode returns whenever the
-state-of-readiness of the socket changes (from no-data-available to
-data-available). Play with it and get a sense for how it works.
-
-Good question to think about: when is it appropriate to choose one or the other?
-
-\subsection*{Asynchronous I/O}
-As mentioned above, the POSIX standard defines {\tt aio} calls.
-Unlike just giving the {\tt O\_NONBLOCK} flag, using {\tt aio} works
-for disk as well as sockets.
-
-\paragraph{Key idea.} You specify the action to occur when I/O is ready:
-    \begin{itemize}
-      \item nothing;
-      \item start a new thread; or
-      \item raise a signal.
-    \end{itemize}
-
-Your code submits the requests using e.g. {\tt aio\_read} and {\tt aio\_write}.
-If needed, wait for I/O to happen using {\tt aio\_suspend}.
+There is also \texttt{pselect()} which has the signature:
+\begin{lstlisting}[language=C]
+int pselect(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, 
+            const struct timespec *timeout, const sigset_t *sigmask);
+\end{lstlisting}
 
 
 
