@@ -2,7 +2,7 @@
 
 \begin{document}
 
-\lecture{ 29 --- Asynchronous I/O }{\term}{Jeff Zarnett}
+\lecture{ 29 --- Asynchronous I/O with select, poll }{\term}{Jeff Zarnett}
 
 \section*{Asynchronous (non-blocking) I/O}
 Cnsider some of the usual file read code:
@@ -44,7 +44,7 @@ Suppose that you are writing a server application that's going to listen on seve
 
 But if we are a server and there aren't any incoming requests, what exactly are we supposed to do with our time? If we just poll each socket using, for example, \texttt{accept()}, this amounts to tight polling and is CPU intensive and wastes the CPU's time. But we don't want to get blocked on a particular socket either, because what if it's not the one where the next packet arrives? What we need is a third option.
 
-\paragraph{Third option: \texttt{select()}.} Our wish is granted. The third option is called \texttt{select()} -- it allows us to monitor a group of sockets, telling us about the state of each of them. A socket could be ready for a read, ready for a write (of small size -- you can't write a huge chunk to a socket without getting blocked at some point), or whether an exception has occurred. So actually, select works on three sets of sockets:
+\subsection*{Third option: \texttt{select()}} Our wish is granted. The third option is called \texttt{select()} -- it allows us to monitor a group of sockets, telling us about the state of each of them. A socket could be ready for a read, ready for a write (of small size -- you can't write a huge chunk to a socket without getting blocked at some point), or whether an exception has occurred. So actually, select works on three sets of sockets:
 
 \begin{lstlisting}[language=C]
  int select( int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout );
@@ -69,6 +69,8 @@ When we create a new set, we should first initialize it with a \texttt{FD\_ZERO}
 
 But that last one, \texttt{FD\_ISSET}, is a little different. It's not as if we would forget whether we put a file descriptor in the set. It's really for us to see what happens after \texttt{select()} is called -- we can find out whether a given file descriptor is in a particular set or not.
 
+The \texttt{readfds} are obviously sockets we are interested in reading from and \texttt{writefds} are accordingly those we are interested in writing from. But what about the \texttt{exceptfds} -- this isn't Java, it's not like we're going to get a \texttt{SocketDoesNotFeelLikeDoingWorkRightNowException}. No, this is for sockets that are in an exceptional state, which usually means there is Out-Of-Band (OOB) data on a TCP socket. We didn't cover this earlier in network communication and we will also not be going into this subject now. But you can find out if a socket is in that state if you have a reason.
+
 We don't have to use all three of \texttt{readfds}, \texttt{writefds}, and \texttt{exceptfds} in a call to \texttt{select()} if we do not need them all. If we have only read sockets, we put them all in the \texttt{readfds} set and can just give \texttt{NULL} or empty \texttt{fd\_set}s in for the other parameters~\cite{getaddrinfo}.
 
 Finally, there is a timeout parameter: we can specify a maximum amount of time we  are willing to wait. If nothing happens before the timeout amount of time occurs, then \texttt{select()} returns. The format of this is a fairly simple structure \texttt{struct timeval}: 
@@ -80,17 +82,177 @@ struct timeval {
 };
 \end{lstlisting}
 
-If both fields of the \texttt{struct timeval} are zero, then \texttt{select()} returns immediately; if the pointer to it is \texttt{NULL} then there is no timeout and we will wait as long as it takes for something -- anything -- to happen.
+If both fields of the \texttt{struct timeval} are zero, then \texttt{select()} returns immediately; if the pointer to it is \texttt{NULL} then there is no timeout and we will wait as long as it takes for something -- anything -- to happen. 
 
-When \texttt{select()} returns, however that happened, some if not all of the parameters other than \texttt{nfds} got updated. The file descriptors passed in are modified in-place to see if they changed status.  And the \texttt{struct timeval} parameter may (but also may not) be updated to reflect how much time was left before the timeout. Because different systems may or may not change this value, it is not safe to re-use and should be overwritten if you plan to use that structure again.
+When \texttt{select()} returns, however that happened, some if not all of the parameters other than \texttt{nfds} got updated (argh). The file descriptors passed in are modified in-place to see if they changed status.  And the \texttt{struct timeval} parameter may (but also may not) be updated to reflect how much time was left before the timeout. Because different systems may or may not change this value, it is not safe to re-use and should be overwritten if you plan to use that structure again.
 
+After select has returned, then we check the file descriptors in our sets. All of them. Yes, really. The function returns when there is something to do -- but we aren't told what socket is ready. So we would need to check each socket to see if, for example, it's ready for reading (if that's the plan). To do that we check \texttt{FD\_ISSET} with the socket and the set to see if it's in the desired state.
 
-There is also \texttt{pselect()} which has the signature:
+Because the sets of file descriptors may have been modified, you probably need to rebuild them after each call, if you plan to use them again. If you were waiting, for example, three sockets, not all of them necessarily became ready at the same time. So if you want to go on waiting for those three, you will need to put them in a set again. 
+
+Let's imagine a brief example where we have a server that is going to listen on some different sockets for different services, imaginatively called service1, service2, and service3.
+
 \begin{lstlisting}[language=C]
-int pselect(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, 
-            const struct timespec *timeout, const sigset_t *sigmask);
+void listen_for_connections( int service1_sock, int service2_sock, int service3_sock ) {
+  int nfds = 1 + (service1_sock > service2_sock
+    ? service1_sock > service3_sock ? service1_sock : service3_sock
+    : service2_sock > service3_sock ? service2_sock : service3_sock);
+    
+  fd_set s;
+  struct timeval tv;
+  printf( "Going to start listening for socket events.\n" );
+  
+  while( !quit ) {
+  
+    FD_ZERO( &s );
+    FD_SET( service1_sock, &s );
+    FD_SET( service2_sock, &s );
+    FD_SET( service3_sock, &s );
+    
+    tv.tv_sec = 30;
+    tv.tv_usec = 0;
+  
+    int res = select( nfds, &s, NULL, NULL, &tv );
+    if ( res == -1 ) { /* An error occurred */
+      printf( "An error occurred in select(): %s.\n", strerror( errno ) );
+      quit = 1;
+    } else if ( res == 0 ) { /* 0 sockets had events occur */
+      printf( "Still waiting; nothing occurred recently.\n" );
+    } else { /* Things happened */
+      if ( FD_ISSET( service1_sock, &s ) {
+        service1_activate( ); 
+      }
+      if ( FD_ISSET( service2_sock, &s ) {
+        service2_activate( ); 
+      }
+      if ( FD_ISSET( service3_sock, &s ) {
+        service3_activate( ); 
+      }
+  }
+}
 \end{lstlisting}
 
+You'll notice that we check each of the sockets individually -- more than one of them could become ready at once. Now, the \texttt{activate()} calls there could take some nontrivial time, and if sockets receive data in the meantime then on the next iteration of the loop then \texttt{select()} will return immediately because data is waiting.
+
+This represents a fairly simple scenario, though, where we are just waiting for \texttt{accept()} on the three services where we send back as simple response and that's the end of it. But if the connections we were looking at are supposed to stay open for some period of time, such as when there is occasional communication, then we would also have to add and remove sockets from the sets as connections were opened and closed. Managing the set of sockets in such a scenario is non-trivial, because each call to \texttt{select} can (and usually does) change the sets. 
+
+\paragraph{Chat Server.} The more complicated example in~\cite{getaddrinfo} is about a chat program (if you ever used IRC you have a pretty good idea of how this would work). When people want to join the chat room they send a message to a server. The server accepts and opens the connection and adds the client to the chat room. But people don't always talk. So if nothing is happening right now there's nothing to send. So the server can use \texttt{select()} to keep an eye open for when someone has said something. Either way, we would wait for something to happen, either on one of the sockets from a current client, or the socket for accepting incoming connections.
+
+If it's the socket for accepting incoming connections that activated then accept the incoming connection, and add the new socket to the list that we are going to listen to. A chat server might choose to send a notification to other clients to let them know that a new person has joined the chat. That would be a write to the sockets that represent connected clients.
+
+If another socket activated, most likely someone had something to say. So we can read from the socket that is ready to read and pass on the message that we received to all the other clients. Except, sometimes there isn't one! A socket will show up as being ready for reading if it has closed. But the call to read will return 0 (or a negative number) if the socket has closed (i.e., the client has disconnected). If the connection has been closed, then we should remove that socket from the list that we are interested in. And also we sometimes send a message telling other clients that a person has left the chat.
+
+And when a message is received from a client, then of course the thing for the server to do is to send it on to the other clients, by writing to their sockets so the message is transmitted to them. The clients are waiting to receive messages and will then show them to the user when someone says something. And then look at that: you're talking to other people on the internet! Just remember not to give out your personal information to strangers.
+
+Obviously there are some other considerations that come with managing a chat server. There might be periodic connection-keep-alive kind of messages so that clients remain connected even if nobody is talking right now. And you might want the ability to kick out people who are spammers and perhaps even ban them, amongst other things. But the goal of this explanation wasn't really to learn how to write a chat server in great detail -- just to give an example of how you could use \texttt{select} to write something useful.
+
+\paragraph{Slightly different, mostly the same: \texttt{pselect}.}
+There is also \texttt{pselect()} which has the signature:
+\begin{lstlisting}[language=C]
+int pselect( int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, 
+            const struct timespec *timeout, const sigset_t *sigmask );
+\end{lstlisting}
+
+The signature is different in two ways. The first is that instead of \texttt{struct timeval} it is a \texttt{struct timespec}, which is slightly different in its meaning, and also will never be modified by the call to \texttt{pselect}:
+
+\begin{lstlisting}[language=C]
+struct timespec {
+  long tv_sec; /* seconds */
+  long tv_nsec; /* nanoseconds */
+};
+\end{lstlisting}
+
+Yes, the only real difference is that it is seconds and nanoseconds, rather than seconds and milliseconds. The other parameter is about setting up a signal mask. We discussed the signal mask much earlier on when we talked about signals for interprocess communication. This is the same, but it allows us to change the signal mask atomically in the same step as the call to select, so we can choose what signals are allowed to wake us up while we are waiting for something to happen. Given appropriate allocation and initialization of the values, the call:
+
+
+\begin{lstlisting}[language=C]
+ready = pselect( nfds, &readfds, &writefds, &exceptfds, timeout, &sigmask );
+\end{lstlisting}
+
+is equivalent to an atomic operation that does all of:
+
+\begin{lstlisting}[language=C]
+sigset_t origmask;
+pthread_sigmask( SIG_SETMASK, &sigmask, &origmask );
+ready = select( nfds, &readfds, &writefds, &exceptfds, timeout );
+pthread_sigmask( SIG_SETMASK, &origmask, NULL );
+\end{lstlisting}
+
+If we had tried to do the multi-step sequence then there is always the possibility that something (e.g., a signal!) could happen in between changing the signal mask and the call to \texttt{select}. The syntax here for changing the signal mask is slightly different than what we have seen before, but this is the POSIX specification implementation of the \texttt{sigprocmask()} call. So, it works the same as we have seen earlier.
+
+\paragraph{I only wanted a nap...} It is possible to ``misuse'' a call to \texttt{select} or \texttt{pselect} as a way to make a very portable call to put the current thread to sleep. Some of the calls to sleep functions don't translate well to other UNIX-like systems, especially if you want a very short sleep -- but \texttt{select} is in the standard! So you can do this by calling \texttt{select} with all three sets empty and \texttt{nfds} at zero and whatever timeout you wish. Clever!
+
+\subsection*{Alternative: \texttt{poll()}}
+There's a slightly different function that is very much like \texttt{select()} and it is called \texttt{poll()}. Like its cousin, it is used to watch file descriptors and see if any of them are ready for an I/O operation. The signature is:
+
+\begin{lstlisting}[language=C]
+int poll( struct pollfd *fds, nfds_t nfds, int timeout );
+\end{lstlisting}
+
+The signature is a lot simpler, that's for sure. The first argument is an array of \texttt{struct pollfd}, which is our structure for passing in the sockets we wish to monitor. The second parameter is \texttt{ndfs} which is just the number of items in the array. Finally, \texttt{timeout} is the number of milliseconds to wait before returning with zero meaning don't wait at all, and a negative number meaning wait infinitely.
+
+Alright, let's look at the structure:
+
+\begin{lstlisting}[language=C]
+struct pollfd {
+  int fd;        /* file descriptor */
+  short events;  /* requested events */
+  short revents; /* returned events */
+};
+\end{lstlisting}
+
+Someone found a use for a \texttt{short} after all! Just kidding, hardware people.
+
+The first parameter is obviously the file descriptor to watch. The second is where we specify what events we want to wait for on this file descriptor, and the third parameter is set by the kernel so we can find what happened.
+
+What can we add? You can look for data that's ready to read with \texttt{POLLIN}, a socket where you can write without blocking with \texttt{POLLOUT}, and an exception (as above) with \texttt{POLLPRI}. These can be combined with the bitwise OR operator if you want more than one. 
+
+The return value will be constructed as a bitwise OR of the fields as well, with the possibility that you could have one of these other return values: \texttt{POLLERR} if an error occurred, \texttt{POLLHUP} if the other side ended the connection, or \texttt{POLLNVAL} if there's a problem with the socket (e.g., uninitialized)~\cite{getaddrinfo}.
+
+As with \texttt{select}, when \texttt{poll} returns we have to check which file descriptors have had an event occur and then decide what to do with them. Let's rewrite the \texttt{select} example with three services to see its \texttt{poll} equivalent:
+
+\begin{lstlisting}[language=C]
+void listen_for_connections( int service1_sock, int service2_sock, int service3_sock ) {
+  struct pollfd fds[3];
+  fds[0].fd = service1_sock;
+  fds[0].events = POLLIN;
+  fds[1].fd = service2_sock;
+  fds[1].events = POLLIN;
+  fds[2].fd = service3_sock;
+  fds[2].events = POLLIN;
+ 
+  int timeout = 30 * 1000; /* 30 seconds in ms */ 
+  printf( "Going to start listening for socket events.\n" );
+  
+  while( !quit ) {
+    
+    int res = poll( &fds, 3, timeout );
+    if ( res == -1 ) { /* An error occurred */
+      printf( "An error occurred in select(): %s.\n", strerror( errno ) );
+      quit = 1;
+    } else if ( res == 0 ) { /* 0 sockets had events occur */
+      printf( "Still waiting; nothing occurred recently.\n" );
+    } else { /* Things happened */
+      if ( fds[0].revents & POLLIN ) {
+        service1_activate( ); 
+      }
+      if ( fds[1].revents & POLLIN ) {
+        service2_activate( ); 
+      }
+      if ( fds[2].revents & POLLIN ) {
+        service3_activate( ); 
+      }
+  }
+}
+\end{lstlisting}
+
+
+\paragraph{Comparing the two.}
+Ultimately both functions do the same job; it is only the specifics of the API call that make the difference. You might find one or the other to be better, and in particular it is nice that \texttt{poll} doesn't ask you to find the maximum file descriptor or manage three sets or have to rebuild the sets on each iteration of the loop.
+
+Both \texttt{select} and \texttt{poll} are slow, unfortunately. They have linear characteristics: the more file descriptors you give them the slower they get; if you get up to a hundred file descriptors, roughly, then you end up actually spending significant CPU time trying to figure out which of the sockets changed~\cite{pollvselect}. 
+
+If we want to do things more efficiently we will want to use a different tool, specifically \texttt{libevent}, but we aren't quite done with network communication. After sockets, we learned about cURL, and it turns out we can use nonblocking I/O there as well!
 
 
 \input{bibliography.tex}

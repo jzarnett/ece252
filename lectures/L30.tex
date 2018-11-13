@@ -5,7 +5,7 @@
 \lecture{ 30 --- Asynchronous I/O with cURL }{\term}{Jeff Zarnett}
 
 \section*{Using cURL Asynchronously}
-Network communication is a great example of a way that you could use asynchronous  I/O. You can start a network request and move on to creating more without waiting for the results of the first one. For requests to different recipients, it certainly makes sense to do this.
+We've already seen that network communication is a great example of a way that you could use asynchronous  I/O. You can start a network request and move on to creating more without waiting for the results of the first one. For requests to different recipients, it certainly makes sense to do this.
 
 The cURL multi interface has a lot of similarities with the regular cURL interface. It's been a little while since we went over it, so let's recap what we did before. Remember from earlier the example we did that was modified from \url{https://curl.haxx.se/libcurl/c/https.html} (i.e., the official docs):
 
