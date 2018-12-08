@@ -33,6 +33,45 @@ Suppose your background task is to upload a bunch of files, consecutively. It is
 
 It is noteworthy that a large number of functions are \textit{cancellation points}; that is, the POSIX specification requires there is an implicit check for cancellation when calling one of those functions. There is an even larger number of functions that are ``potential cancellation points'', where the specification says that they could be cancellation points (but maybe aren't). You'll have to check the spec to see if that is the case for a specific function if there is a scenario where unexpected cancellation is a problem.
 
+\paragraph{Now's not a good time!} With the presence of cancellation points or asynchronous cancellation, sometimes a thread can be terminated before it has cleaned up some resources. This is undesirable. One way that we can guard against this is to register cleanup handlers for that thread. If, say, our thread allocated some memory, it would be wise to register a cleanup handler that deallocates that memory in case the thread should die unceremoniously. The function signatures are:
+
+\begin{lstlisting}[language=C]
+pthread_cleanup_push( void (*routine)(void*), void *argument ); /* Register cleanup handler, with argument */ 
+pthread_cleanup_pop( int execute ); /* Run if execute is non-zero */ 
+\end{lstlisting}
+
+To add a cleanup handler, the push function is used. Its two arguments are the function that is supposed to run, and a pointer to the argument that cleanup function will need.
+
+The push function always needs to be paired with the pop function at the same level in your program (where level is defined by the curly braces). You should think of them as being like the opening curly brace at the start of a statement and the closing curly brace at the end; they have to be correctly matched up. The pop function takes one argument: whether it should run or not. If the thread is cancelled, the cleanup function will run; if it continues to the pop function, then you get to choose whether it runs or not.
+
+Consider the following code: 
+\begin{lstlisting}[language=C]
+void* do_work( void* argument ) {
+  struct job * j = malloc( sizeof( struct job ) );
+  /* Do something useful with this structure */
+  /* Actual work to do not shown */
+  free( j );
+  pthread_exit( NULL );
+\end{lstlisting}
+
+Suppose that the thread is cancelled during the block operating on \texttt{j} and it is set up for asynchronous cancellation. This means that the code will never get to the \texttt{free()} call, which means that the memory allocated at the beginning is leaked! We can remedy this with application of a cleanup handler:
+\begin{lstlisting}[language=C]
+void cleanup( void* mem ) {
+  free( mem );
+}
+
+void* do_work( void* argument ) {
+  struct job * j = malloc( sizeof( struct job ) );
+  pthread_cleanup_push( cleanup, j );
+  /* Do something useful with this structure */
+  /* Actual work to do not shown */
+  free( j );
+  pthread_cleanup_pop( 0 ); /* Don't run */
+  pthread_exit( NULL );
+\end{lstlisting}
+
+And you may note that you could actually save a line of code by removing the \texttt{free()} call and changing the argument to the pop function to be 1: this means the cleanup function runs and it does free the memory allocated. Nice!
+
 
 \paragraph{Attributes and Using Memory to Pass Data.}
 The earlier example used the return value of a thread. Sometimes, of course, we don't want to do that. One of the advantages of the use of threads is that data can be passed between threads using memory directly. In this case, because there is no return value that we are about, we can use \texttt{NULL} in the call to join. This example also shows how to initialize and the attributes, although it doesn't override any of the defaults.
