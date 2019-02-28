@@ -1,4 +1,4 @@
-\input{header.tex}
+\include{header}
 
 \begin{document}
 
@@ -27,7 +27,14 @@ Either you or a member of your team will find the device eventually. Once it has
 \paragraph{Description of Behaviour.} The goal is to implement the program so that the following behaviour occurs:
 
 \begin{itemize}
-
+\item Each building needs to be searched. You will do some yourself as shown in the starter code (every 5th building is assigned to you). You can search one building at a time the normal way (with blocking reads), as is shown in the starter code. 
+\item The majority of the work should be handed out to team members using POSIX AIO. And the AIO requests can all be started up-front, before you search any buildings yourself.
+\item For each building you're not going to search yourself you should create and enqueue a POSIX AIO request.
+\item For each building, you need to create an AIO control block and its associated buffer.
+\item Offset should be 0 in each control block.
+\item The event action when the AIO is complete should be to create a new thread; the new thread should run the function name of the team member who has been assigned that building.
+\item You have four team members helping you: Diggle, Speedy, Black Canary, and Arsenal. Each of them can be in only one place at a time, so it is best to distribute the work evenly between them.
+\item The argument in the event (\texttt{sigev\_value.sival\_ptr}) should be a pointer to the buffer representing the building (i.e., the same as the read buffer).
 \item Your program should not leak memory; be sure to destroy/deallocate anything initialized/allocated.
 
 \item There should not be any race conditions in your program either.
@@ -38,10 +45,15 @@ Either you or a member of your team will find the device eventually. Once it has
 
 Some general guidance is below. If you're having trouble, try running through these steps and it may resolve your problem. If you're still stuck you can ask a neighbour or the course staff.
 \begin{itemize}
+	\item If you need to catch up on how AIO works then you can look at the lecture on the subject in the course notes or~\cite{apunix} chapter 14.5.3.
+	\item If your program seems to hang, it may be because the \texttt{found\_it} semaphore is never triggered.
+	\item If you get double \texttt{free} alerts it may be because you are re-using a buffer inappropriately.
+	\item To narrow down the source of a problem, you could assign all work to yourself (main) or to one team member; if the problem does not occur then concurrency may be an issue.
 	\item Check the documentation for how functions work if you are unfamiliar with them (google is your friend!)
 	\item Have you initialized all variables? It is easy to forget; \texttt{malloc} does not initialize the value...
 	\item Is there a missing or extra \texttt{*} (dereference) on a pointer somewhere?
 	\item Does every memory allocation have a matching deallocation?
+	\item Check whether values are stack or heap allocated (this can cause problems).
 	\item It may be helpful to put \texttt{printf()} statements to follow along what the program is doing and it may help you narrow down where the issue is.
 	\item Don't be shy about asking for help; the TAs and instructor are here to help you get it done and will help you as much as is reasonable.
 \end{itemize}

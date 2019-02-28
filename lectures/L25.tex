@@ -1,4 +1,4 @@
-\input{header.tex}
+\include{header}
 
 \begin{document}
 
@@ -9,9 +9,9 @@
 \paragraph{Background.}
 It is the last day of the Time War. The Daleks have launched their final assault on the Time Lords' home planet of Gallifrey. Ten million Dalek ships surround the planet and are bombarding it from orbit and sending landing parties. The War Doctor has stolen an ancient weapon called The Moment. It will wipe out the Daleks -- but also Gallifrey, and everyone on it. 
 
-But there's another way. Through hundreds and hundreds of years' worth of calculations The Doctor can use stasis technology to freeze the whole planet of Gallifrey in a parallel pocket universe. The Daleks will be obliterated in the crossfire and it would look like they wiped each other out. But this takes hundreds and hundreds of years of calculations and the power of every one of the thirteen incarnations' TARDISes.
+But there's another way. Through hundreds and hundreds of years' worth of calculations The Doctor can use stasis technology to freeze the whole planet of Gallifrey in a parallel pocket universe. The Daleks will be obliterated in the crossfire and it would look like they wiped each other out. This takes hundreds and hundreds of years of calculations and the power of every one of the thirteen incarnations' TARDISes.
 
-But this won't be easy -- the timing has to be just right and the Doctors have to coordinate their actions and timing and work together to save Gallifrey. If their timing is wrong or if things are out of sync or important steps are skipped, the Doctors will fail and Gallifrey falls. If you can find and correct the problems in the program, then Gallifrey stands! 
+This won't be easy -- the timing has to be just right and the Doctors have to coordinate their actions and timing and work together to save Gallifrey. If their timing is wrong or if things are out of sync or important steps are skipped, the Doctors will fail and Gallifrey falls. If you can find and correct the problems in the program, then Gallifrey stands! 
 
 
 \paragraph{Primary Objective.} The primary objective of this exercise is to identify and solve concurrency problems in the given program.
@@ -24,7 +24,7 @@ But this won't be easy -- the timing has to be just right and the Doctors have t
 
 \paragraph{Grading.} Binary grading: 1 if you have made a meaningful attempt at implementing the code; 0 otherwise.
 
-\paragraph{Description of Behaviour.} The goal is to analyze and correct the program so that there are no longer any errors reported by Helgrind, and also no memory leaks reported by Valgrind. 
+\paragraph{Description of Behaviour.} The goal is to analyze and correct the program so that there are no longer any errors (that you can fix in your program) reported by Helgrind, and also no memory leaks/issues (that you can fix in your program) reported by Valgrind. 
 
 \begin{itemize}
 
@@ -39,6 +39,7 @@ But this won't be easy -- the timing has to be just right and the Doctors have t
 Some general guidance is below. If you're having trouble, try running through these steps and it may resolve your problem. If you're still stuck you can ask a neighbour or the course staff.
 \begin{itemize}
 	\item Check the documentation for how functions work if you are unfamiliar with them (google is your friend!)
+    \item See the docs for Valgrind~\cite{valgrind:tools}. 
 	\item Have you initialized all variables? It is easy to forget; \texttt{malloc} does not initialize the value...
 	\item Is there a missing or extra \texttt{*} (dereference) on a pointer somewhere?
 	\item Does every memory allocation have a matching deallocation?
