@@ -1,4 +1,4 @@
-\input{header.tex}
+\include{header}
 
 \begin{document}
 
@@ -278,7 +278,7 @@ This is an extension of the readers-writers problem called the search-insert-del
 
 \textit{Searchers} merely examine the list; hence they can execute concurrently with each other. Searcher threads must call \texttt{void search( void* target )} where the argument to the searcher thread is the element to be found. These most closely resemble readers in the readers-writers problem. 
 
-\textit{Inserters} add new items to the end of the list; only one insertion may take place at a time. However, one insert can proceed in parallel with any number of searches. Inserter threads call \texttt{void insert( void* to\_insert )} where the argument to the inserter thread is the element to be inserted. Assume \texttt{insert} is written so the insertion can be done in parallel with the searches. Inserters resemble readers with an additional rule that only one of them can manipulate the list at a time. 
+\textit{Inserters} add new items to the end of the list; only one insertion may take place at a time. However, one insert can proceed in parallel with any number of searches. Inserter threads call \texttt{node* find\_insert\_loc()} to find where to do the insertion; then \texttt{void insert( void* to\_insert )} where the arguments are the location and the element to be inserted. Assume \texttt{insert} is written so the insertion can be done in parallel with the searches. Inserters resemble readers with an additional rule that only one of them can manipulate the list at a time. 
 
 \textit{Deleters} remove items from anywhere in the list. At most one deleter process can access the list at a time, and when the deleter is accessing the list, no inserters and no searchers may be accessing the list. Deleter threads call \texttt{void delete( void* to\_delete )} where the argument to the deleter thread is the element to be deleted. These most closely resemble writers in the readers-writers problem.
 
@@ -346,8 +346,9 @@ void* inserter_thread( void *to_insert ) {
   }
   pthread_mutex_unlock( &inserter_mutex );
   
+  node * insert_after = find_insert_location( );
   pthread_mutex_lock( &perform_insert );
-  insert( to_insert );
+  insert( to_insert, to_insert );
   pthread_mutex_unlock( &perform_insert );
   
   pthread_mutex_lock( &inserter_mutex );
