@@ -24,6 +24,10 @@ If a process shares data with another process in the system, the operating syste
 
 The motivations for inter-process communication are fairly obvious.
 
+\begin{center}
+	\includegraphics[width=0.6\textwidth]{images/24-splitscreen.jpg}
+\end{center}
+
 \end{frame}
 
 
@@ -41,6 +45,17 @@ The process sending that message is the \textit{sender}.
 The process receiving it will be the \textit{receiver}.
 
  This terminology may seem (painfully) obvious. 
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Thanks!}
+
+\begin{center}
+	\includegraphics[width=0.8\textwidth]{images/thanks-captain-obvious}
+\end{center}
+
 
 \end{frame}
 
@@ -120,6 +135,16 @@ All are quite common.
 
 \end{frame}
 
+
+\begin{frame}
+\frametitle{Shared Memory}
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/mindmeld.jpg}
+\end{center}
+
+\end{frame}
+
+
 \begin{frame}
 \frametitle{Shared Memory}
 
@@ -181,6 +206,17 @@ To prevent this, we need a system of co-ordination.
 
 \end{frame}
 
+
+\begin{frame}
+\frametitle{File System}
+
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/datatape.jpg}
+\end{center}
+
+\end{frame}
+
+
 \begin{frame}
 \frametitle{File System}
 
@@ -219,6 +255,17 @@ In this case, since one process writes files and another reads them, there is no
 If the sender chooses distinct file names, it will not overwrite a message if a second message is created before the receiver picks up the first.
 
 \end{frame}
+
+
+\begin{frame}
+\frametitle{Message Passing}
+
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/communicator.jpg}
+\end{center}
+
+\end{frame}
+
 
 \begin{frame}
 \frametitle{Message Passing}
@@ -374,6 +421,19 @@ A queue may alleviate the problem or just ``kick the can down the road''.
 \frametitle{UNIX Pipes}
 
 In UNIX, we can create a \textit{pipe} to set up communication. 
+
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/mario-pipe.jpg}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{UNIX Pipes}
+
+
+
+
 
 The producer writes in one end; the consumer receives on the other. 
 
