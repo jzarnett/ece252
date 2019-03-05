@@ -104,27 +104,23 @@ int main( int argc, char** argv ) {
     cb.aio_nbytes = MAX_SIZE;
     cb.aio_fildes = nextFD;
     cb.aio_offset = 0;
-    if ( i % 2 == 0 ) {
-      memset( buffer2, 0, MAX_SIZE * sizeof( char ));
-      cb.aio_buf = buffer2;
-    } else {
-      memset( buffer1, 0, MAX_SIZE * sizeof( char ));
-      cb.aio_buf = buffer1;
-    }
+    memset( buffer2, 0, MAX_SIZE * sizeof( char ));
+    cb.aio_buf = buffer2;
     aio_read( &cb );
  
-    if ( i % 2 == 0 ) {
-      process( buffer1 );
-    } else {
-      process( buffer2 );
-    }
+    process( buffer1 );
     
     while( aio_error( &cb ) == EINPROGRESS ) {
       sleep( 1 );
     }
     aio_return( &cb ); /* This frees some internal structures */
     close( nextFD );
+    
+    char* tmp = buffer1;
+    buffer1 = buffer2;
+    buffer2 = tmp;
   }
+  process( buffer1 );
   free( buffer1 );
   free( buffer2 );
 

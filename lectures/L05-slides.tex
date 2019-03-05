@@ -120,20 +120,6 @@ Maybe you want that but maybe you want to put the output in a log file, with a c
 \end{frame}
 
 \begin{frame}
-\frametitle{The Cruel Ampersand}
-
-The semantics of \texttt{\&} are not just ``run this in the background, please''.
-
-It is actually the parent process (the shell) disowning its child. 
-
-That process will get adopted by \texttt{init}.
-
-It can run to completion even if the user logs out.
-
-
-\end{frame}
-
-\begin{frame}
 \frametitle{Example of the \&}
 
 A common example of a command I use involving the \texttt{\&}:\\

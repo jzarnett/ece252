@@ -131,7 +131,7 @@ If we are the client, we'd like to connect to a server. This is the easier workf
 int connect( int sockfd, struct sockaddr *addr, socklen_t len); 
 \end{lstlisting}
 
-The parameters are simple enough: the first argument \texttt{socked} is the socket file descriptor (the \texttt{int} we got back from the call to \texttt{socket}). The second parameter is a pointer to the \texttt{struct sockaddr} that we have, whether manually created or a returned value from \texttt{getaddrinfo}). The last parameter is about the size of the second parameter. If we manually created the structure, we just use \texttt{sizeof}; if it was returned from \texttt{getaddrinfo()} then there is also an attribute \texttt{ai\_addrlen} provided. Consider an example using \texttt{getaddrinfo}~\cite{getaddrinfo}:
+The parameters are simple enough: the first argument \texttt{sockfd} is the socket file descriptor (the \texttt{int} we got back from the call to \texttt{socket}). The second parameter is a pointer to the \texttt{struct sockaddr} that we have, whether manually created or a returned value from \texttt{getaddrinfo}). The last parameter is about the size of the second parameter. If we manually created the structure, we just use \texttt{sizeof}; if it was returned from \texttt{getaddrinfo()} then there is also an attribute \texttt{ai\_addrlen} provided. Consider an example using \texttt{getaddrinfo}~\cite{getaddrinfo}:
 
 \begin{lstlisting}[language=C]
 struct addrinfo hints;

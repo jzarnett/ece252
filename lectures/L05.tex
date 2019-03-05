@@ -27,7 +27,7 @@ This will return control almost immediately to the shell (as it will not be wait
 
 \texttt{[1]+  Done                    gcc fork.c}
 
-Notably, any console output that the \texttt{gcc} command would generate will still appear on the console where the background task was created. Maybe you want that but maybe you want to put the output in a log file, with a command like \texttt{cat fork.c > logfile.txt \&}. (Telling \texttt{gcc} to be silent is a somewhat more complex operation.) The semantics of \texttt{\&} are not just saying ``run this in the background, please''; it is actually the parent process (the shell) disowning its child (the \texttt{cat} or \texttt{gcc} process) so that process will get adopted by \texttt{init} and can run to completion even if the user logs out.
+Notably, any console output that the \texttt{gcc} command would generate will still appear on the console where the background task was created. Maybe you want that but maybe you want to put the output in a log file, with a command like \texttt{cat fork.c > logfile.txt \&}. (Telling \texttt{gcc} to be silent is a somewhat more complex operation.) 
 
 A common example of a command I use involving the \texttt{\&}:\\
 \texttt{ sudo service xyz start \& }\\
