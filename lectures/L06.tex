@@ -124,7 +124,7 @@ As introduced earlier, signals have a default action. The action that is taken w
 
 If we decide to register a signal handler, the function is:
 \begin{lstlisting}[language=C]
-void( *signal( int signo, void (*handler)(int)) ) (int);
+void (*signal( int signo, void (*handler)(int))) (int);
 \end{lstlisting}
 
 Yikes! That is difficult to read. The good news is that using this in practice is a lot easier. What we actually do is call a function to say ``for signal \texttt{X}, run function \texttt{foo}''. There are restrictions on the function signature. It must have a \texttt{void} return type and take one parameter of an \texttt{int}. It returns a pointer to the old handler (if there was one). You could use that to set it back if you wanted. 
