@@ -30,7 +30,7 @@ And there you are, the data is sent! Assuming it went well. In real life it migh
 
 But wait a minute, we said under ideal circumstances the number of bytes is equal to the length. As you might have guessed, there is a limit to the amount of data that you can send in one chunk. The actual amount you can send in one chunk is reasonably-sized (somewhere around 1KB) but you can't just memorize a number and assume that will always be true across all systems. So if you have a significant chunk of data to send, you'll need to check how much was sent and then you are responsible for sending out the rest.
 
-If the data being sent is large enough that this is a concern, you should track the number of bytes sent and keep calling send, updating the pointer as you advance. The code below is modified from~\cite{getaddrinfo} that sends as many times as necessary until we're down to 0 bytes left to send:
+If the data being sent is large enough that this is a concern, or you are doing something that isn't just a test/demo application, you should track the number of bytes sent and keep calling send, updating the pointer as you advance. The code below is modified from~\cite{getaddrinfo} that sends as many times as necessary until we're down to 0 bytes left to send:
 
 \begin{lstlisting}[language=C]
 int sendall( int socket, char *buf, int *len ) {
@@ -63,7 +63,7 @@ The return value is the number of bytes actually read into the buffer. If you go
 
 Knowing that the other side is finished sending data is not necessarily all that easy. That's something to work out with the sender. This is why in movies when characters communicate with walkie-talkies, they say ``over'' when they have finished their transmission... so the recipient will know they are finished talking. In network communication, we might know in advance the size of data we are supposed to get, or we might be told as part of the (negotiated) protocol, or we might need to wait for the other side to close the connection (then we know they are definitely done).
 
-Suppose we are sending more than just a string. Can we do a fancy thing and write directly to a \texttt{struct} by making the buffer location the location of thtat \texttt{struct} and the length the \texttt{sizeof} that type? Yes, you can but this requires that the representation you receive over the network to be exactly the same as your struct. A more sensible approach is to serialize your data in some way, and then de-serialize it on the other side. 
+Suppose we are sending more than just a string. Can we do a fancy thing and write directly to a \texttt{struct} by making the buffer location the location of that \texttt{struct} and the length the \texttt{sizeof} that type? Yes, you can but this requires that the representation you receive over the network to be exactly the same as your struct. A more sensible approach is to serialize your data in some way, and then de-serialize it on the other side. 
 
 Serialization is the process of converting the data to some sort of byte-representation so that it can be sent across the network (or stored in a database, or anything really) and then later reconstructed via the deserialization process. This means that no particular data format is needed and systems that don't use the same software or architecture, even, can communicate easily.
 
@@ -161,7 +161,7 @@ A read function is very similar:
 \begin{lstlisting}[language=C]
 size_t read_callback( char *buffer, size_t size, size_t nitems, void *inputdata );
 \end{lstlisting}
-Again, the function can be called whatever you like. The \texttt{buffer} is the area where you are going to put the data to send (and it can't be any bigger than the next parameters specify). \texttt{size} here is the size of each data element and \texttt{nitems} is the number of items. In practice you will just want to calculate the maximum buffer size by multiplying these two things together. And he return value is the number of bytes successfully put there. We might need to do this in several chunks, though. If you put 0, it signals end-of-file and means no further upload will take place.
+Again, the function can be called whatever you like. The \texttt{buffer} is the area where you are going to put the data to send (and it can't be any bigger than the next parameters specify). \texttt{size} here is the size of each data element and \texttt{nitems} is the number of items. In practice you will just want to calculate the maximum buffer size by multiplying these two things together. And the return value is the number of bytes successfully put there. We might need to do this in several chunks, though. If you put 0, it signals end-of-file and means no further upload will take place.
 
 And to register the read and write callback respectively, there are two steps. One to register the function, and another to set the data:
 \begin{lstlisting}[language=C]
