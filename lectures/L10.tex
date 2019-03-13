@@ -188,7 +188,7 @@ int msync( void* address, size_t length, int flags );
 int munmap( void* address, size_t length );
 \end{lstlisting}
 
-The first argument is the address for where you want the mapped region to go in memory; unless you have a very good reason to do otherwise, let the system choose by supplying 0. The next argument is the number of bytes we want to map. The third argument is the protection rules --- read, write execute, and none -- that apply (details below). The flag argument indicates the mode that the memory will be mapped in. The second-last argument is the file descriptor of the file we wish to map, and the last argument is the offset from the start of the file where the segment begins.
+The first argument is the address for where you want the mapped region to go in memory; unless you have a very good reason to do otherwise, let the system choose by supplying \texttt{NULL}. The next argument is the number of bytes we want to map. The third argument is the protection rules --- read, write execute, and none -- that apply (details below). The flag argument indicates the mode that the memory will be mapped in. The second-last argument is the file descriptor of the file we wish to map, and the last argument is the offset from the start of the file where the segment begins.
 
 The return value is a pointer to the starting address of the memory area where the file is mapped.
 
@@ -251,7 +251,7 @@ int main( int argc, char** argv ) {
 }
 \end{lstlisting}
 
-The example works acceptably in the sense that we successfully overwrite the data with the new data and the parent process sees the change. But things get weird if we tried to write fewer bytes than the original message was. In general, the mapped area size cannot change. So if we want to write more data than is in the file, we can't make the content of the file larger (and things look strange when we write fewer). In linux there is the \texttt{mremap} call but this is not portable (ie does not work on all systems). But this would be great for something like sorting an array, wouldn't it? The sorted array is the same size as the input and we could share the work...
+The example works acceptably in the sense that we successfully overwrite the data with the new data and the parent process sees the change. But things get weird if we tried to write fewer bytes than the original message was. In general, the mapped area size cannot change. So if we want to write more data than is in the file, we can't make the content of the file larger (and things look strange when we write fewer). In Linux there is the \texttt{mremap} call but this is not portable (ie does not work on all systems). But this would be great for something like sorting an array, wouldn't it? The sorted array is the same size as the input and we could share the work...
 
 \input{bibliography.tex}
 
