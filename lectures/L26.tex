@@ -114,7 +114,7 @@ The lieutenants all send one another their instructions. Each of the loyal lieut
 
 Now we're in trouble because half the participants think the majority action is attack and half the participants think the majority action is retreat. Summing up what we heard is not sufficient. Lieutenants should also talk about what they heard from one another. After the general issues instructions, each lieutenant should then communicate with every other to hear what the general said to them. Then by reviewing this information, they can decide what to do.
 
-Consider a simple example where the general is loyal and we have two traitorous lieutenants with a total of seven participants The general issued an order to attack. 
+Consider a simple example where the general is loyal and we have two traitorous lieutenants with a total of seven participants. The general issued an order to attack. 
 
 \begin{center}
 	\begin{tikzpicture}
@@ -194,7 +194,7 @@ General & L1 & L2 & L3 & L4 & L5 & L6 \\
 
  One the thing we can do, however, is fill in the first column: lieutenant 1 does not care what other people THINK they said; so the whole column can be replaced with what was actually said:
  
- \begin{center}
+\begin{center}
 \begin{tabular}{|l|l|l|l|l|l|l|l|}
 \hline
 General & L1 & L2 & L3 & L4 & L5 & L6 \\	
@@ -300,7 +300,7 @@ Each of the lieutenants figures out that we have a draw and we then choose the d
 
 If there three disloyal participants can exist in the system there's another round of data exchange that needs to take place. Each lieutenant sends the table formed in the second round to all other lieutenants. The more disloyalty there could be in the system, the more rounds the process will go on. As you may have identified, for $n$ participants the communication grows at $n^{2}$ (well, actually worst case $dn^{2}$~\cite{mte241}) and even worse than that, as the number of participants and rounds increases, the amount of data to be sent also increases. For this reason it is somewhat impractical to tolerate a large number of disloyal participants.
 
-That is, however, still a design decision 
+That is, however, still a design decision...
 
 Part of the difficulty comes from the fact that lieutenants can lie about what the general said.  In the time of Byzantium, wax seals were used (hot wax is poured and then a stamp or ring was used to make an imprint on it). In modern times messages can be signed using public-key cryptography. Then participants can check whether the received message was genuine. An order that does not appear genuine can be disregarded, reducing the ability of disloyal lieutenants to cause confusion.
 
