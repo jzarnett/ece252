@@ -6,7 +6,7 @@
 
 \section*{Event-Driven I/O with libevent}
 
-We've now looked at a few different kinds of asynchronous I/O, including select/poll, cURL, and POSIX AIO. All of these seem to have some drawbacks, though. The libevent library is meant for high performance applications and scalable network servers. Instead of focusing now on whether an operation is blocking or not, we'll try to think about I/O as events: when something happens, take some action
+We've now looked at a few different kinds of asynchronous I/O, including select/poll, cURL, and POSIX AIO. All of these seem to have some drawbacks, though. The libevent library is meant for high performance applications and scalable network servers. Instead of focusing now on whether an operation is blocking or not, we'll try to think about I/O as events: when something happens, take some action.
 
 \paragraph{Getting ready.} The library supports a lot of different configuration options. Most of them are too advanced for consideration in this class, such as telling it how you want to handle fatal errors or override default memory allocation and deallocation behaviour. But the most important setup thing is that we need to configure it to use the pthreads library and functions. For this, the function is~\cite{libevent}:
 
@@ -110,9 +110,9 @@ An event has a lifecycle: it is created; when it becomes associated with an even
 To create and destroy an event: 
 
 \begin{lstlisting}[language=C]
-typedef void (*event_callback_fn)(evutil_socket_t fd, short what, void * arg)
-struct event* event_new(struct event_base *base, evutil_socket_t fd, short what, event_callback_fn cb, void *arg)
-void event_free(struct event *event)
+typedef void (*event_callback_fn)( evutil_socket_t fd, short what, void* arg )
+struct event* event_new( struct event_base* base, evutil_socket_t fd, short what, event_callback_fn cb, void* arg )
+void event_free( struct event* event )
 \end{lstlisting}
 
 The first line in there is the definition that the callback function must take: void return type with three parameters. We should be familiar enough with this sort of thing by now.
@@ -130,7 +130,7 @@ About that \texttt{what} parameter: hey look, we found a use for \texttt{short}!
 #define EV_ET           0x20
 \end{lstlisting}
 
-Most of them are self explanatory, but some warrant a bit. The timeout flag is ignored when setting what you are interested in, but can be returned as a result. The ``ET'' one indicates that the event should be edge-triggered, which matters for read and writes (i.e., a change in readiness is reported rather than readiness). The ``persist'' one means that when an event is triggered it's automatically ready to trigger again immediately. 
+Most of them are self explanatory, but some warrant a bit of explanation. The timeout flag is ignored when setting what you are interested in, but can be returned as a result. The ``ET'' one indicates that the event should be edge-triggered, which matters for read and writes (i.e., a change in readiness is reported rather than readiness). The ``persist'' one means that when an event is triggered it's automatically ready to trigger again immediately. 
 
 They can be combined, as we've seen previously for say, an open system call. If you're interested in watching for a read and a write, combine them using \texttt{|} (bitwise OR) just as we've done for other scenarios: \texttt{EV\_READ | EV\_WRITE}.
 
