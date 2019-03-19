@@ -77,7 +77,7 @@ If the operation completed successfully, \texttt{aio\_return} will get the retur
 
 \paragraph{AIO Example: Read While You Eat.}
 
-Suppose we have been asked to design a program that processes a group of files. We can use asynchronous I/O to partially parallelize this: start the read for file $n+1$ and process file $n$ in the meantime. This doesn't work for the first file, so a blocking read takes place below in the starter code. The maximum size of any file we will read is \texttt{MAX\_SIZE}, so always use this size as the length of a read (even though we may read less, that's okay). We need two buffers: one for the file being processed and one where the next read is taking place.
+Suppose we have been asked to design a program that processes a group of files. We can use asynchronous I/O to partially parallelize this: start the read for file $n+1$ and process file $n$ in the meantime. This doesn't work for the first file, so a blocking read takes place first. The maximum size of any file we will read is \texttt{MAX\_SIZE}, so always use this size as the length of a read (even though we may read less, that's okay). We need two buffers: one for the file being processed and one where the next read is taking place.
 
 A list of files to read will be provided as arguments on the commandline to the program. To make the code a bit more compact, we'll assume that errors won't occur and therefore we do not need to check for them (i.e., memory allocation, enqueuing an asynchronous read, actually reading the data, et cetera, will always succeed).
 
@@ -241,7 +241,8 @@ int main( int argc, char** argv ) {
 In the AIO control block there was one more parameter that we did not cover but said that we would come back to: \texttt{aio\_lio\_opcode}. What's this for? Well, we can submit a group of AIO requests in a single operation. Rather than calling read or write individually on each control block, the following function allows us to enqueue a list of requests all in one go~\cite{apunix}:
 
 \begin{lstlisting}[language=C]
-int lio_listio( int mode, struct aiocb * const list[ ], int nent, struct sigevent* sigev );
+int lio_listio( int mode, struct aiocb * const list[ ], int nent, 
+    struct sigevent* sigev );
 \end{lstlisting}
 
 The first argument \texttt{mode} is a choice of either \texttt{LIO\_WAIT} or \texttt{LIO\_NOWAIT}. If we choose the wait option, then the function doesn't return until all the operations are complete. If that's the case, the last argument is ignored. If we choose no-wait, then as soon as the I/O requests are queued the function returns and we can go on.
