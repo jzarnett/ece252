@@ -5,7 +5,7 @@
 \lecture{ 29 --- Asynchronous I/O with select, poll }{\term}{Jeff Zarnett}
 
 \section*{Asynchronous (non-blocking) I/O}
-Cnsider some of the usual file read code:
+Consider some of the usual file read code:
 
 \begin{lstlisting}[language=C]
 int fd = open( "example.txt", O_RDONLY );
@@ -56,7 +56,7 @@ The first parameter, \texttt{nfds}, is supposed to be the value of the highest n
 
 What's this about? Well, the \texttt{fd\_set} structure can have up to 1024 file descriptors, and is actually implemented as a bitfield; by specifying the highest file descriptor that we are interested in, the kernel can stop looking once we reached the last one (and the \texttt{fd\_set} structure doesn't have to be a linked list or array or anything large!)~\cite{apunix}.
 
-Well, we were going to have to figure out what the \texttt{fd\_set} means anyway. it represents a set of file descriptors, just as the name says.  There are then four functions for manipulating a set:
+Well, we were going to have to figure out what the \texttt{fd\_set} means anyway. It represents a set of file descriptors, just as the name says.  There are then four functions for manipulating a set:
 
 \begin{lstlisting}
 void FD_ZERO( fd_set *set ); /* Clear the set */
@@ -203,7 +203,7 @@ struct pollfd {
 
 Someone found a use for a \texttt{short} after all! Just kidding, hardware people.
 
-The first parameter is obviously the file descriptor to watch. The second is where we specify what events we want to wait for on this file descriptor, and the third parameter is set by the kernel so we can find what happened.
+The first parameter is obviously the file descriptor to watch. The second is where we specify what events we want to wait for on this file descriptor, and the third parameter is set by the kernel so we can find out what happened.
 
 What can we add? You can look for data that's ready to read with \texttt{POLLIN}, a socket where you can write without blocking with \texttt{POLLOUT}, and an exception (as above) with \texttt{POLLPRI}. These can be combined with the bitwise OR operator if you want more than one. 
 
