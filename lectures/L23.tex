@@ -11,7 +11,7 @@ An event is similar to, but slightly different from, a counting semaphore. We ha
 
 Consider the condition variable functions:
 
-\begin{lstlisting}
+\begin{lstlisting}[language=C]
 pthread_cond_init( pthread_cond_t *cv, pthread_condattr_t *attributes );
 pthread_cond_wait( pthread_cond_t *cv, pthread_mutex_t *mutex );
 pthread_cond_signal( pthread_cond_t *cv );
@@ -113,7 +113,7 @@ The condition variable with broadcast can be used to replace some of the synchro
   \end{verbatim}
 \end{multicols}
 
-The \texttt{wait} takes place before the post on \texttt{mutex}. That looks strange, doesn't it? What's important to remember is that we give up the mutex \texttt{lock} when we wait on the condition variable so the fact that we don't get to the unlock statement first does not cause a problem. So we are alright. The last thread, doesn't wait on the condition at all because there's no need to: it knows that it is last and there's nothing to wait for so it should proceed.
+The \texttt{wait} takes place before the post on \texttt{mutex}. That looks strange, doesn't it? What's important to remember is that we give up the mutex \texttt{lock} when we wait on the condition variable so the fact that we don't get to the unlock statement first does not cause a problem. So we are alright. The last thread doesn't wait on the condition at all because there's no need to: it knows that it is last and there's nothing to wait for so it should proceed.
 
 Okay, let's think about how to put that to use in an actual code example. Assume that \texttt{count}, \texttt{lock} and \texttt{cv} are initialized correctly as they should be. 
 
