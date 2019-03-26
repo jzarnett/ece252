@@ -29,6 +29,18 @@ Throughout this section we will use pseudocode and something like ``Statement A1
 
 \end{frame}
 
+
+\begin{frame}
+\frametitle{So Text Me, Maybe}
+
+\begin{center}
+	\includegraphics[width=0.9\textwidth]{images/texting.jpeg}
+\end{center}
+
+
+\end{frame}
+
+
 \begin{frame}[fragile]
 \frametitle{Signalling}
 
@@ -72,6 +84,18 @@ Then, when $B$ gets to the \texttt{wait} statement, it can proceed without delay
 Regardless of the actual order that the threads run, we are certain that statement A1 will execute before statement B2.
 
 \end{frame}
+
+
+\begin{frame}
+\frametitle{Rendezvous}
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/nasa-rendezvous.jpg}
+\end{center}
+
+
+\end{frame}
+
 
 \begin{frame}[fragile]
 \frametitle{Rendezvous}
@@ -202,7 +226,7 @@ If $B$ gets there first, it posts its arrival and waits for $A$.
 
 Whichever gets there last will post and unblock the other, before it calls \texttt{wait}.
 
-It will be able to proceed directly; the first thread to arrive already postled. 
+It will be able to proceed directly; the first thread to arrive already posted. 
 
 
 \end{frame}
@@ -243,9 +267,30 @@ As long as we are certain that deadlock will not occur, a solution is acceptable
 
 Nevertheless, the previous solution is provably better.
 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Rendezvous Analysis}
+
+What if we needed to add a third thread, C, to this rendezvous?
+
+What would we have to change?
 
 
 \end{frame}
+
+
+
+\begin{frame}
+\frametitle{Waiting Our Turn...}
+
+\begin{center}
+	\includegraphics[width=0.9\textwidth]{images/waiting-in-line.jpg}
+\end{center}
+
+\end{frame}
+
 
 \begin{frame}[fragile]
 \frametitle{Mutual Exclusion}
@@ -354,6 +399,17 @@ The only difference is how many threads can enter the critical section at a time
 
 \end{frame}
 
+
+\begin{frame}
+\frametitle{That's One Kind of Barrier}
+
+\begin{center}
+	\includegraphics[width=0.9\textwidth]{images/fence-barrier.jpg}
+\end{center}
+
+\end{frame}
+
+
 \begin{frame}
 \frametitle{Barrier}
 
@@ -418,7 +474,7 @@ The other threads waiting are stuck, waiting for a post that never comes.
 \frametitle{Barrier Solution 2}
 
 \begin{center}
-\includegraphics[width=0.5\textwidth]{images/oprah.jpg}
+\includegraphics[width=0.7\textwidth]{images/oprah.jpg}
 \end{center}
 
 
@@ -486,6 +542,16 @@ Have each thread unblock the next:
 
 \end{frame}
 
+
+\begin{frame}
+\frametitle{This Has a Name!}
+\begin{center}
+	\includegraphics[width=0.9\textwidth]{images/nyc-subway-turnstile.jpg}
+\end{center}
+
+\end{frame}
+
+
 \begin{frame}
 \frametitle{Barrier Solution 3 Analysis: The Turnstile}
 
@@ -535,7 +601,7 @@ The first thread waits on \texttt{mutex} and then goes to wait on the \texttt{ba
 
 At this point, the first thread is blocked.
 
-When a second thread comes along, it will wait on \texttt{mutex} but can get no further because the first thread has not postled on it. 
+When a second thread comes along, it will wait on \texttt{mutex} but can get no further because the first thread has not posted on it. 
 
 
 \end{frame}
