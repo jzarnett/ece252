@@ -208,6 +208,10 @@ The parent gets this as the return value of \texttt{wait} and may proceed.
 
 Note: \texttt{fork} creates a new process as a copy of itself.
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/spiderman-2.jpg}
+\end{center}
+
 Both parent and child continue after that statement.
 
 The call \texttt{fork} can return a value:\\
@@ -405,6 +409,17 @@ Exponential growth ($2^n$) processes after $n$ calls.
 
 
 \begin{frame}
+\frametitle{Fork Bomb}
+
+\begin{center}
+	\includegraphics[width=\textwidth]{images/forkbomb.png}
+\end{center}
+\hfill Image Credit: Wikipedia user Dake
+
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Apr\`{e}s \texttt{fork}, le d\'{e}luge}
 A system can be configured to defend against this.
 
@@ -432,6 +447,17 @@ Signals are, in the end, interrupts with a certain integer ID.
 
 
 \end{frame}
+
+
+\begin{frame}
+\frametitle{Gondor Calls For Aid}
+
+\begin{center}
+	\includegraphics[width=\textwidth]{images/beacon_gondor.png}
+\end{center}
+
+\end{frame}
+
 
 
 \begin{frame}
