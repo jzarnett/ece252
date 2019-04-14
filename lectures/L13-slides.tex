@@ -47,10 +47,26 @@ The operating system does not usually give much thought to whether it is a conve
 
 The common English usage of the word ``synchronization'' refers to making two or more things happen at exactly the same time. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/synchronize-watches.jpg}
+\end{center}
+
 Synchronization in the computer sense is more general:\\
 \quad Some relationship between events: before, during, after. 
 
 \end{frame}
+
+
+\begin{frame}
+\frametitle{Olympic Synchronization}
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/baton-handoff.jpg}
+	\includegraphics[width=0.5\textwidth]{images/skiing.jpg}
+\end{center}
+
+\end{frame}
+
 
 \begin{frame}
 \frametitle{Serialization}
@@ -168,6 +184,11 @@ If ``12'' is the correct output but ``21'' occurs only very rarely, finding the 
 This is, what is referred to as a ``Heisenbug''.
 
 This has nothing to do with the ``Breaking Bad'' TV show. 
+
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/heisenberg.jpg}
+	\includegraphics[width=0.1891\textwidth]{images/werner-heisenberg.jpg}
+\end{center}
 
 It comes from Werner Heisenberg and his scientific principle of uncertainty.
 
@@ -291,7 +312,7 @@ This problem arises because the instruction \texttt{count++} is really three thi
 
 When we are performing an operation that cannot be interrupted, we say it is \alert{atomic}: indivisible. 
 
-The word stems from Greek word \textit{atomos}, meaning indivisible. 
+The word stems from Greek word \textit{atomos}, roughly ``not cut-able''. 
 
 Though there are usually some atomic operations available to us in a given system, we cannot be certain that all operations are indivisible. 
 
@@ -315,6 +336,17 @@ Our concept of serialization requires that there exists a correct order:\\
 
 
 \end{frame}
+
+
+\begin{frame}
+\frametitle{Keep Calm...}
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/waityourturn.png}
+\end{center}
+
+\end{frame}
+
 
 \begin{frame}
 \frametitle{Mutual Exclusion}
@@ -496,7 +528,21 @@ This presents a possible solution: disabling interrupts.
 
 Disabling interrupts is a crude solution. 
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/ignorefirealarm.jpg}
+\end{center}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Disabling Interrupts}
+
 While interrupts are disabled, the system will be unable to respond to user input or other events (e.g., a fire alarm or detection of an incoming missile!). 
+
+\begin{center}
+	\includegraphics[width=\textwidth]{images/thisisfine.png}
+\end{center}
 
 If an error is encountered in the critical section and the program is terminated, the system is effectively stuck because no other program will be able to run.
 
