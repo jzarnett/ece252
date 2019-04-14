@@ -35,6 +35,10 @@ Deadlock being possible is not the same thing as deadlock being inevitable.
 
 We can take steps to avoid it if there is a danger of it actually happening. 
 
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/keepback.png}
+\end{center}
+
 The basic strategy is: do not allow a cycle in the resource allocation graph.
 
 
@@ -159,6 +163,19 @@ But may not be as easy as that in a real-world scenario...
 
 \end{frame}
 
+
+\begin{frame}
+\frametitle{Stay Alert, Stay Safe}
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/sass1.png}\\
+	\includegraphics[width=0.4\textwidth]{images/sass2.png}
+\end{center}
+
+
+\end{frame}
+
+
 \begin{frame}
 \frametitle{Stay Alert, Stay Safe}
 
@@ -279,6 +296,17 @@ The analysis is worst-case.
 
 \end{frame}
 
+
+\begin{frame}
+\frametitle{I Dare Say, Holmes...}
+
+\begin{center}
+	\includegraphics[width=\textwidth]{images/sherlock-wall.png}
+\end{center}
+\hfill Image Credit: Sherlock Holmes: Game of Shadows.
+\end{frame}
+
+
 \begin{frame}
 \frametitle{Resource-Allocation-Graph Algorithm}
 
@@ -322,14 +350,28 @@ If a cycle is found, the request should not be granted, as it risks a deadlock.
 
 \end{frame}
 
+
 \begin{frame}
 \frametitle{The Banker's Algorithm}
 
 The previous algorithm is applicable only if all resource requests are known in advance and there is only one instance of each resource.
 
-The banker's algorithm is more general: it allows for resources with multiple instances. 
+The banker's algorithm is general: it allows for resources with multiple instances. 
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/monopoly-man.jpg}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{The Banker's Algorithm}
+
 
 It received this name because it is hypothetically an algorithm that a small town banker might follow.
+
+It's not ``run up huge debts and then cry until the government bails you out...''
 
 He or she is trying to prevent allocating the cash on hand in such away that he or she could no longer satisfy customers.
 
