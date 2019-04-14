@@ -15,6 +15,17 @@
 
  \end{frame}
 
+
+\begin{frame}
+\frametitle{Yggdrasil, the World Tree}
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/Yggdrasil.jpg}
+\end{center}
+\hfill Image Credit: Rick Riordan, Magnus Chase and the Gods of Asgard
+\end{frame}
+
+
 \begin{frame}
 \frametitle{Ginnungagap}
 
@@ -51,6 +62,17 @@ Where do they take their names from? Valgrind is the gateway to Valhalla; a gate
 Helgrind is the gateway to, well, Hel. 
 \end{frame}
 
+
+\begin{frame}
+\frametitle{I may be interested in this subject...}
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/Loki.jpg}
+\end{center}
+
+\end{frame}
+
+
 \begin{frame}
 \frametitle{Through the Bifrost}
 
@@ -74,6 +96,16 @@ Valgrind is the base name of the project and by default what it's going to do is
 The purpose of memcheck is to look into all memory reads, writes, and to intercept and analyze every call to \texttt{malloc}/\texttt{free} and \texttt{new}/\texttt{delete}.
 
 \end{frame}
+
+\begin{frame}
+\frametitle{Is Your Program Worthy?}
+
+\begin{center}
+	\includegraphics[width=\textwidth]{images/heimdall-waits.jpg}
+\end{center}
+
+\end{frame}
+
 
 \begin{frame}
 \frametitle{Is Your Program Worthy?}
@@ -247,6 +279,19 @@ Looking in the file, at that line, we see a call to \texttt{pthread\_create} and
 
 
 \end{frame}
+
+
+\begin{frame}
+\frametitle{Helheim}
+
+\begin{center}
+	\includegraphics[width=\textwidth]{images/helheim.jpg}
+\end{center}
+
+\hfill Credit: Norse Legends Fandom User OlaTansta
+
+\end{frame}
+
 
 \begin{frame}
 \frametitle{What Fresh Hel is This}
@@ -516,12 +561,12 @@ You can ask Helgrind to try to tell you about variable names (if it can) with th
 
 The authors of Helgrind assume that if it tells you where the problem is, you will figure out what variables are affected and how to properly prevent data races. 
 
+\begin{center}
+	\includegraphics[width=0.3\textwidth]{images/its-your-job.jpg}
+\end{center}
+
 You might find this frustrating. 
 
-
-Helgrind + OpenMP + Linux can cause the occasional problem in GCC 4.2 and 4.3; the ``futex'' system call in Linux is not visible to Helgrind. 
-
-You can rebuild GCC with the option \texttt{--disable-linux-futex} and that will hopefully work it out.
 
 
 \end{frame}
