@@ -166,7 +166,7 @@ Let's modify the solution so that writers have priority over readers. Giving wri
 \end{multicols}
 \vspace{-2em}
 
-Yikes! The complexity for the writer increased dramatically. The reader it not all that different than it was before, however, and the writer now is to some extent the mirror image of the reader. 
+Yikes! The complexity for the writer increased dramatically. The reader is not all that different than it was before, however, and the writer now is to some extent the mirror image of the reader. 
 
 \subsection*{Readers Writers Example} 
 Using the pseudocode as above, we can implement the readers-writers behaviour in a given program using only semaphores (optionally using a mutex to replace a semaphore). But in the pthread library there is support for readers-writers lock types, meaning we don't have to reinvent the wheel. We can probably well imagine the actual complexity of the previous solution, so it's our hope that the readers-writers lock would make our code simpler to read and harder to make mistakes.
@@ -189,7 +189,7 @@ In theory, the same thread may lock the same rwlock $n$ times; just remember to 
 
 And speaking of unlock, there's no specifying whether you are releasing a read or write lock. This is because it is unnecessary; the implementation unlocks whatever type the calling thread was holding. Much like \texttt{close()}, if we can figure out what we're closing we don't need the caller of the function to specify what to do.
 
-As for whether readers get priority, the specification says this is implementation defined. If possible, for threads of equal priority, a writer takes precedence over a reader. But your system may vary.
+As for whether readers or writers get priority, the specification says this is implementation defined. If possible, for threads of equal priority, a writer takes precedence over a reader. But your system may vary.
 
 Consider the following example of the simple readers-writers (without writer priority and with risk of starvation) using the ``old'' way:
 
@@ -282,7 +282,7 @@ This is an extension of the readers-writers problem called the search-insert-del
 
 \textit{Deleters} remove items from anywhere in the list. At most one deleter process can access the list at a time, and when the deleter is accessing the list, no inserters and no searchers may be accessing the list. Deleter threads call \texttt{void delete( void* to\_delete )} where the argument to the deleter thread is the element to be deleted. These most closely resemble writers in the readers-writers problem.
 
-It turns out we don't need to modify things too much too allow for this third kind of thread. We need to keep track of when there are ``no inserters'' and ``no searchers'' (some hints for our semaphores) and another mutex to go around the actual insertion... See the code implementation below.
+It turns out we don't need to modify things too much to allow for this third kind of thread. We need to keep track of when there are ``no inserters'' and ``no searchers'' (some hints for our semaphores) and another mutex to go around the actual insertion... See the code implementation below.
 
 {\scriptsize
 \begin{multicols}{2}
