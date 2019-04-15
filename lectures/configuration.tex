@@ -22,10 +22,10 @@
 \newcounter{tmpnumSlide}
 \newcounter{tmpnumNote}
 
- \newcommand\mnote[1]{%
-   \addtocounter{tmpnumSlide}{1}
-   \ifdefined\showcues {~\tiny\fbox{\arabic{tmpnumSlide}}}\fi
-   \note{\setlength{\parskip}{1ex}\addtocounter{tmpnumNote}{1}\textbf{\Large \arabic{tmpnumNote}:} {#1\par}}}
+\newcommand\mnote[1]{%
+	\addtocounter{tmpnumSlide}{1}
+	\ifdefined\showcues {~\tiny\fbox{\arabic{tmpnumSlide}}}\fi
+	\note{\setlength{\parskip}{1ex}\addtocounter{tmpnumNote}{1}\textbf{\Large \arabic{tmpnumNote}:} {#1\par}}}
 
 \newcommand\mmnote[1]{\note{\setlength{\parskip}{1ex}#1\par}}
 
@@ -33,24 +33,24 @@
 \newcommand\mquestion[2]{{~\color{red}\fbox{?}}\note{\setlength{\parskip}{1ex}\par{\Large \textbf{?}} #1} \note{\setlength{\parskip}{1ex}\par{\Large \textbf{A}} #2\par}\ifdefined \presentationonly \pause \fi}
 
 \newcommand\blackboard[1]{%
-\ifdefined   \showblackboard
-  {#1}
-  \else {\begin{center} \fbox{\colorbox{blue!30}{%
-         \begin{minipage}{.95\linewidth}%
-           \hspace{\stretch{1}} Some space intentionally left blank; done at the blackboard.%
-         \end{minipage}}}\end{center}}%
-         \fi%
+	\ifdefined   \showblackboard
+		{#1}
+	\else {\begin{center} \fbox{\colorbox{blue!30}{%
+						\begin{minipage}{.95\linewidth}%
+							\hspace{\stretch{1}} Some space intentionally left blank; done at the blackboard.%
+						\end{minipage}}}\end{center}}%
+	\fi%
 }
 
 \usepackage{listings}
 \lstset{%
-  keywordstyle=\bfseries,
-  aboveskip=15pt,
-  belowskip=15pt,
-  captionpos=b,
-  identifierstyle=\ttfamily,
-  frame=lines,
-  numbers=left, basicstyle=\scriptsize, numberstyle=\tiny, stepnumber=0, numbersep=2pt}
+	keywordstyle=\bfseries,
+	aboveskip=15pt,
+	belowskip=15pt,
+	captionpos=b,
+	identifierstyle=\ttfamily,
+	frame=lines,
+	numbers=left, basicstyle=\scriptsize, numberstyle=\tiny, stepnumber=0, numbersep=2pt}
 
 \usepackage{siunitx}
 \newcommand\sius[1]{\num[group-separator = {,}]{#1}\si{\micro\second}}
@@ -86,22 +86,22 @@
 \gdef\lastframetitle{\textit{undefined}}
 % new environment for a multi-frame
 \newenvironment{multiframe}[1][]{%
-\ifthenelse{\isempty{#1}}{%
-% if no frame title was set via optional parameter,
-% only increase sequence counter by 1
-\addtocounter{multiframecounter}{1}%
-}{%
-% new frame title has been provided, thus
-% reset sequence counter to 1 and buffer frame title for later use
-\setcounter{multiframecounter}{1}%
-\gdef\lastframetitle{#1}%
-}%
-% start conventional frame environment and
-% automatically set frame title followed by sequence counter
-\begin{frame}%
-\frametitle{\lastframetitle~{\normalfont(\arabic{multiframecounter})}}%
-}{%
-\end{frame}%
+	\ifthenelse{\isempty{#1}}{%
+		% if no frame title was set via optional parameter,
+		% only increase sequence counter by 1
+		\addtocounter{multiframecounter}{1}%
+	}{%
+		% new frame title has been provided, thus
+		% reset sequence counter to 1 and buffer frame title for later use
+		\setcounter{multiframecounter}{1}%
+		\gdef\lastframetitle{#1}%
+	}%
+	% start conventional frame environment and
+	% automatically set frame title followed by sequence counter
+	\begin{frame}%
+		\frametitle{\lastframetitle~{\normalfont(\arabic{multiframecounter})}}%
+		}{%
+	\end{frame}%
 }
 \makeatother
 
@@ -110,39 +110,39 @@
 \newdimen\ydiffl%
 \newdimen\xdiffl%
 \newcommand\ydiff[2]{%
-    \coordinate (tmpnamea) at (#1);%
-    \coordinate (tmpnameb) at (#2);%
-    \pgfextracty{\tu@tmpa}{\pgfpointanchor{tmpnamea}{center}}%
-    \pgfextracty{\ydiffl}{\pgfpointanchor{tmpnameb}{center}}%
-    \advance\ydiffl by -\tu@tmpa%
+	\coordinate (tmpnamea) at (#1);%
+	\coordinate (tmpnameb) at (#2);%
+	\pgfextracty{\tu@tmpa}{\pgfpointanchor{tmpnamea}{center}}%
+	\pgfextracty{\ydiffl}{\pgfpointanchor{tmpnameb}{center}}%
+	\advance\ydiffl by -\tu@tmpa%
 }
 \newcommand\xdiff[2]{%
-    \coordinate (tmpnamea) at (#1);%
-    \coordinate (tmpnameb) at (#2);%
-    \pgfextractx{\tu@tmpa}{\pgfpointanchor{tmpnamea}{center}}%
-    \pgfextractx{\xdiffl}{\pgfpointanchor{tmpnameb}{center}}%
-    \advance\xdiffl by -\tu@tmpa%
+	\coordinate (tmpnamea) at (#1);%
+	\coordinate (tmpnameb) at (#2);%
+	\pgfextractx{\tu@tmpa}{\pgfpointanchor{tmpnamea}{center}}%
+	\pgfextractx{\xdiffl}{\pgfpointanchor{tmpnameb}{center}}%
+	\advance\xdiffl by -\tu@tmpa%
 }
 \makeatother
 \newcommand{\copyrightbox}[3][r]{%
-\begin{tikzpicture}%
-\node[inner sep=0pt,minimum size=2em](ciimage){#2};
-\usefont{OT1}{phv}{n}{n}\fontsize{4}{4}\selectfont
-\ydiff{ciimage.south}{ciimage.north}
-\xdiff{ciimage.west}{ciimage.east}
-\ifthenelse{\equal{#1}{r}}{%
-\node[inner sep=0pt,right=1ex of ciimage.south east,anchor=north west,rotate=90]%
-{\raggedleft\color{black!50}\parbox{\the\ydiffl}{\raggedright{}#3}};%
-}{%
-\ifthenelse{\equal{#1}{l}}{%
-\node[inner sep=0pt,right=1ex of ciimage.south west,anchor=south west,rotate=90]%
-{\raggedleft\color{black!50}\parbox{\the\ydiffl}{\raggedright{}#3}};%
-}{%
-\node[inner sep=0pt,below=1ex of ciimage.south west,anchor=north west]%
-{\raggedleft\color{black!50}\parbox{\the\xdiffl}{\raggedright{}#3}};%
-}
-}
-\end{tikzpicture}
+	\begin{tikzpicture}%
+		\node[inner sep=0pt,minimum size=2em](ciimage){#2};
+		\usefont{OT1}{phv}{n}{n}\fontsize{4}{4}\selectfont
+		\ydiff{ciimage.south}{ciimage.north}
+		\xdiff{ciimage.west}{ciimage.east}
+		\ifthenelse{\equal{#1}{r}}{%
+			\node[inner sep=0pt,right=1ex of ciimage.south east,anchor=north west,rotate=90]%
+			{\raggedleft\color{black!50}\parbox{\the\ydiffl}{\raggedright{}#3}};%
+		}{%
+			\ifthenelse{\equal{#1}{l}}{%
+				\node[inner sep=0pt,right=1ex of ciimage.south west,anchor=south west,rotate=90]%
+				{\raggedleft\color{black!50}\parbox{\the\ydiffl}{\raggedright{}#3}};%
+			}{%
+				\node[inner sep=0pt,below=1ex of ciimage.south west,anchor=north west]%
+				{\raggedleft\color{black!50}\parbox{\the\xdiffl}{\raggedright{}#3}};%
+			}
+		}
+	\end{tikzpicture}
 }
 
 
@@ -165,17 +165,17 @@
 \newcommand\tuple[1]{\langle #1 \rangle}
 \newcommand\code[1]{{\sf \footnotesize #1}}
 \newcommand\ex[1]{\uline{Example:} \ifdefined \presentationonly \pause \fi
-  \ifdefined\showexamples#1\xspace\else{\uline{\hspace*{2cm}}}\fi}
+	\ifdefined\showexamples#1\xspace\else{\uline{\hspace*{2cm}}}\fi}
 
 \newcommand\ceil[1]{\lceil #1 \rceil}
 
 
 \AtBeginSection[]
 {
-   \begin{frame}
-       \frametitle{Outline}
-       \tableofcontents[currentsection]
-   \end{frame}
+	\begin{frame}
+		\frametitle{Outline}
+		\tableofcontents[currentsection]
+	\end{frame}
 }
 
 
@@ -189,10 +189,10 @@
 \tikzstyle{gn}=[circle,fill=Lime,draw=Black,line width=0.8 pt]
 \tikzstyle{yn}=[circle,fill=Yellow,draw=Black,line width=0.8 pt]
 \tikzstyle{empty}=[circle,fill=White,draw=Black]
-\tikzstyle{bw} = [rectangle, draw, fill=blue!20, 
-    text width=4em, text centered, rounded corners, minimum height=2em]
-    
-    \newcommand{\CcNote}[1]{% longname
+\tikzstyle{bw} = [rectangle, draw, fill=blue!20,
+text width=4em, text centered, rounded corners, minimum height=2em]
+
+\newcommand{\CcNote}[1]{% longname
 	This work is licensed under the \textit{Creative Commons #1 3.0 License}.%
 }
 \newcommand{\CcImageBy}[1]{%
@@ -210,14 +210,14 @@
 \newcommand{\CcLongnameByNcSa}{Attribution-NonCommercial-ShareAlike}
 
 \newenvironment{changemargin}[1]{% 
-  \begin{list}{}{% 
-    \setlength{\topsep}{0pt}% 
-    \setlength{\leftmargin}{#1}% 
-    \setlength{\rightmargin}{1em}
-    \setlength{\listparindent}{\parindent}% 
-    \setlength{\itemindent}{\parindent}% 
-    \setlength{\parsep}{\parskip}% 
-  }% 
-  \item[]}{\end{list}} 
+	\begin{list}{}{% 
+		\setlength{\topsep}{0pt}% 
+		\setlength{\leftmargin}{#1}% 
+		\setlength{\rightmargin}{1em}
+		\setlength{\listparindent}{\parindent}% 
+		\setlength{\itemindent}{\parindent}% 
+		      \setlength{\parsep}{\parskip}% 
+		      }% 
+		\item[]}{\end{list}}
 
 

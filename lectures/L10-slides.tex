@@ -4,124 +4,124 @@
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
-  University of Waterloo}
+	University of Waterloo}
 \date{\today}
 
 
 \begin{document}
 
 \begin{frame}
-  \titlepage
+	\titlepage
 
- \end{frame}
+\end{frame}
 
 \begin{frame}
-\frametitle{More IPC}
+	\frametitle{More IPC}
 
-In addition to message passing, we should talk about pipes and shared memory.
+	In addition to message passing, we should talk about pipes and shared memory.
 
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{UNIX Pipes}
+	\frametitle{UNIX Pipes}
 
-In UNIX, we can create a \textit{pipe} to set up communication. 
+	In UNIX, we can create a \textit{pipe} to set up communication.
 
-\begin{center}
-	\includegraphics[width=0.7\textwidth]{images/mario-pipe.jpg}
-\end{center}
-
-\end{frame}
-
-\begin{frame}
-\frametitle{UNIX Pipes}
-
-
-
-
-The producer writes in one end; the consumer receives on the other. 
-
-This is unidirectional, so if bidirectional communication is desired, two pipes must be used (going in different directions). 
+	\begin{center}
+		\includegraphics[width=0.7\textwidth]{images/mario-pipe.jpg}
+	\end{center}
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Constructing a UNIX Pipe}
+	\frametitle{UNIX Pipes}
 
-The method is \texttt{pipe} and it is constructed with the call: \\
-\texttt{pipe( int fileDescriptors[])}\\
-\quad where \texttt{fileDescriptors[0]} is the read-end; and\\
-\quad \texttt{fileDescriptors[1]} is the write-end. 
 
-Yes, \texttt{fileDescriptors} means that UNIX thinks of a pipe as a file\\
-\quad even though it is in memory.
+
+
+	The producer writes in one end; the consumer receives on the other.
+
+	This is unidirectional, so if bidirectional communication is desired, two pipes must be used (going in different directions).
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Constructing a UNIX Pipe}
+
+	The method is \texttt{pipe} and it is constructed with the call: \\
+	\texttt{pipe( int fileDescriptors[])}\\
+	\quad where \texttt{fileDescriptors[0]} is the read-end; and\\
+	\quad \texttt{fileDescriptors[1]} is the write-end.
+
+	Yes, \texttt{fileDescriptors} means that UNIX thinks of a pipe as a file\\
+	\quad even though it is in memory.
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{UNIX Pipes}
+	\frametitle{UNIX Pipes}
 
-\begin{center}
-	\includegraphics[width=0.9\textwidth]{images/unix-pipe.png}
-\end{center}
-
-\end{frame}
-
-\begin{frame}
-\frametitle{UNIX Pipes}
-
-The pipe is a block of main memory interpreted as a circular queue.
-
-Each entry in the queue is fixed in size and usually one character. 
-
-The sender may place the message into the queue in small chunks.
-
-The receiver gets data one character at a time. 
-
-The sender and receiver need to know when the message is finished. 
-
-Solutions: termination character, or declared length at the start.
+	\begin{center}
+		\includegraphics[width=0.9\textwidth]{images/unix-pipe.png}
+	\end{center}
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Named Pipes}
+	\frametitle{UNIX Pipes}
 
-A UNIX pipe may be stored on disk. 
+	The pipe is a block of main memory interpreted as a circular queue.
 
-When this happens, we call it a \alert{named pipe}. 
+	Each entry in the queue is fixed in size and usually one character.
 
-Unless we make it a named pipe, a pipe exists only as long as the processes are communicating.
+	The sender may place the message into the queue in small chunks.
 
-Regular pipes require a parent-child process relationship.\\
-\quad Named pipes do not.
+	The receiver gets data one character at a time.
 
-Named pipes are also bidirectional, but one direction at a time.
+	The sender and receiver need to know when the message is finished.
+
+	Solutions: termination character, or declared length at the start.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{UNIX Command Line Pipes}
+	\frametitle{Named Pipes}
 
-You may have worked with pipes on the UNIX command line. 
+	A UNIX pipe may be stored on disk.
 
-A command like \texttt{ cat fork.c | less } creates a pipe;.
+	When this happens, we call it a \alert{named pipe}.
 
-It takes the output of the \texttt{cat} program and delivers it as input to \texttt{less}.
+	Unless we make it a named pipe, a pipe exists only as long as the processes are communicating.
+
+	Regular pipes require a parent-child process relationship.\\
+	\quad Named pipes do not.
+
+	Named pipes are also bidirectional, but one direction at a time.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{UNIX Command Line Pipes}
+
+	You may have worked with pipes on the UNIX command line.
+
+	A command like \texttt{ cat fork.c | less } creates a pipe;.
+
+	It takes the output of the \texttt{cat} program and delivers it as input to \texttt{less}.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Pipe Code Example}
+	\frametitle{Pipe Code Example}
 
-Use \texttt{fork} to spawn a new child process and then setting up a communication pipe between the parent and child. 
+	Use \texttt{fork} to spawn a new child process and then setting up a communication pipe between the parent and child.
 
-We will send a message ``Greetings'' from the parent to the child.
+	We will send a message ``Greetings'' from the parent to the child.
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 
   char write_msg[BUFFER_SIZE] = "Greetings"; 
   char read_msg[BUFFER_SIZE];
@@ -139,9 +139,9 @@ We will send a message ``Greetings'' from the parent to the child.
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Pipe Code Example, Continued}
+	\frametitle{Pipe Code Example, Continued}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 
 /* fork a child process */
   pid = fork();
@@ -165,16 +165,16 @@ We will send a message ``Greetings'' from the parent to the child.
 
 \end{lstlisting}
 
-\texttt{READ\_END} is defined as \texttt{0} in a \texttt{\#define} directive.\\
-\texttt{WRITE\_END} is defined as \texttt{1} in a \texttt{\#define} directive.
+	\texttt{READ\_END} is defined as \texttt{0} in a \texttt{\#define} directive.\\
+	\texttt{WRITE\_END} is defined as \texttt{1} in a \texttt{\#define} directive.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Pipe Code Example, Continued}
+	\frametitle{Pipe Code Example, Continued}
 
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
   else { /* child process */
     /* close the unused end of the pipe */ 
     close(fd[WRITE_END]);
@@ -189,204 +189,204 @@ We will send a message ``Greetings'' from the parent to the child.
 }
 \end{lstlisting}
 
-Does the output match what's supposed to happen? 
+	Does the output match what's supposed to happen?
 
-Or are there extra characters?
+	Or are there extra characters?
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Creating a Named Pipe}
+	\frametitle{Creating a Named Pipe}
 
-If we wanted to create a named pipe, the system call is \texttt{mkfifo}. 
+	If we wanted to create a named pipe, the system call is \texttt{mkfifo}.
 
-Sometimes a named pipe is called a FIFO. 
+	Sometimes a named pipe is called a FIFO.
 
-As it is a file, it can be manipulated with the usual UNIX file system calls: \texttt{open}, \texttt{read}, \texttt{write}, and \texttt{close}.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Shared Memory}
-
-Conceptually, the idea of shared memory is very simple. 
-
-A particular region of memory is designated as being shared between multiple processes, all of whom may read and write to that location. 
-
-To share an area of memory, the OS must be notified.
+	As it is a file, it can be manipulated with the usual UNIX file system calls: \texttt{open}, \texttt{read}, \texttt{write}, and \texttt{close}.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{What's yours is mine...}
+	\frametitle{Shared Memory}
 
-Normally, a region of memory is associated with exactly one process (its owner).
+	Conceptually, the idea of shared memory is very simple.
 
+	A particular region of memory is designated as being shared between multiple processes, all of whom may read and write to that location.
 
-\begin{center}
-	\includegraphics[width=0.4\textwidth]{images/shared-memory.png}
-\end{center}
-
-The kernel is only involved in the setup and cleanup of that shared area.
+	To share an area of memory, the OS must be notified.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Whose Turn Is It Anyway?}
+	\frametitle{What's yours is mine...}
 
-When a section of memory is shared, there exists the possibility that one process will overwrite another's changes.
+	Normally, a region of memory is associated with exactly one process (its owner).
 
-To prevent this sort of problem, we will need a mechanism for co-ordination... 
 
-A subject we will return to later.
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{images/shared-memory.png}
+	\end{center}
+
+	The kernel is only involved in the setup and cleanup of that shared area.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Whose Turn Is It Anyway?}
+
+	When a section of memory is shared, there exists the possibility that one process will overwrite another's changes.
+
+	To prevent this sort of problem, we will need a mechanism for co-ordination...
+
+	A subject we will return to later.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Share a Key}
+	\frametitle{Share a Key}
 
-Suppose we want to share a section of memory. 
+	Suppose we want to share a section of memory.
 
-We need to obtain a \alert{key} that identifies a specific memory segment. 
+	We need to obtain a \alert{key} that identifies a specific memory segment.
 
-Keys are just integer values, so we would like them to be unique.
+	Keys are just integer values, so we would like them to be unique.
 
-One method is to generate the key with the ``file to key'' function found in \texttt{sys/ipc.h}:
-\begin{lstlisting}[language=C]
+	One method is to generate the key with the ``file to key'' function found in \texttt{sys/ipc.h}:
+	\begin{lstlisting}[language=C]
 key_t ftok( char *pathname, int proj )
 \end{lstlisting}
 
-The key is generated from the given file name (\texttt{pathname}) and the value \texttt{proj}.
+	The key is generated from the given file name (\texttt{pathname}) and the value \texttt{proj}.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Not Private Key Encryption}
+	\frametitle{Not Private Key Encryption}
 
-There is a very small risk of duplicate numbers.
+	There is a very small risk of duplicate numbers.
 
-Another way we can get a key is using the constant \texttt{IPC\_PRIVATE}. 
+	Another way we can get a key is using the constant \texttt{IPC\_PRIVATE}.
 
-If we give the constant in where a \texttt{key\_t} is expected then a guaranteed unique key is returned.
+	If we give the constant in where a \texttt{key\_t} is expected then a guaranteed unique key is returned.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Workflow for Shared Memory}
+	\frametitle{Workflow for Shared Memory}
 
-\begin{itemize}
-	\item Create a new shared memory segment -- \texttt{shmget}.
-	\item Attach the shared memory segment -- \texttt{shmat}.
-	\item Then the process can use the shared memory.
-	\item Detach -- \texttt{shmdt}.
-	\item Delete the shared memory segment, done by one process only -- \texttt{shmctl}.
-\end{itemize}
+	\begin{itemize}
+		\item Create a new shared memory segment -- \texttt{shmget}.
+		\item Attach the shared memory segment -- \texttt{shmat}.
+		\item Then the process can use the shared memory.
+		\item Detach -- \texttt{shmdt}.
+		\item Delete the shared memory segment, done by one process only -- \texttt{shmctl}.
+	\end{itemize}
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Create}
+	\frametitle{Create}
 
-To create a shared memory segment, or get a reference to an existing one, we use \texttt{shmget}.
+	To create a shared memory segment, or get a reference to an existing one, we use \texttt{shmget}.
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int shmget( key_t key, size_t size, int shmflg );
 \end{lstlisting}
 
-The first argument is the key, which can be either the result of a \texttt{ftok()} call or the constant \texttt{IPC\_PRIVATE}.
+	The first argument is the key, which can be either the result of a \texttt{ftok()} call or the constant \texttt{IPC\_PRIVATE}.
 
-\texttt{size}: how many bytes of memory are to be shared.
+	\texttt{size}: how many bytes of memory are to be shared.
 
-\texttt{shmflg}: access permissions (UNIX standards, eg 600)\\
-\quad Optional: \texttt{IPC\_CREAT}, \texttt{IPC\_EXCL}
+	\texttt{shmflg}: access permissions (UNIX standards, eg 600)\\
+	\quad Optional: \texttt{IPC\_CREAT}, \texttt{IPC\_EXCL}
 
-Return value: the integer ID of the shared memory segment.
+	Return value: the integer ID of the shared memory segment.
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Attach}
-\begin{lstlisting}[language=C]
+	\frametitle{Attach}
+	\begin{lstlisting}[language=C]
 void* shmat( int shmid, const void* shmaddr, int shmflg );
 \end{lstlisting}
 
-\texttt{shmid}: ID of the shared memory segment.
+	\texttt{shmid}: ID of the shared memory segment.
 
-\texttt{shmaddr}: where it should go; always use \texttt{NULL}.
+	\texttt{shmaddr}: where it should go; always use \texttt{NULL}.
 
-\texttt{shmflg}: optionally, \texttt{SHM\_RDONLY}
+	\texttt{shmflg}: optionally, \texttt{SHM\_RDONLY}
 
-Return value: standard C pointer with the address of shared memory.
+	Return value: standard C pointer with the address of shared memory.
 
-But how do we know what the shared memory segment ID is?
+	But how do we know what the shared memory segment ID is?
 
 \end{frame}
 
 \begin{frame}
-\frametitle{This is the key for what?}
+	\frametitle{This is the key for what?}
 
-If we created the segment ourselves, we obviously know where it is. 
+	If we created the segment ourselves, we obviously know where it is.
 
-But presumably you want some other process to have it as well. 
+	But presumably you want some other process to have it as well.
 
-If two processes use the same input values for \texttt{ftok()} they will get the same result, so that's one method. 
+	If two processes use the same input values for \texttt{ftok()} they will get the same result, so that's one method.
 
-Or, if a parent attaches a shared memory segment and then calls \texttt{fork()}, the child inherits the shared memory segments, so it's is already set up.
+	Or, if a parent attaches a shared memory segment and then calls \texttt{fork()}, the child inherits the shared memory segments, so it's is already set up.
 
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Detach Cable!}
+	\frametitle{Detach Cable!}
 
-\begin{center}
-	\includegraphics[width=0.9\textwidth]{images/detach-cable.jpg}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.9\textwidth]{images/detach-cable.jpg}
+	\end{center}
 
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Detach Segment}
+	\frametitle{Detach Segment}
 
-When we are done with a segment we can detach from it with \texttt{shmdt}.
+	When we are done with a segment we can detach from it with \texttt{shmdt}.
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int shmdt( const void* shmaddr );
 \end{lstlisting}
 
-\texttt{shmaddr}: the address returned by the attach call
+	\texttt{shmaddr}: the address returned by the attach call
 
-If we forget, it happens at process termination (but don't forget!)
+	If we forget, it happens at process termination (but don't forget!)
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Delete Shared Memory}
-\begin{lstlisting}[language=C]
+	\frametitle{Delete Shared Memory}
+	\begin{lstlisting}[language=C]
 int shmctl( int schmidt, int cmd, struct shmid_ds *buf )
 \end{lstlisting}
 
-This function can do a lot more than delete it, such as modify properties of the data structure that is used to control shared memory.
+	This function can do a lot more than delete it, such as modify properties of the data structure that is used to control shared memory.
 
-The command is  \texttt{IPC\_RMID} (``remove ID'').
+	The command is  \texttt{IPC\_RMID} (``remove ID'').
 
-We must leave the last argument as \texttt{NULL} for this deletion. 
+	We must leave the last argument as \texttt{NULL} for this deletion.
 
-Deletion may be deferred!
+	Deletion may be deferred!
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Shared Memory Example}
-\begin{lstlisting}[language=C]
+	\frametitle{Shared Memory Example}
+	\begin{lstlisting}[language=C]
 #define _XOPEN_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -420,151 +420,151 @@ int main( int argc, char** argv ) {
 
 
 \begin{frame}
-\frametitle{Consult the Map}
+	\frametitle{Consult the Map}
 
-\begin{center}
-	\includegraphics[width=0.8\textwidth]{images/worldmap.jpg}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.8\textwidth]{images/worldmap.jpg}
+	\end{center}
 
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Altenative: \texttt{mmap()}}
+	\frametitle{Altenative: \texttt{mmap()}}
 
- An alternative approach for shared memory involves the use of \texttt{mmap()}, a function nominally used to map a file into memory. 
+	An alternative approach for shared memory involves the use of \texttt{mmap()}, a function nominally used to map a file into memory.
 
-But we can also use this for IPC!
+	But we can also use this for IPC!
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Mapping}
-\begin{lstlisting}[language=C]
+	\frametitle{Mapping}
+	\begin{lstlisting}[language=C]
 void* mmap( void* address, size_t length, int protection, int flag,
    int fd, off_t offset );
 \end{lstlisting}
 
-\texttt{address}: where you want the mapped region to go; use \texttt{NULL}.
+	\texttt{address}: where you want the mapped region to go; use \texttt{NULL}.
 
-\texttt{length}: how many bytes to map.
+	\texttt{length}: how many bytes to map.
 
-\texttt{protection}: rules for how memory can be used.
+	\texttt{protection}: rules for how memory can be used.
 
-\texttt{flag}: mode for mapping.
+	\texttt{flag}: mode for mapping.
 
-\texttt{fd}: file descriptor of the file to map.
+	\texttt{fd}: file descriptor of the file to map.
 
-\texttt{offset}: how far from the start of the file mapping begins.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Protection Flags}
-
-Valid values are \texttt{PROT\_NONE}, \texttt{PROT\_READ}, \texttt{PROT\_WRITE}, and \texttt{PROT\_EXECUTE}.
-
-They can be combined with the bitwise OR operator.
-
-Whatever flags you choose have to be consistent with how the file was opened with \texttt{open}.
+	\texttt{offset}: how far from the start of the file mapping begins.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{\texttt{PROT\_NONE}}
+	\frametitle{Protection Flags}
 
-\begin{center}
-	\includegraphics[width=0.45\textwidth]{images/AllesVerboten.jpg}
-\end{center}
+	Valid values are \texttt{PROT\_NONE}, \texttt{PROT\_READ}, \texttt{PROT\_WRITE}, and \texttt{PROT\_EXECUTE}.
 
-What's the point of \texttt{PROT\_NONE}, if all things are forbidden?
+	They can be combined with the bitwise OR operator.
 
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Flags}
-Flags can be one of two options: \texttt{MAP\_PRIVATE} or \texttt{MAP\_SHARED}.
-
-Private: modifications are not visible to other processes mapping the same file and not written out to the underlying file.
-
-Shared: modifications are visible to other processes and written out to the file... but maybe not instantly.
+	Whatever flags you choose have to be consistent with how the file was opened with \texttt{open}.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Memory Mapped File}
+	\frametitle{\texttt{PROT\_NONE}}
 
-\begin{center}
-\includegraphics[width=0.9\textwidth]{images/memory-mapped-file.png}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.45\textwidth]{images/AllesVerboten.jpg}
+	\end{center}
+
+	What's the point of \texttt{PROT\_NONE}, if all things are forbidden?
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Flags}
+	Flags can be one of two options: \texttt{MAP\_PRIVATE} or \texttt{MAP\_SHARED}.
+
+	Private: modifications are not visible to other processes mapping the same file and not written out to the underlying file.
+
+	Shared: modifications are visible to other processes and written out to the file... but maybe not instantly.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Memory Mapped File}
+
+	\begin{center}
+		\includegraphics[width=0.9\textwidth]{images/memory-mapped-file.png}
+	\end{center}
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Protection}
+	\frametitle{Protection}
 
-If we wish to change the protection rules for a section, we use \texttt{mprotect}.
+	If we wish to change the protection rules for a section, we use \texttt{mprotect}.
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int mprotect( void* address, size_t length, int prot );
 \end{lstlisting}
 
-\texttt{address}: the memory to modify protection of.
+	\texttt{address}: the memory to modify protection of.
 
-\texttt{length}: the size of said memory.
+	\texttt{length}: the size of said memory.
 
-\texttt{port}: the new protection rules.
+	\texttt{port}: the new protection rules.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Synchronize}
+	\frametitle{Synchronize}
 
-\begin{center}
-	\includegraphics[width=0.3\textwidth]{images/sync-icon.png}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.3\textwidth]{images/sync-icon.png}
+	\end{center}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int msync( void* address, size_t length, int flags );
 \end{lstlisting}
 
-\texttt{address}: the memory to synchronize.
+	\texttt{address}: the memory to synchronize.
 
-\texttt{length}: how many bytes to synchronize.
+	\texttt{length}: how many bytes to synchronize.
 
-\texttt{flags}: mode for synchronization; use \texttt{MS\_SYNC} (blocking).
+	\texttt{flags}: mode for synchronization; use \texttt{MS\_SYNC} (blocking).
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Unmap}
+	\frametitle{Unmap}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int munmap( void* address, size_t length );
 \end{lstlisting}
 
-\texttt{address}: the memory to unmap.
+	\texttt{address}: the memory to unmap.
 
-\texttt{length}: how many bytes to unmap.
+	\texttt{length}: how many bytes to unmap.
 
-A segment would be unmapped automatically when a process exits, but as always it is polite to unmap it as soon as you know that you are done with it.
+	A segment would be unmapped automatically when a process exits, but as always it is polite to unmap it as soon as you know that you are done with it.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Memory Mapping Example}
+	\frametitle{Memory Mapping Example}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 #define _XOPEN_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -588,9 +588,9 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Memory Mapping Example}
+	\frametitle{Memory Mapping Example}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
     int pid = fork();
     if ( pid > 0 ) { /* Parent */
         waitpid( pid, NULL, 0 );
@@ -611,18 +611,18 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 \begin{frame}
-\frametitle{The Example is... Flawed}
+	\frametitle{The Example is... Flawed}
 
-The example works acceptably in the sense that we successfully overwrite the data with the new data and the parent process sees the change.
+	The example works acceptably in the sense that we successfully overwrite the data with the new data and the parent process sees the change.
 
-But things get weird if we tried to write fewer bytes than the original message. 
+	But things get weird if we tried to write fewer bytes than the original message.
 
-In general, the mapped area size cannot change.
+	In general, the mapped area size cannot change.
 
-Linux has \texttt{mremap} but this is not portable...
+	Linux has \texttt{mremap} but this is not portable...
 
-But this would be great for something like sorting an array, wouldn't it?\\
-\quad The sorted array is the same size as the input and we could share the work...
+	But this would be great for something like sorting an array, wouldn't it?\\
+	\quad The sorted array is the same size as the input and we could share the work...
 
 \end{frame}
 

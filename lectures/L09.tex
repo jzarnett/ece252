@@ -9,7 +9,7 @@
 \paragraph{Background.}
 You are Jyn Erso, a traitor to His Majesty the Emperor, a member of the vile rebellion. You are trapped on the planet Scarif, having stolen the plans for the Death Star, and you plan to transmit them to the rebel fleet above. Time is short, because Lord Vader is on his way... and you know how he deals with traitors. You need to upload the plans, in the hopes that the rebellion can analyze them and possibly find a weakness. Upon transmission of the plans you'll receive an answer from the command ship indicating whether or not the transmission was successful. Furthermore, the Death Star has just dropped out of hyperspace -- and Grand Moff Tarkin is keen to open fire on the facility.
 
-\paragraph{Primary Objective.} The primary objective of this exercise is to practice communicating with a remote server using socket communication in C. 
+\paragraph{Primary Objective.} The primary objective of this exercise is to practice communicating with a remote server using socket communication in C.
 
 \paragraph{Secondary Objective(s).} You will also gain some more experience using the toolchain (gcc mostly) that should have been introduced in the labs for this course. This may also be your first introduction to git and gitlab.
 
@@ -22,8 +22,8 @@ You are Jyn Erso, a traitor to His Majesty the Emperor, a member of the vile reb
 \paragraph{Description of Behaviour.} The goal is to implement the program so that the following behaviour occurs:
 
 \begin{itemize}
-	\item Your program should take in the IP of the rebel command ship (remote server) as the first argument. So if the IP to use is \texttt{127.0.0.1} then the program is invoked like \texttt{./rogue-one 127.0.0.1}. 
-	\item Establish a TCP/stream connection to the command ship (actual IP will be given in the class because these things can and do change with time!). This is the client-side, so you need to get the address information (\texttt{getaddrinfo()}), create a socket (\texttt{socket()}), and then \texttt{connect()} to the remote server. 
+	\item Your program should take in the IP of the rebel command ship (remote server) as the first argument. So if the IP to use is \texttt{127.0.0.1} then the program is invoked like \texttt{./rogue-one 127.0.0.1}.
+	\item Establish a TCP/stream connection to the command ship (actual IP will be given in the class because these things can and do change with time!). This is the client-side, so you need to get the address information (\texttt{getaddrinfo()}), create a socket (\texttt{socket()}), and then \texttt{connect()} to the remote server.
 	\item Once connected, transmit the plans for the Death Star! The plans are loaded for you in the \texttt{load\_plans} function (which loads the file into memory for you -- remember to deallocate the data when done). The plans are large, so you probably cannot send it all in one call to \texttt{send}; so check the results and send repeatedly as needed.
 	\item After you make your transmission, try to receive (using \texttt{recv()}) a response that could be up to 64 characters long. If your upload was unsuccessful you will get an error of some sort, otherwise you will get back a message that indicates success. You should print this message so you can see what it says. If it says ``Success'', it worked!
 	\item Close the connection.
@@ -37,7 +37,7 @@ All the steps you need to take to set up the communication, and send/receive the
 Some general guidance is below. If you're having trouble, try checking these things, and it may resolve your problem. If you're still stuck you can ask a neighbour or the course staff.
 \begin{itemize}
 	\item Check the documentation for how functions work if you are unfamiliar with them (google is your friend!)
-	\item Check return values (and possibly \texttt{errno}) for network functions if things are going wrong.  
+	\item Check return values (and possibly \texttt{errno}) for network functions if things are going wrong.
 	\item Have you initialized all variables? It is easy to forget; \texttt{malloc} does not initialize the value...
 	\item Pay attention to compiler warnings. Warnings can sometimes be ignored, but may be a hint about a semantic error that you will want to resolve. If the compiler is trying to tell you something, listen.
 	\item You need a buffer for receiving the data, and the receive function tells you how many bytes the server sent.

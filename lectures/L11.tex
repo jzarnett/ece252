@@ -8,7 +8,7 @@
 
 Not very long ago we discussed what makes a process. A process has three major components: an executable program, the data created or needed by the program, and the execution context of the program (files opened, resources allocated, et cetera). A process has at least one \textit{thread}, and can have many.
 
-The term ``thread'' is a short form of \textit{Thread of Execution}. A thread of execution is a sequence of executable commands that can be scheduled to run on the CPU. Threads also have some state (where in the sequence of executable commands the program is) and some local variables. Most programs you have written until now probably had only one thread; that is, your program's code is executed one statement at a time, sequentially in some order. 
+The term ``thread'' is a short form of \textit{Thread of Execution}. A thread of execution is a sequence of executable commands that can be scheduled to run on the CPU. Threads also have some state (where in the sequence of executable commands the program is) and some local variables. Most programs you have written until now probably had only one thread; that is, your program's code is executed one statement at a time, sequentially in some order.
 
 A multithreaded program is one that uses more than one thread, at least some of the time. When a program is started, it begins with an initial thread (where the \texttt{main} function is) and that main thread can create some additional threads if needed. Note that threads can be created and destroyed within a program dynamically: a thread can be created to handle a specific background task, like writing changes to the database, and will terminate when it is done. Or a created thread might be persistent.
 
@@ -30,7 +30,7 @@ Or, to represent this visually:
 
 All the threads of a process share the state and resources of the process. If one thread opens a file, other threads in that process can also access that file.
 
-The way programs are written now, there are few if any that are not in some way multithreaded. One common way of dividing up the program into threads is to separate the user interface from a time-consuming action. Consider a file-transfer program. If the user interface and upload function share a thread, once a file upload has started, the user will not be able to use the UI anymore (and Windows will put the dreaded ``(Not Responding)'' at the end of its dialog title), even to click the button that cancels the upload. For some reason, users hate that. 
+The way programs are written now, there are few if any that are not in some way multithreaded. One common way of dividing up the program into threads is to separate the user interface from a time-consuming action. Consider a file-transfer program. If the user interface and upload function share a thread, once a file upload has started, the user will not be able to use the UI anymore (and Windows will put the dreaded ``(Not Responding)'' at the end of its dialog title), even to click the button that cancels the upload. For some reason, users hate that.
 
 We have two options for how to alleviate this problem: when an upload is ready to start, we can call \texttt{fork} and create a new process to do the upload, or we can spawn  new thread. In either case, the newly created entity will handle the upload of the file. The UI remains responsive, because the UI thread is not waiting for the upload function to complete.
 
@@ -48,7 +48,7 @@ Why choose threads rather than creating a new process? The primary, but not sole
 This last advantage, background work, is one of four common examples of the uses of threads in a general purpose operating system~\cite{insideOS2}:
 \begin{enumerate}
 	\item \textbf{Foreground and Background Work:} as already examined, the ability to run something in the background to keep the program responsive.
-	\item \textbf{Asynchronous processing}: for example, to protect against power failure or a crash, a word processor may write the document data in main memory to disk periodically. This can be done as a background task so it does not disrupt the user's workflow. You've probably experienced this in Microsoft Word, for example, if a document is ``recovered''. 
+	\item \textbf{Asynchronous processing}: for example, to protect against power failure or a crash, a word processor may write the document data in main memory to disk periodically. This can be done as a background task so it does not disrupt the user's workflow. You've probably experienced this in Microsoft Word, for example, if a document is ``recovered''.
 	\item \textbf{Speed of Execution:} a multithreaded program can get more done in the same amount of time. Just as the OS can run a different program when the executing program gets blocked (say, on a disk read), if one thread is blocked, another thread may execute. But also, we probably have a computer with many cores, so we can put them all to use.
 	\item \textbf{Modular Structure:} a program that does several different things may be given structure through threads. Threads have specific ``jobs'' and they each step in and do their job when it is appropriate for them to do so.
 \end{enumerate}
@@ -62,8 +62,8 @@ Also, if any thread encounters an error (such as a division by zero or Segmentat
 Each individual thread will have its own state. We said earlier that a process may have seven states, but the model for thread state will be the somewhat simpler five-state model. If a process is swapped out of memory, all its threads will be swapped out; when that process is swapped in to memory, all the threads will be swapped in. Therefore we do not need to consider whether a thread is in memory or swapped; hence the five-state model, reproduced once again below:
 
 \begin{center}
-\includegraphics[width=0.85\textwidth]{images/5-state-model.png}\\
-State diagram for the five-state model.
+	\includegraphics[width=0.85\textwidth]{images/5-state-model.png}\\
+	State diagram for the five-state model.
 \end{center}
 
 The transitions work the same way as the state transitions for a process. As with a process, a thread in any state can transition to terminated even though that is not shown on the diagram. When a process is terminated, all its threads are terminated, regardless of what state it is in. The example we started with, the file transfer upload being cancelled, is an example of termination we should consider: thread cancellation.
@@ -97,7 +97,7 @@ pthread_create( pthread_t *thread, const pthread_attr_t * attr, void *(*start_ro
 
 Where: \texttt{thread} is a pointer to a \texttt{pthread} identifier and will be assigned a value when the thread is created. The attributes \texttt{attr} may contain various characteristics (but you may supply \texttt{NULL} if you want the defaults). The third parameter is the function to run, but it requires a little more explanation.The last parameter, \texttt{arguments} is the argument passed to the \texttt{start\_routine}. But that second last one is weird.
 
-The \texttt{start\_routine} parameter is the name of any function that takes a single untyped pointer and returns an untyped pointer. That is, the function signature has to match those two conditions. The name of the function (and the name of the argument) can be anything you like. See the example below: 
+The \texttt{start\_routine} parameter is the name of any function that takes a single untyped pointer and returns an untyped pointer. That is, the function signature has to match those two conditions. The name of the function (and the name of the argument) can be anything you like. See the example below:
 
 \begin{lstlisting}[language=C]
 void* do_something( void* start_params )
@@ -106,7 +106,7 @@ void* do_something( void* start_params )
 
 After the new thread has been created, the process has two threads in it. The OS makes no guarantee about which thread will be executing after the new one is created; this is a matter of scheduling. It could be either of the threads of the process, both of them at the same time, or a different process entirely.
 
-Our experience with C-like languages suggests it is normal to have a single return value from a function, but usually we can have multiple input parameters. It seems limiting to be able to put in just one. There are two ways to get around this: with an array or with structures. In the case of the array, the argument provided to \texttt{pthread\_create} is just a pointer to the array. This is also, incidentally, how you can get multiple return values out of a function in Java or C\# (\texttt{public Object[] foo()}), but I don't recommend it as a good programming practice. The other way to do it is to use the \texttt{struct}, defining a structure for the parameter type and one for the return type. 
+Our experience with C-like languages suggests it is normal to have a single return value from a function, but usually we can have multiple input parameters. It seems limiting to be able to put in just one. There are two ways to get around this: with an array or with structures. In the case of the array, the argument provided to \texttt{pthread\_create} is just a pointer to the array. This is also, incidentally, how you can get multiple return values out of a function in Java or C\# (\texttt{public Object[] foo()}), but I don't recommend it as a good programming practice. The other way to do it is to use the \texttt{struct}, defining a structure for the parameter type and one for the return type.
 
 The function that is to run in the new thread must expect a pointer to the arguments and then it will need to be cast to the appropriate (actual) type:
 \begin{lstlisting}[language=C]
@@ -118,11 +118,11 @@ void* function( void * void_arg ) {
 
 This does imply that the caller of the \texttt{pthread\_create} function has to know what kind of argument is expected in the function being called. That is fairly normal; we do have to know what the arguments mean when we pass them in to any function, but in this case we don't have the ``hints'' that the types provide.
 
-What about the thread attributes? They can be used to set whether a thread is detached or joinable, scheduling policy, etc. By default, new threads are usually joinable (that is to say, that some other thread can call \texttt{pthread\_join} on them). As noted before, it is a logical error to attempt multiple joins on the same thread. To prevent a thread from ever being joined, it can be created in the detached state (or the method \texttt{pthread\_detach} can be called on a joinable thread). Trying to join a detached thread is also a logical error~\cite{pthreads}. For virtually all scenarios that we will consider in this course the default values will be fine. 
+What about the thread attributes? They can be used to set whether a thread is detached or joinable, scheduling policy, etc. By default, new threads are usually joinable (that is to say, that some other thread can call \texttt{pthread\_join} on them). As noted before, it is a logical error to attempt multiple joins on the same thread. To prevent a thread from ever being joined, it can be created in the detached state (or the method \texttt{pthread\_detach} can be called on a joinable thread). Trying to join a detached thread is also a logical error~\cite{pthreads}. For virtually all scenarios that we will consider in this course the default values will be fine.
 
-Once we do that, the new thread we created is running. It does whatever its code does, so everything proceeds as expected, until of course the thread gets to the end. Usually, it will terminate with \texttt{pthread\_exit}. The use of \texttt{pthread\_exit} is not the only way that a thread may be terminated. Sometimes we want the thread to persist (hang around), but if we want to get a return value from the thread, then we need it to exit. 
+Once we do that, the new thread we created is running. It does whatever its code does, so everything proceeds as expected, until of course the thread gets to the end. Usually, it will terminate with \texttt{pthread\_exit}. The use of \texttt{pthread\_exit} is not the only way that a thread may be terminated. Sometimes we want the thread to persist (hang around), but if we want to get a return value from the thread, then we need it to exit.
 
-\paragraph{Returning Values.} If a thread has no return values, it can just \texttt{return NULL;} which will have the same effect as \texttt{pthread\_exit} and send \texttt{NULL} back to the thread that has joined it. If the function that is called as a task returns normally rather than calling the exit routine, the thread will still be terminated. 
+\paragraph{Returning Values.} If a thread has no return values, it can just \texttt{return NULL;} which will have the same effect as \texttt{pthread\_exit} and send \texttt{NULL} back to the thread that has joined it. If the function that is called as a task returns normally rather than calling the exit routine, the thread will still be terminated.
 
 Another way a thread might terminate is if the \texttt{pthread\_cancel} function is called with it as the target. As before, if the termination is deferred rather than asynchronous, the thread is responsible for cleaning up after itself before it stops.
 

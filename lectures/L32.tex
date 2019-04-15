@@ -26,9 +26,9 @@ struct event_base* event_base_new( ); /* Create an event_base with default setti
 struct event_base* event_base_new_with_config( const struct event_config* cfg ); /* Create with configuration */
 struct event_config* event_config_new( );
 void event_config_free( struct event_config* cfg );
-\end{lstlisting} 
+\end{lstlisting}
 
-Like with pthreads, the use of a configuration structure is optional. If we do want one, there are separate functions to allocate and to clean them up. The options allow us to say that we would like to avoid certain methods for checking on events and configure arcane options. We'll say that for the purposes of this course that default options are fine. 
+Like with pthreads, the use of a configuration structure is optional. If we do want one, there are separate functions to allocate and to clean them up. The options allow us to say that we would like to avoid certain methods for checking on events and configure arcane options. We'll say that for the purposes of this course that default options are fine.
 
 To deallocate an event base, the (self-explanatory) function for that is:
 \begin{lstlisting}[language=C]
@@ -103,11 +103,11 @@ Using Libevent with backend method epoll.
 
 Wait, we didn't learn about epoll... Do we need to? Well, no -- the great thing about libevent is that we don't have to think about the details of the backend -- whatever implementation is used is not really our concern.
 
-\paragraph{Event notification.} The goal is to watch for some events, and for that we need a definition of an event. An event happens on a file descriptor, as with all the other I/O methods we have discussed. 
+\paragraph{Event notification.} The goal is to watch for some events, and for that we need a definition of an event. An event happens on a file descriptor, as with all the other I/O methods we have discussed.
 
 An event has a lifecycle: it is created; when it becomes associated with an event base it is said to be initialized. When you add it, it is pending, which is to say that we are waiting for the event to happen. If the event that we're looking for does occur when the event is pending, then a user-defined callback runs. If we don't want to wait for an event anymore we can use delete to make an event non-pending; a non-pending event can be re-added if desired~\cite{libevent}.
 
-To create and destroy an event: 
+To create and destroy an event:
 
 \begin{lstlisting}[language=C]
 typedef void (*event_callback_fn)( evutil_socket_t fd, short what, void* arg )
@@ -130,7 +130,7 @@ About that \texttt{what} parameter: hey look, we found a use for \texttt{short}!
 #define EV_ET           0x20
 \end{lstlisting}
 
-Most of them are self explanatory, but some warrant a bit of explanation. The timeout flag is ignored when setting what you are interested in, but can be returned as a result. The ``ET'' one indicates that the event should be edge-triggered, which matters for read and writes (i.e., a change in readiness is reported rather than readiness). The ``persist'' one means that when an event is triggered it's automatically ready to trigger again immediately. 
+Most of them are self explanatory, but some warrant a bit of explanation. The timeout flag is ignored when setting what you are interested in, but can be returned as a result. The ``ET'' one indicates that the event should be edge-triggered, which matters for read and writes (i.e., a change in readiness is reported rather than readiness). The ``persist'' one means that when an event is triggered it's automatically ready to trigger again immediately.
 
 They can be combined, as we've seen previously for say, an open system call. If you're interested in watching for a read and a write, combine them using \texttt{|} (bitwise OR) just as we've done for other scenarios: \texttt{EV\_READ | EV\_WRITE}.
 
@@ -196,7 +196,7 @@ void main_loop( evutil_socket_t fd1, evutil_socket_t fd2 ){
         event_add(ev2, NULL);
         event_base_dispatch(base);
 }
-\end{lstlisting} 
+\end{lstlisting}
 
 Alright, this demonstrates how to create an event base, create some events, add them to the pending list, and begin dispatching (waiting for events to occur). Only one thread can be dispatching a given event base at a time, but this is why we can have multiple bases.
 
@@ -241,7 +241,7 @@ The deallocation function is totally self-explanatory.
 
 The definitions of data callbacks and event callbacks are a bit more complex. The return type is void, and the arguments are the buffer event structure -- sensible, and then there's a divergence. The data callback takes only some argument; it's the one provided by the user when setting up the callback (see below). The event callback has the extra parameter of events which works as it did earlier (where you say what events you are interested in).
 
-Setting the callback is relatively self explanatory: specify the buffer event, the read callback (NULL if you don't want one, or to clear one), the write callback (again, NULL if you don't want one), and the event callback. Finally, there is the callback argument (of any type) and this argument is shared between all callbacks. 
+Setting the callback is relatively self explanatory: specify the buffer event, the read callback (NULL if you don't want one, or to clear one), the write callback (again, NULL if you don't want one), and the event callback. Finally, there is the callback argument (of any type) and this argument is shared between all callbacks.
 
 Then there is the connect function. This function takes the buffer event that you want to configure, and the address to connect to, as well as the size of the address. So that part is easy.
 

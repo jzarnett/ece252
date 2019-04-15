@@ -19,15 +19,15 @@ The other thing we often want is \textit{mutual exclusion}: events $C$ and $D$ m
 
 \subsection*{Serialization through Messages}
 
-Suppose we have two people, Alice and Bob (these are the standard names in computer examples...) who work at the Springfield Nuclear Power Plant in Sector 7G, though they work in separate offices and cannot easily see one another. Alice works the day shift and Bob works the night shift. Suppose also that due to safety regulations, that Alice cannot go home until Bob has arrived and begun working. This is a situation where we would like serialization: the event of Bob's arrival must take place before the event of Alice's departure. 
+Suppose we have two people, Alice and Bob (these are the standard names in computer examples...) who work at the Springfield Nuclear Power Plant in Sector 7G, though they work in separate offices and cannot easily see one another. Alice works the day shift and Bob works the night shift. Suppose also that due to safety regulations, that Alice cannot go home until Bob has arrived and begun working. This is a situation where we would like serialization: the event of Bob's arrival must take place before the event of Alice's departure.
 
-How can we get such behaviour? Well, the simple solution is that Alice stays at her desk and will not leave until she gets a call from Bob. Bob doesn't call until he's arrived at the office. This is a very simple scenario, but message passing is a valid solution for a lot of synchronization problems and it's the sort of thing we do in real life all the time: ``Text me when you get here'' or ``Call me when you've finished''. 
+How can we get such behaviour? Well, the simple solution is that Alice stays at her desk and will not leave until she gets a call from Bob. Bob doesn't call until he's arrived at the office. This is a very simple scenario, but message passing is a valid solution for a lot of synchronization problems and it's the sort of thing we do in real life all the time: ``Text me when you get here'' or ``Call me when you've finished''.
 
-If we are certain that Bob arrives before Alice departs, we can say that these events are \textit{sequential}, because we know the order of events. At some point during the workday, Alice ate lunch, and at some point before work, Bob ate lunch. But we have no idea who ate lunch first, so we say they ate lunch \textit{concurrently}. The formal, strict definition of concurrent is: two events are concurrent if we cannot tell by looking at the program which will happen first~\cite{lbs}. 
+If we are certain that Bob arrives before Alice departs, we can say that these events are \textit{sequential}, because we know the order of events. At some point during the workday, Alice ate lunch, and at some point before work, Bob ate lunch. But we have no idea who ate lunch first, so we say they ate lunch \textit{concurrently}. The formal, strict definition of concurrent is: two events are concurrent if we cannot tell by looking at the program which will happen first~\cite{lbs}.
 
 In common parlance, when we say something happened concurrently, it means they happened at the same time (Alice and Bob both had lunch at 12:00). In this context, concurrency is not the same as saying that they happened at the exact same time; it's saying that we do not know (and cannot guarantee) an order of events. It's possible that Alice had lunch at 12:00 and Bob had lunch at 13:00 or they both ate at 12:00 or Alice had lunch at 13:30 and Bob had lunch at 12:15. We do not know. The order of concurrent events may change on two runs of the program; this is what we call nondeterminism.
 
-In a non-deterministic program, we cannot tell just by looking at the program what the execution order would be. If we have two concurrent events, one in which the program prints ``1'' to the console and one in which the program prints ``2'' to the console, these could happen in any order. So we might see the output as ``12'' or ``21''. Which one will happen? Without some form of co-ordination, it could be either. This non-determinism makes it difficult to analyze a program. If ``12'' is the correct output but ``21'' occurs only very rarely, finding the cause and fixing it might be very painful~\cite{lbs}. 
+In a non-deterministic program, we cannot tell just by looking at the program what the execution order would be. If we have two concurrent events, one in which the program prints ``1'' to the console and one in which the program prints ``2'' to the console, these could happen in any order. So we might see the output as ``12'' or ``21''. Which one will happen? Without some form of co-ordination, it could be either. This non-determinism makes it difficult to analyze a program. If ``12'' is the correct output but ``21'' occurs only very rarely, finding the cause and fixing it might be very painful~\cite{lbs}.
 
 This is, incidentally, what is referred to as a ``Heisenbug'' (a portmanteau of Heisenberg and Bug). This has nothing to do with the ``Breaking Bad'' TV show, but with Werner Heisenberg (the physicist) and his scientific principle of uncertainty that says: if we precisely know the position of a particle we know nothing about its momentum and vice versa. The Heisenbug is frustrating because the harder we try to track it down, the less likely it is to occur.
 
@@ -36,13 +36,13 @@ This is, incidentally, what is referred to as a ``Heisenbug'' (a portmanteau of 
 We noted earlier that the need for co-ordination in inter-process communication arises from the fact that some area of memory is shared. We also know that all the threads of a process share the same data: in the merge sort algorithm the sorting and merging routines both operate on the same data array. Let's examine a simpler example (from~\cite{lbs}) where a shared variable \texttt{x} is manipulated by two threads $A$ and $B$, in pseudocode:
 
 \begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
+	\textbf{Thread A}\vspace{-2em}
 	\begin{verbatim}
 	A1. x = 5
 	A2. print x
 	\end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
+	\columnbreak
+	\textbf{Thread B}\vspace{-2em}
 	\begin{verbatim}
 	B1. x = 7
 	
@@ -76,13 +76,13 @@ Now imagine an interrupt comes at the worst possible time. The interrupt is gene
 
 At the end of this execution sequence, the variable \texttt{count} shows 5, but it should show 0 (or 1), which is certainly wrong. The user pressed the reset button but the count did not reset! If the reset interrupt had occurred before reading the variable, the count would have been reset, and then an event detected and the count goes up to 1. If the interrupt had occurred after writing the value 5 to the variable we would see the count set to 0 as is expected. If it occurred after the read but before the write, there is an error and the changes the interrupt handler made were lost.
 
-This problem arises because the instruction \texttt{count++} is really three things (read, add, write) and can be interrupted at any time. When we are performing an operation that cannot be interrupted, we say it is \textit{atomic}: indivisible. Although since about 1945, we have been able to split the atom (proving that atoms themselves are divisible and that humans are very good at finding ways to make things explode) the use of the word atomic in this context is not about nuclear physics but references the other meaning that stems from Greek word \textit{atomos}, meaning indivisible (or more literally, not-cuttable). 
+This problem arises because the instruction \texttt{count++} is really three things (read, add, write) and can be interrupted at any time. When we are performing an operation that cannot be interrupted, we say it is \textit{atomic}: indivisible. Although since about 1945, we have been able to split the atom (proving that atoms themselves are divisible and that humans are very good at finding ways to make things explode) the use of the word atomic in this context is not about nuclear physics but references the other meaning that stems from Greek word \textit{atomos}, meaning indivisible (or more literally, not-cuttable).
 
 Though there are usually some atomic operations available to us in a given system, we cannot be certain that all operations are indivisible. In fact, the opposite is likely to be true: we can be certain there are some operations that are non-atomic. Therefore we need to make sure at the very least that one operation on the shared variable is finished before the next begins.
 
 A thought: can we do this with serialization? That is, can we make sure that the \texttt{count++} operation completes before the \texttt{count = 0} operation? That would eliminate the problem of the reset being ignored. Unlike the scenario where Alice waits for Bob to get to work before she leaves, in this case there is no obvious order between the events: the user may press the reset button at any time, even if no event has just occurred. Similarly, the event may be detected even if the user is nowhere around and not going to press the reset button. Our concept of serialization requires that there exists a correct order: first this, then that. Here, where both orders are valid, we need the other approach: mutual exclusion (also called \textit{mutex}).
 
-With mutual exclusion, we do not know or enforce any particular order of events, but what we do care about is that we do not have multiple threads trying to update the variable at the same time. It would mean that the action to reset \texttt{count} to zero would have to wait until the \texttt{count++} operation was completely finished (or vice versa) before it gets to execute. 
+With mutual exclusion, we do not know or enforce any particular order of events, but what we do care about is that we do not have multiple threads trying to update the variable at the same time. It would mean that the action to reset \texttt{count} to zero would have to wait until the \texttt{count++} operation was completely finished (or vice versa) before it gets to execute.
 
 \subsection*{Mutual Exclusion through Flags}
 So we have identified shared data as a potential source of error. A section of code that should be accessed by a maximum of one thread at a time is referred to as a \textit{critical section}. The purpose of mutual exclusion is to ensure that at most one thread is in the critical section at a time. If we ever have more than one thread in the critical section at a time, something has gone terribly wrong. But on the other hand, the critical section is supposed to do something useful, so we cannot solve the problem by not allowing any thread to access it ever.
@@ -92,7 +92,7 @@ It is the responsibility of the programmer to identify what critical sections, i
 Our first approach then, is to have a variable to indicate if the critical section is currently in use. Suppose we have two threads:
 
 \begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
+	\textbf{Thread A}\vspace{-2em}
 	\begin{verbatim}
 	A1. while ( turn != 0 ) {
 	A2.    /* Wait for my turn */
@@ -100,8 +100,8 @@ Our first approach then, is to have a variable to indicate if the critical secti
 	A4. /* critical section */
 	A5. turn = 1;
 	\end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
+	\columnbreak
+	\textbf{Thread B}\vspace{-2em}
 	\begin{verbatim}
 	B1. while ( turn != 1 ) {
 	B2.   /* Wait for my turn */
@@ -114,7 +114,7 @@ Our first approach then, is to have a variable to indicate if the critical secti
 This scheme enforces strict alternation: first it is the turn of thread $A$, then the turn of thread $B$, then back to $A$, and so on. What if thread $A$ is to run more often than $B$? If thread $B$ terminates then thread $A$ will be stuck forever because the variable \texttt{turn} will always be saying that it is thread $B$'s turn. This solution is obviously not satisfactory. Another approach then:
 
 \begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
+	\textbf{Thread A}\vspace{-2em}
 	\begin{verbatim}
 	A1. while ( busy == true ) {
 	A2.    /* Wait for my turn */
@@ -123,8 +123,8 @@ This scheme enforces strict alternation: first it is the turn of thread $A$, the
 	A5. /* critical section */
 	A6. busy = false;
 	\end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
+	\columnbreak
+	\textbf{Thread B}\vspace{-2em}
 	\begin{verbatim}
 	B1. while ( busy == true ) {
 	B2.    /* Wait for my turn */
@@ -141,7 +141,7 @@ The problem with flags is that when we have a statement like \texttt{while (busy
 What if instead of using one flag variable, we use an array where each thread writes to its own boolean variable?
 
 \begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
+	\textbf{Thread A}\vspace{-2em}
 	\begin{verbatim}
 	A1. flag[0] = true;
 	A2. while ( flag[1] ) {
@@ -150,8 +150,8 @@ What if instead of using one flag variable, we use an array where each thread wr
 	A5. /* critical section */
 	A6. flag[0] = false;
 	\end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
+	\columnbreak
+	\textbf{Thread B}\vspace{-2em}
 	\begin{verbatim}
 	B1. flag[1] = true;
 	B2. while ( flag[0] ) {
@@ -166,7 +166,7 @@ Once again, this strategy is defeated by an untimely process switch: if statemen
 
 The attempts at solution we have attempted so far have all been foiled by an untimely process switch, which will be triggered by an interrupt. This presents a possible solution: disabling interrupts. If interrupts are disabled, then interrupts generated from the user as well as the normal thread switches the scheduler would perform will not occur. Disabling interrupts is a crude solution, however, because during the time in which interrupts are disabled, the system will be unable to respond to user input or other events (e.g., a fire alarm or detection of an incoming missile!). If an error is encountered in the critical section and the program is terminated, the system is effectively stuck because no other program will be able to run.
 
-It gets worse: if we have multiple processors the disabling interrupts will not be sufficient~\cite{osi}. But maybe we're on the right track by getting hardware involved: the problem is we would like to read and maybe write a variable in such a way that cannot be interrupted. The hardware designers were aware of the problem and have kindly provided a facility to help us out: the \textit{Test-and-Set} instruction. 
+It gets worse: if we have multiple processors the disabling interrupts will not be sufficient~\cite{osi}. But maybe we're on the right track by getting hardware involved: the problem is we would like to read and maybe write a variable in such a way that cannot be interrupted. The hardware designers were aware of the problem and have kindly provided a facility to help us out: the \textit{Test-and-Set} instruction.
 
 \subsection*{Test-and-Set}
 The Test-and-Set instruction is a special machine instruction that is performed in a single instruction cycle and is therefore not interruptible. It is therefore an atomic read and write. The idea is that the Test-and-Set instruction returns a boolean value. When run, it will examine the flag variable (in this example, \texttt{i}) and if it is zero, it will set it to 1 and return true. If \texttt{i} is currently set to 1, it will return false. The meaning of the return value is clear: if it is true, it is the current thread's turn to enter the critical section. The Test-and-Set instruction is not actually implemented like this, but a description of its functionality in C is:

@@ -24,9 +24,9 @@ Valgrind is the base name of the project and by default what it's going to do is
 	\item Asking for an invalid number of bytes in an allocation (negative\textinterrobang)
 \end{itemize}
 
-These errors will be reported to the console when they occur. Ideally, this will help you find the source of the problem. 
+These errors will be reported to the console when they occur. Ideally, this will help you find the source of the problem.
 
-I decided to run Valgrind with memcheck against the solution I wrote to the ECE~254 S15 exam question for searching an array using pthreads. I am happy to report that memcheck reports that the official solution has no memory leaks. If you do things right, you get something that looks like the example below. 
+I decided to run Valgrind with memcheck against the solution I wrote to the ECE~254 S15 exam question for searching an array using pthreads. I am happy to report that memcheck reports that the official solution has no memory leaks. If you do things right, you get something that looks like the example below.
 \begin{lstlisting}
 jz@Loki:~/ece254$ valgrind ./search
 ==8476== Memcheck, a memory error detector
@@ -124,7 +124,7 @@ From the Valgrind FAQ, how to read the leak summary:
 
 
 
-\subsection*{Helgrind}  
+\subsection*{Helgrind}
 The purpose of Helgrind is to detect errors in the use of POSIX pthreads. In a way, Helgrind is a pretty neat tool for improving performance, even though it doesn't actually directly speed anything up. When we take a single-threaded program and split it off into a multithreaded program, we may introduce a lot of errors (or at least, introduce the possibility of a lot of errors). Truthfully, humans are not very good at parallel thinking; we are very much sequential. But a program that is fast and wrong is probably less useful than one that is slow and correct. Can we make it faster and still have it be correct? That's the goal of Helgrind: after you parallelize your code, it will do some automatic checking of the code to determine where, if anywhere, there are concurrency problems. It can't prove that your program is correct (if only) but it can at least catch some of the common problems you might introduce when writing a parallel program. Helgrind classifies errors into three basic categories:
 
 \begin{enumerate}[noitemsep]
@@ -160,17 +160,17 @@ Thread #1 unlocked a not-locked lock at 0x7FEFFFA90
 The second category of errors should be familiar to you from earlier as a source of potential deadlock.
 
 \begin{multicols}{2}
-\textbf{Thread P}\vspace{-2em}
-  \begin{verbatim}
+	\textbf{Thread P}\vspace{-2em}
+	\begin{verbatim}
 	 1. wait( a ) 
 	 2. wait( b )
 	 3. [critical section]
 	 4. signal( a )
 	 5. signal( b )
   \end{verbatim}
-\columnbreak
-\textbf{Thread Q}\vspace{-2em}
-  \begin{verbatim}
+	\columnbreak
+	\textbf{Thread Q}\vspace{-2em}
+	\begin{verbatim}
 	 1. wait( b ) 
 	 2. wait( a )
 	 3. [critical section]
@@ -271,7 +271,7 @@ Also cool: you can ask Helgrind to try to tell you about variable names (if it c
 ==10454== declared at datarace.c:3
 \end{lstlisting}
 
-These will give you indications of where you need to introduce synchronization of some kind (semaphore, mutex, condition variable, etc). The authors of Helgrind assume that if it tells you where the problem is, you will figure out what variables are affected and how to properly prevent data races. You might find this frustrating, in the sense of a serial complainer who thinks that he or she can just moan about what's wrong without bringing forward any suggestions about how to fix the problems. 
+These will give you indications of where you need to introduce synchronization of some kind (semaphore, mutex, condition variable, etc). The authors of Helgrind assume that if it tells you where the problem is, you will figure out what variables are affected and how to properly prevent data races. You might find this frustrating, in the sense of a serial complainer who thinks that he or she can just moan about what's wrong without bringing forward any suggestions about how to fix the problems.
 
 \input{bibliography.tex}
 

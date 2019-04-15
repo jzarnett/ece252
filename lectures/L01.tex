@@ -9,7 +9,7 @@ We'll start by reviewing the highlights of the class syllabus. Please read it ca
 
 \section*{Some Background on Operating Systems}
 
-An operating system (often abbreviated OS) is a piece of software that sits between the hardware of a computer and the applications (programs) that run on that computer. The OS does many different things and often has many (occasionally-conflicting) goals. 
+An operating system (often abbreviated OS) is a piece of software that sits between the hardware of a computer and the applications (programs) that run on that computer. The OS does many different things and often has many (occasionally-conflicting) goals.
 
 To use an analogy, you may wish to think of the operating system as the ``secretary'' of the computer.  It is a resource manager, and it allocates resources as necessary.  The most significant difference between a secretary and an operating system is that while a secretary can work in parallel with you, operating systems often work when programs are sleeping, and operating systems must put themselves to sleep to allow programs to execute. It is responsible for seeing to it that other programs can operate efficiently, providing an environment for other programs, and collecting and reporting data about what is and has been happening.
 
@@ -21,7 +21,7 @@ In most cases there will be multiple programs running on the computer. This impl
 
 
 \subsection*{Systems Programming}
-The operating system is, however, just the backdrop to what we are going to do in this course. We will often be doing \textit{Systems Programming}. This is the next layer above the operating system itself. System programs ship with the operating system and they are useful tools, but they are not part of the kernel. 
+The operating system is, however, just the backdrop to what we are going to do in this course. We will often be doing \textit{Systems Programming}. This is the next layer above the operating system itself. System programs ship with the operating system and they are useful tools, but they are not part of the kernel.
 
 Some examples of things that might fall under systems programming (from~\cite{osc}):
 
@@ -31,7 +31,7 @@ Some examples of things that might fall under systems programming (from~\cite{os
 	\item \textbf{Processes and Thread Management} - Creating processes and threads, working with them, interacting with others, and cleaning them up.
 \end{itemize}
 
-Programming at this level is more difficult than writing regular programs. It may require knowledge of the hardware, or perhaps programming facilities like debugging are limited. Furthermore, systems programs must take concurrency into account; multiple (regular) programs may try to use the systems program at the same time. An e-mail client may choose to refuse to allow two instances of the program to be open at the same time, but users would not accept a system that did not permit more than one file operation at a time. 
+Programming at this level is more difficult than writing regular programs. It may require knowledge of the hardware, or perhaps programming facilities like debugging are limited. Furthermore, systems programs must take concurrency into account; multiple (regular) programs may try to use the systems program at the same time. An e-mail client may choose to refuse to allow two instances of the program to be open at the same time, but users would not accept a system that did not permit more than one file operation at a time.
 
 A key thing that distinguishes systems programming is that we want to do certain operations that involve the operating system. In short, there are some things that the operating system does not allow programs to do, and what they have to do is ask the operating system to do it instead. Learning how to use the functionality provided by the OS is a key part of writing any complex program (i.e., one that is non-trivial).
 
@@ -43,7 +43,7 @@ It is already the case that many programs you use are to a greater or smaller de
 
 Concurrency comes with a number of advantages, chief amongst them the ability to speed up your program and get more work done in the same amount of time. It does, however, come with a number of drawbacks. On top of being somewhat more difficult to write, it is more difficult to be sure that the program is correct. We have tools to find and deal with the problems that arise, but we will need to use them carefully.
 
-To give you a taste of the sort of problem that we may encounter, consider a program that performs a simple calculation given some input. If the program has a concurrency problem,  then the answer could be (1) consistently the wrong answer every single time, (2) different on consecutive runs with the same input, or (3) correct some of the time but incorrect some of the time. As you can imagine, none of these options are acceptable. If you bought a simple four operation calculator that only gave the correct answer 99\% of the time, would you be satisfied with your purchase? 
+To give you a taste of the sort of problem that we may encounter, consider a program that performs a simple calculation given some input. If the program has a concurrency problem,  then the answer could be (1) consistently the wrong answer every single time, (2) different on consecutive runs with the same input, or (3) correct some of the time but incorrect some of the time. As you can imagine, none of these options are acceptable. If you bought a simple four operation calculator that only gave the correct answer 99\% of the time, would you be satisfied with your purchase?
 
 Without going too much into the statistics of this, if your company's payroll system got it right 98\% of the time, and the company paid you every 2 weeks (ie 26 pay periods a year), then statistically they would likely fail to pay you  within your first two years working there. Ouch. Correctness matters.
 
@@ -68,7 +68,7 @@ Many of the functions we wish to call are included in these header files, but th
 
 C has no \texttt{bool} type by default. In many contexts an \texttt{int} is used where 0 represents false and 1 represents true. Or you can include the header \texttt{stdbool.h}  which provides you the type as well as the explicit values of true and false.
 
-But speaking of the compiler not knowing how to find a function you might have the compiler tell you that it can't find the definition for \texttt{bar} when compiling \texttt{foo}. 
+But speaking of the compiler not knowing how to find a function you might have the compiler tell you that it can't find the definition for \texttt{bar} when compiling \texttt{foo}.
 
 \begin{lstlisting}[language=C]
 int foo() {
@@ -80,7 +80,7 @@ int bar( int v1, int v2 ) {
 } 
 \end{lstlisting}
 
-What gives?! It's RIGHT THERE! 
+What gives?! It's RIGHT THERE!
 
 Some of the rules of the C compiler date back to the original design of the language and in these ancient and primitive times the compiler was unwilling to take two passes compiling source code because it would take too long. This can be solved in one of two ways. Either move \texttt{bar()} in the source so it appears before \texttt{foo}, or, instead, provide a function prototype for \texttt{bar()}.
 
@@ -133,7 +133,7 @@ p1.y = 2.5;
 p1.z = -1.0;
 \end{lstlisting}
 
-\paragraph{Type Names.} 
+\paragraph{Type Names.}
 In the previous example when we want to use the \texttt{point} structure as defined, we have to write \texttt{struct point} as the full name of the type. This can result in a lot of typing of the keyword \texttt{struct} such as in a function like this:
 
 \begin{lstlisting}[language=C]
@@ -195,7 +195,7 @@ You may think the answer is 4 bytes, but a quick look at the C standard says tha
 
 This is also very helpful for when you want to allocate a structure. Instead of needing to work out the size yourself (well, this is three \texttt{double}s, and a \texttt{double} is 8 bytes...), \texttt{sizeof( point\_t )} will allocate the correct size... as a nice bonus, if ever the definition of the structure is changed the amount of memory requested is updated automatically.
 
-The return value of \texttt{malloc()} is a pointer to the memory that is allocated. Unlike \Cpp, the value does not need to be cast (and probably shouldn't be). 
+The return value of \texttt{malloc()} is a pointer to the memory that is allocated. Unlike \Cpp, the value does not need to be cast (and probably shouldn't be).
 Consider the following allocation:
 
 \begin{lstlisting}[language=C]
@@ -225,7 +225,7 @@ void example( ) {
 }
 \end{lstlisting}
 
-If we forget to deallocate some memory that is allocated, this is a \textit{memory leak} and this is a bad thing. It may not have immediate bad effects, but it is wrong and in the long term (such as a program that runs 24/7) memory leaks will slow down the program and can eventually lead to a crash. When memory is being allocated, you should always take a moment to consider where it is to be deallocated. The call to \texttt{free()} should be when the memory is no longer needed (ideally as soon as possible after this is known), but it may be in a different function altogether. 
+If we forget to deallocate some memory that is allocated, this is a \textit{memory leak} and this is a bad thing. It may not have immediate bad effects, but it is wrong and in the long term (such as a program that runs 24/7) memory leaks will slow down the program and can eventually lead to a crash. When memory is being allocated, you should always take a moment to consider where it is to be deallocated. The call to \texttt{free()} should be when the memory is no longer needed (ideally as soon as possible after this is known), but it may be in a different function altogether.
 
 A provided function \texttt{a()} might, for example, allocate the memory and return a pointer to it for your use and it is then your responsibility to deallocate this memory when you no longer need it. Reading the documentation (or source code) of a function will tell you if this is the case. Or, you may pass memory between two (or more) functions you have written in your program; just be sure to check the ``flow'' of the data to be sure that anything that was allocated gets deallocated.
 
@@ -296,7 +296,7 @@ int* array = malloc( 10 * sizeof( int ) );
 
 This looks weird, but this is how we do it we asked for enough memory to hold 10 integers and this will be our array. But yes, an integer pointer could point to only one integer or to an array of integers. When deallocating this memory, the call is still \texttt{free( array ) } (unlike \Cpp there's no difference when deallocating an array).
 
-Either way, to assign elements of the array we use the square brackets operators, like \texttt{array[0] = 5;}. There's no difference in whether or not it is stack or heap allocated when we do this. 
+Either way, to assign elements of the array we use the square brackets operators, like \texttt{array[0] = 5;}. There's no difference in whether or not it is stack or heap allocated when we do this.
 
 As said, the array needs to be initialized, regardless of whether it is stack or heap allocated. The simple way would be a for loop:
 
@@ -331,7 +331,7 @@ void addToPoint( point p1, point p2 );
 
 This is not a firm rule and there are examples that contradict this. But it is convention and will be seen frequently.
 
-In this same vein, many functions have integer return types. Because the first parameter structure is being modified, the return value is an integer that is the ``result code''. If everything went well this is usually zero. If there was a problem, then it's a nonzero number and the number can help you figure out what's wrong. For example, a return value of 36 might be something you can look up in the documentation and find out that the value used for the third argument is too large. 
+In this same vein, many functions have integer return types. Because the first parameter structure is being modified, the return value is an integer that is the ``result code''. If everything went well this is usually zero. If there was a problem, then it's a nonzero number and the number can help you figure out what's wrong. For example, a return value of 36 might be something you can look up in the documentation and find out that the value used for the third argument is too large.
 
 Also noteworthy: there is a header \texttt{errno.h} that defines a variable \texttt{errno}. Many functions and library calls set the value of this variable if something goes wrong during their execution. Knowing what precisely went wrong can be very valuable when debugging your program.
 
@@ -367,7 +367,7 @@ p1->z = 0.1;
 printf("(%f, %f, %f)\n", p1->x, p1->y, p1->z);
 \end{lstlisting}
 
-Results in printing \texttt{(9.5, -5.4, 0.1)}. As you see, the \texttt{printf()} routine takes an arbitrary number of parameters. If the string contains 5 format specifiers, then the string is followed by five arguments. If the string contains 10 format specifiers, then there are 10 arguments after the string. If you have 3 format specifiers but only 2 arguments after the string, \texttt{printf()} will take whatever value is next on the stack which may be garbage. 
+Results in printing \texttt{(9.5, -5.4, 0.1)}. As you see, the \texttt{printf()} routine takes an arbitrary number of parameters. If the string contains 5 format specifiers, then the string is followed by five arguments. If the string contains 10 format specifiers, then there are 10 arguments after the string. If you have 3 format specifiers but only 2 arguments after the string, \texttt{printf()} will take whatever value is next on the stack which may be garbage.
 
 \paragraph{Define Directives.}
 
@@ -387,7 +387,7 @@ When the program is compiled, the compiler replaces \texttt{BUFFER\_SIZE} everyw
 
 There is a small potential pitfall in this though; the compiler is VERY literal about how it makes the replacement. So if the directive is \texttt{\#define VALUE 2 * 25 + 4}, then you will get the wrong answer if that's later used in something like \texttt{int size = VALUE * 2;}, because the compiler will make it \texttt{int size = 2 * 25 + 4 * 2;} for a total size of 58 rather than 108. This can be avoided by putting parenthesis \texttt{\#define VALUE (2 * 25 + 4)}. Because BEDMAS.
 
-\paragraph{Main and Arguments.} 
+\paragraph{Main and Arguments.}
 A program begins at the start of \texttt{main} and the signature is as follows:
 
 \begin{lstlisting}[language=C]

@@ -13,7 +13,7 @@ Thread cancellation is exactly what it sounds like: a running thread will be ter
 
 \begin{enumerate}
 	\item \textbf{Asynchronous Cancellation:} One thread immediately terminates the target.
-	\item \textbf{Deferred Cancellation:} The target is informed that it is cancelled; the target is responsible for checking regularly if it is terminated, allowing it to clean itself up properly. 
+	\item \textbf{Deferred Cancellation:} The target is informed that it is cancelled; the target is responsible for checking regularly if it is terminated, allowing it to clean itself up properly.
 \end{enumerate}
 
 The pthread attributes can be used to set the cancellation type before it is created. A thread can declare its own cancellation type through the use of the function:
@@ -44,7 +44,7 @@ To add a cleanup handler, the push function is used. Its two arguments are the f
 
 The push function always needs to be paired with the pop function at the same level in your program (where level is defined by the curly braces). You should think of them as being like the opening curly brace at the start of a statement and the closing curly brace at the end; they have to be correctly matched up. The pop function takes one argument: whether it should run or not. If the thread is cancelled, the cleanup function will run; if it continues to the pop function, then you get to choose whether it runs or not.
 
-Consider the following code: 
+Consider the following code:
 \begin{lstlisting}[language=C]
 void* do_work( void* argument ) {
   struct job * j = malloc( sizeof( struct job ) );
@@ -118,7 +118,7 @@ void *runner( void *param ) {
 }
 \end{lstlisting}
 
-In this example, both threads are sharing the global variable \texttt{sum}. We have some form of co-ordination here because the parent thread will join the newly-spawned thread (i.e., wait until it is finished) before it tries to print out the value. If it did not join the spawned thread, the parent thread would print out the sum early. 
+In this example, both threads are sharing the global variable \texttt{sum}. We have some form of co-ordination here because the parent thread will join the newly-spawned thread (i.e., wait until it is finished) before it tries to print out the value. If it did not join the spawned thread, the parent thread would print out the sum early.
 
 
 
@@ -171,7 +171,7 @@ What's going wrong here? For very small values of the argument, nothing, but for
 
 Not that long ago, a typical computer had one processor with one core. It could accordingly do exactly one thing at a time. When we say there is one processor, it's one general purpose processor that executes user processes. There may be additional special-purpose processors in the system (e.g., a RAID controller\footnote{The graphics card seems like a more obvious example, but these days there are various programs that can make use of the powerful GPU to do general purpose computation.}) but there is only one general purpose processor so we call it a uniprocessor system.
 
-Now, desktops, laptops, and even cell phones are almost certainly using multi-core processors. A quad-core processor may be executing four different instructions from four different threads at the same time. In theory, multiple processors may mean that we can get more work done in the same amount of (wall clock) time, but this is not a guarantee. 
+Now, desktops, laptops, and even cell phones are almost certainly using multi-core processors. A quad-core processor may be executing four different instructions from four different threads at the same time. In theory, multiple processors may mean that we can get more work done in the same amount of (wall clock) time, but this is not a guarantee.
 
 Terminology note: we often refer to a logical processing unit as a \textit{core}. The term CPU may refer to a physical chip that contains one or more logical processing units. As far as the operating system is concerned, it does not much matter if a system has four cores in four physical chips or four cores in one chip; either way, there are four units that can execute instructions.
 
@@ -193,7 +193,7 @@ Time slicing of execution will still occur, if necessary. Continuing our example
 
 \subsection*{Parallelism and Speedup}
 
-No doubt it has occurred to you that if there are multiple threads running at the same time, it means a task will get completed faster, right? Well... maybe. It depends a lot on what the task is. There is some overhead involved in splitting a task up and re-combining the results (if necessary), but in most circumstances the overhead is negligible compared to the amount of time working on the task.  
+No doubt it has occurred to you that if there are multiple threads running at the same time, it means a task will get completed faster, right? Well... maybe. It depends a lot on what the task is. There is some overhead involved in splitting a task up and re-combining the results (if necessary), but in most circumstances the overhead is negligible compared to the amount of time working on the task.
 
 If a task can be fully parallelized, it means the task can be split up in such a way that adding a second executing thread would double the speed of execution. Imagine painting an apartment. It would take one person 12 hours to paint the whole apartment and two people could complete the job in 6 hours. The pattern continues: three people can complete the job in 4 hours, four people in 3 hours, et cetera. This is the ideal, but in the real world there will be a limit to how many additional workers you can add and continue to have this speedup characteristic. At some point, the overhead of adding more threads is no longer negligible. In theory, you could hire 720 painters and finish the job in 1 minute, but at some point you cannot physically fit any more painters into the room.
 
@@ -206,7 +206,7 @@ Let us consider an example from~\cite{mte241}: Suppose we have a task that can b
 A smart fellow by the name of Gene Amdahl came up with a formula for the general case of how much faster a task can be completed based on how many processors we have available. Let us define $S$ as the portion of the application that must be performed serially and $N$ as the number of processing cores available. Amdahl's Law:
 
 \begin{center}
-speedup $\leq$ {\huge $\frac{1}{S + \frac{1-S}{N}}$}
+	speedup $\leq$ {\huge $\frac{1}{S + \frac{1-S}{N}}$}
 \end{center}
 
 This is a math formula, after all, and you can do things like take the limit as $N$ approaches infinity and you will find the speedup converges to $\frac{1}{S}$. So the limiting factor on how much additional processors help is, of course, the size of the $S$ term in the equation. That squares well with our intuition about how this should work. If the task is completely sequential (cannot be parallelized at all), we cannot make it faster and $\frac{1}{1 + 0}$ will produce a maximum speedup of 1; or in other words... no speedup at all.
@@ -215,15 +215,15 @@ Applying this formula to the example from earlier, we get the following run time
 
 \begin{center}
 	\begin{tabular}{l|l}
-	\textbf{Processors} & \textbf{Run Time (s)} \\ \hline
-	1 & 5\\
-	2 & 2.7\\
-	4 & 1.55\\
-	8 & 0.975\\
-	16 & 0.6875 \\
-	32 & 0.54375 \\
-	64 & 0.471875 \\
-	128 & 0.4359375\\
+		\textbf{Processors} & \textbf{Run Time (s)} \\ \hline
+		1                   & 5                     \\
+		2                   & 2.7                   \\
+		4                   & 1.55                  \\
+		8                   & 0.975                 \\
+		16                  & 0.6875                \\
+		32                  & 0.54375               \\
+		64                  & 0.471875              \\
+		128                 & 0.4359375             \\
 	\end{tabular}
 \end{center}
 

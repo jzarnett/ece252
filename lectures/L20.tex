@@ -12,20 +12,20 @@ In examining deadlock prevention, we were attempting to rule deadlock out catego
 In the dining philosophers problem, one strategy to prevent the deadlock was limiting the number of concurrently-eating philosophers to four, even though the table has five seats. This was a way of preventing a cycle in the resource allocation graph: with only four philosophers and five chopsticks, there were insufficient requests to complete a cycle. This solution is suitable, but not necessarily generalizable to all deadlock situations.
 
 \subsubsection*{Ordering of Resources}
-A general strategy to prevent a cycle from forming is to impose ordering on resource requests. Resources are given some order and requests must follow that order. This idea may have occurred seemed obvious from this example: 
+A general strategy to prevent a cycle from forming is to impose ordering on resource requests. Resources are given some order and requests must follow that order. This idea may have occurred seemed obvious from this example:
 
 \begin{multicols}{2}
-\textbf{Thread P}\vspace{-2em}
-  \begin{verbatim}
+	\textbf{Thread P}\vspace{-2em}
+	\begin{verbatim}
 	 1. wait( a ) 
 	 2. wait( b )
 	 3. [critical section]
 	 4. post( a )
 	 5. post( b )
   \end{verbatim}
-\columnbreak
-\textbf{Thread Q}\vspace{-2em}
-  \begin{verbatim}
+	\columnbreak
+	\textbf{Thread Q}\vspace{-2em}
+	\begin{verbatim}
 	 1. wait( b ) 
 	 2. wait( a )
 	 3. [critical section]
@@ -35,7 +35,7 @@ A general strategy to prevent a cycle from forming is to impose ordering on reso
 \end{multicols}
 \vspace{-2em}
 
-Thread $Q$ requests \texttt{b} first and then \texttt{a}, while $P$ does the reverse. The deadlock would not take place if both threads requested these two resources in the same order, whether \texttt{a} then \texttt{b} or \texttt{b} then \texttt{a}. Of course, when they have names like this, a natural ordering (alphabetical, or perhaps reverse alphabetical) is obvious. 
+Thread $Q$ requests \texttt{b} first and then \texttt{a}, while $P$ does the reverse. The deadlock would not take place if both threads requested these two resources in the same order, whether \texttt{a} then \texttt{b} or \texttt{b} then \texttt{a}. Of course, when they have names like this, a natural ordering (alphabetical, or perhaps reverse alphabetical) is obvious.
 
 To generalize and formalize this principle, if the set of all resources in the system is $R = \{R_{0}, R_{1}, R_{2}, ... R_{m}\}$, we assign to each resource $R_{k}$ a unique integer value. Let us define this function as $f(R_{i})$, that maps a resource to an integer value. This integer value is used to compare two resources: if a process has been assigned resource $R_{i}$, that process may request $R_{j}$ only if $f(R_{j}) > f(R_{i})$. Note that this is a strictly greater-than relationship; if the process needs more than one of $R_{i}$ then the request for all of these must be made at once (in a single request). To get $R_{i}$ when already in possession of a resource $R_{j}$ where $f(R_{j}) > f(R_{i})$, the process must release any resources $R_{k}$ where $f(R_{k}) \geq f(R_{i})$. If these two protocols are followed, then a circular-wait condition cannot hold~\cite{osc}.
 
@@ -49,7 +49,7 @@ In development this is usually enforced just by coding convention and code revie
 
 Suppose that instead of ordering the resources, each process will need to give the operating system some additional information about what resources might be requested. Processes need to say in advance of execution what is the maximum number of resources of each type they might conceivably need. In a system with a tape drive and printer, perhaps process $A$ needs the tape drive first, then the printer, and process $B$ needs the printer and then the tape drive. With this knowledge, the system can make more intelligent decisions about when to run a process or make it wait, to avoid getting into a deadlock~\cite{osc}.
 
-We say a state is \textit{safe} if there is some scheduling order in which every process can run to completion even if all of them suddenly request their maximum resources immediately~\cite{mos}. Hence why we needed to know in advance the maximum resources that could be required by the process. 
+We say a state is \textit{safe} if there is some scheduling order in which every process can run to completion even if all of them suddenly request their maximum resources immediately~\cite{mos}. Hence why we needed to know in advance the maximum resources that could be required by the process.
 
 More formally, there must exist a \textit{safe sequence}: a sequence of processes $<P_{1}, P_{2}, ... P_{n}$ is a safe sequence in the current allocation state if, for each $P_{i}$ the resource requests that $P_{i}$ can still make can be satisfied by the currently available resources plus resources held by $P_{j}$ where $j < i$. If a resource $P_{i}$ needs is not currently available, $P_{i}$ can wait until all $P_{j}$ have finished and releases its resources. When $P_{i}$ terminates, $P_{i+1}$ can obtain its needed resources and continue~\cite{osc}.
 
@@ -58,15 +58,15 @@ Any state that is not safe is considered \textit{unsafe}. If the system is in a 
 Consider an example from~\cite{mos} in which there are three processes, $A$, $B$, and $C$. Assume there is only one resource, and a maximum of 10 instances exist. Suppose $A$ has 3 resources but may request up to 9, $B$ has 2 and may request up to 4, $C$ has 2 and may request up to 7. There are 3 resources currently free. How do we determine that the state described below is safe?
 
 \begin{center}
-\includegraphics[width=0.15\textwidth]{images/safe-state-initial.png}\\
-A diagram representing the resource allocation state of the system~\cite{mos}.
+	\includegraphics[width=0.15\textwidth]{images/safe-state-initial.png}\\
+	A diagram representing the resource allocation state of the system~\cite{mos}.
 \end{center}
 
 Recall that for a state to be safe we need only one path that allows all processes to complete. Multiple solutions may exist, and there may be paths that lead to deadlock. But we need only one solution, such as:
 
 \begin{center}
-\includegraphics[width=0.75\textwidth]{images/safe-state.png}\\
-A diagram demonstrating the state in (a) is safe~\cite{mos}.
+	\includegraphics[width=0.75\textwidth]{images/safe-state.png}\\
+	A diagram demonstrating the state in (a) is safe~\cite{mos}.
 \end{center}
 
 The part of the diagram labelled (a) is the initial state of the system. Imagine that process $B$ is allowed to run exclusively, until it gets two more resources, so it now has 4 resources and there is one free, as diagram (b) depicts. $B$ is allowed to run to completion, and it therefore finishes and releases its resources to the free pool, shown in (c). Then process $C$ is scheduled and gets its full complement of resources, consuming all the elements in the free pool, as in (d). $C$ runs exclusively until completion and it releases its resources, shown in (e). Finally, $A$ is able to get all the resources and run to completion, too. Thus, we proved that the state is safe: there is a way the system can avoid a deadlock, and run all processes to completion.
@@ -74,18 +74,18 @@ The part of the diagram labelled (a) is the initial state of the system. Imagine
 Suppose, however, $A$ requests and gets another resource. In that case, the initial condition has changed so that $A$ has 4 resources and there are 2 free resources. Or, in the diagram below, the state changes from (a) to (b).
 
 \begin{center}
-\includegraphics[width=0.35\textwidth]{images/unsafe-state-initial.png}\\
-A diagram representing the updated resource allocation state of the system~\cite{mos}.
+	\includegraphics[width=0.35\textwidth]{images/unsafe-state-initial.png}\\
+	A diagram representing the updated resource allocation state of the system~\cite{mos}.
 \end{center}
 
-Given this new initial state (b), we need to evaluate if it is safe. 
+Given this new initial state (b), we need to evaluate if it is safe.
 
 \begin{center}
-\includegraphics[width=0.70\textwidth]{images/unsafe-state.png}\\
-A diagram demonstrating the state of~\cite{mos}.
+	\includegraphics[width=0.70\textwidth]{images/unsafe-state.png}\\
+	A diagram demonstrating the state of~\cite{mos}.
 \end{center}
 
-Let us start by attempting to run $A$ - there are 3 free resources and $A$ would need 6 to continue (because a process immediately takes its full resources when it runs), so it cannot run to completion. The same is true for $C$ - it needs 5 additional resources when 3 are available. $B$, however, can continue: it needs 2 resources when 3 are available. If we attempt to run $B$ exclusively, it gets its full resources, shown in part (c), and then will terminate and release its resources, as in (d). At this point, however, there is no way to continue; neither $A$ nor $C$ can get the full complement of resources it might need because there are only 4 free resources. We are out of options; there is no path that guarantees all processes run to completion. Thus, the state is unsafe. 
+Let us start by attempting to run $A$ - there are 3 free resources and $A$ would need 6 to continue (because a process immediately takes its full resources when it runs), so it cannot run to completion. The same is true for $C$ - it needs 5 additional resources when 3 are available. $B$, however, can continue: it needs 2 resources when 3 are available. If we attempt to run $B$ exclusively, it gets its full resources, shown in part (c), and then will terminate and release its resources, as in (d). At this point, however, there is no way to continue; neither $A$ nor $C$ can get the full complement of resources it might need because there are only 4 free resources. We are out of options; there is no path that guarantees all processes run to completion. Thus, the state is unsafe.
 
 Remember that just because the state is unsafe, does not mean that deadlock is present or certain. The analysis is worst-case: $C$ may never need all 7 of the resource and may run to completion with its current 2. However, in an unsafe state, we cannot be certain that deadlock will not occur.
 
@@ -94,8 +94,8 @@ Remember that just because the state is unsafe, does not mean that deadlock is p
 The model for resource allocation graphs earlier had two kinds of edges: one representing requests (a process requests a resource) and one representing allocation (a resource currently belongs to a process). We will require a new type of edge in the graph: a \textit{claim} edge, as a way of indicating a process may request a resource at some time in the future, and it is drawn with a dashed line. When the process actually makes the request for the resource, a claim edge is converted to a request edge, and upon release the assignment edge reverts to a claim edge~\cite{osc}.
 
 \begin{center}
-\includegraphics[width=0.25\textwidth]{images/resource-allocation-graph-claim.png}\\
-A resource allocation graph showing claim edges~\cite{osc}.
+	\includegraphics[width=0.25\textwidth]{images/resource-allocation-graph-claim.png}\\
+	A resource allocation graph showing claim edges~\cite{osc}.
 \end{center}
 
 A resource request will only be granted if converting the request edge to an assignment edge will not result in a cycle in the graph. There are graph algorithms in code that can be used to detect a cycle (and you may have studied them in a data structures and algorithms class). If no cycle is found, then allocation of the resource will not move the system into an unsafe state. If a cycle is found, the request should not be granted, as it risks a deadlock.
@@ -107,8 +107,8 @@ As mentioned, this is applicable only if all resource requests are known in adva
 In fact, the analysis we did earlier to determine if a state is safe or unsafe, is the foundation of the banker's algorithm. Recall this diagram from earlier:
 
 \begin{center}
-\includegraphics[width=0.35\textwidth]{images/unsafe-state-initial.png}\\
-A diagram representing the updated resource allocation state of the system~\cite{mos}.
+	\includegraphics[width=0.35\textwidth]{images/unsafe-state-initial.png}\\
+	A diagram representing the updated resource allocation state of the system~\cite{mos}.
 \end{center}
 
 Granting the request from process $A$, the transition from (a) to (b), moved the system from a safe state to an unsafe state. The operating system, when it receives a resource request, will evaluate the new state to see if it would transition the system to an unsafe state. If it would result in that transition, the request will be denied or $A$ will be blocked until the request can be fulfilled without putting the system in an unsafe state. Holding to this condition means deadlock will be avoided.
@@ -116,8 +116,8 @@ Granting the request from process $A$, the transition from (a) to (b), moved the
 The banker's algorithm can accommodate multiple resources, as shown in the diagram below.
 
 \begin{center}
-\includegraphics[width=0.6\textwidth]{images/bankers-multiple.png}\\
-The banker's algorithm with multiple resources~\cite{mos}.
+	\includegraphics[width=0.6\textwidth]{images/bankers-multiple.png}\\
+	The banker's algorithm with multiple resources~\cite{mos}.
 \end{center}
 
 The left matrix shows the current state of assigned resources and the matrix on the right shows the maximum number of resources that a process might need to complete execution. At the far right of the diagram is a series of vectors: $E$ for the existing resources, $P$ for the resources some process currently possesses, and $A$ for the available instances of that resource.
@@ -129,7 +129,7 @@ The informal approach for checking if a state is safe is described by~\cite{mos}
 	\item Repeat steps 1 and 2 until either: (i) all processes are marked terminated and the initial state was safe; or (ii) no process remains whose needs can be met and the initial state is unsafe.
 \end{enumerate}
 
-If more than one process may be chosen in step 1, it does not matter which we choose: the pool of available resources will either stay the same or get larger; it cannot shrink. 
+If more than one process may be chosen in step 1, it does not matter which we choose: the pool of available resources will either stay the same or get larger; it cannot shrink.
 
 To determine if granting a resource will make the system unsafe, the operating system should simply perform a what-if calculation. Assume the resource is granted and do the safe state calculation given that new state. If the result is that the state is unsafe, the request should be deferred or denied.
 
