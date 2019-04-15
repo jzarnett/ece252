@@ -36,15 +36,15 @@ The process control block will (usually) have~\cite{osi}:
 To represent this visually:
 
 \begin{center}
-\includegraphics[width=0.24\textwidth]{images/pcb.png}\\
-A simplified Process Control Block~\cite{osi}.
+	\includegraphics[width=0.24\textwidth]{images/pcb.png}\\
+	A simplified Process Control Block~\cite{osi}.
 \end{center}
 
 Almost all of the above will be kept up to date constantly as the process executes.  Two of the items, notably the program counter and the register data are asterisked with the words ``when needed''. When the program is running, these values do not need to be updated. However, when a system call (trap) or process switch occurs, and the execution of that process is suspended, the OS will save the state of the process into the PCB. This includes the Program Counter variable (so the program can resume from exactly where it left off) and the Register variables (so the state of the CPU goes back to how it was). The diagram below shows the sequence as the OS switches between the execution of process $P_{0}$ and process $P_{1}$.
 
 \begin{center}
-\includegraphics[width=0.65\textwidth]{images/process-switch.png}\\
-A process switch from $P_{0}$ to $P_{1}$ and back again~\cite{osc}.
+	\includegraphics[width=0.65\textwidth]{images/process-switch.png}\\
+	A process switch from $P_{0}$ to $P_{1}$ and back again~\cite{osc}.
 \end{center}
 
 \subsection*{The Circle of Life}
@@ -64,7 +64,7 @@ When the computer boots up, the OS is started and begins creating processes. An 
 
 At boot time the OS starts up various processes, some of which will be in the foreground (visible to the user) and some in the background. A user-visible process might be the log in screen; a background process might be the server that shares media on the local network. The UNIX term for a background process is \textit{Daemon}. You have already worked with one of these if you have ever used the \texttt{ssh} (Secure Shell) command to log into a Linux system; when you attempt to connect it is the \texttt{sshd} (Secure Shell Daemon) that responds to your connection attempt.
 
-Users are well known for starting up processes whenever they feel like it, much to the chagrin of system designers everywhere. Every time you double-click an icon or enter a command line command (like \texttt{ssh} above) that will result in the creation of a process. 
+Users are well known for starting up processes whenever they feel like it, much to the chagrin of system designers everywhere. Every time you double-click an icon or enter a command line command (like \texttt{ssh} above) that will result in the creation of a process.
 
 An already-executing process may spawn another. If you receive an e-mail with a link in it and click on that link\footnote{Security advice: don't click on links you receive by e-mail.}, the e-mail program will start up the web browser (another process) to open the web page. Or a program may break its work up into different logical parts to be parcelled out to subprograms that run as their own process (to promote parallelism or fault tolerance). When an already-executing program spawns another process, we say the spawning process is the \textit{parent} and the one spawned is the \textit{child}. Later on, we will return to the subject of relations between processes in UNIX.
 
@@ -72,7 +72,7 @@ An already-executing process may spawn another. If you receive an e-mail with a 
 
 Eventually, most processes die. This is sad, but it can happen in one of four ways~\cite{mos}:
 \begin{enumerate}
-	\item Normal exit (voluntary) 
+	\item Normal exit (voluntary)
 	\item Error exit (voluntary)
 	\item Fatal Error (involuntary)
 	\item Killed by another process (involuntary)
@@ -97,7 +97,7 @@ In UNIX the first process created is called \texttt{init} and it is the parent o
 
 In Windows, a process that spawns another process gets a reference to its child, allowing it to exercise some measure of control over the child. However, this reference may be given to another process (so, the concept of adoption exists) meaning there is no real hierarchy. A process in UNIX cannot disinherit a child~\cite{mos}.
 
-When a process terminates, voluntarily or otherwise, it does so with a return code, just as a function often returns a value. If the command is issued on the command line (e.g., \texttt{cat /var/log/syslog}) or from double clicking an icon, the return value is generally ignored (or at least, not presented to the user). In UNIX, when a parent process spawns a child, it can get the code that process returns. Usually, a return value of zero indicates success and other values indicate an error of some sort. Normally there is some sort of understanding between the parent and child processes about what a particular code means. 
+When a process terminates, voluntarily or otherwise, it does so with a return code, just as a function often returns a value. If the command is issued on the command line (e.g., \texttt{cat /var/log/syslog}) or from double clicking an icon, the return value is generally ignored (or at least, not presented to the user). In UNIX, when a parent process spawns a child, it can get the code that process returns. Usually, a return value of zero indicates success and other values indicate an error of some sort. Normally there is some sort of understanding between the parent and child processes about what a particular code means.
 
 When a child process finishes execution, until such time as the parent comes by to collect the return value, the child continues in a state of ``undeath'' we call a \textit{zombie}. This does not mean that the process then shuffles around the system attempting to eat the brains of other processes; it just means that the process is dead but not gone. The program has finished executing, there is still an entry in the PCB list, and the process holds on to its allocated resources until such time as the return value is collected. Only after the return value is collected can it be cleaned up. Usually, a child process's result is eagerly awaited by its parent and the \texttt{wait} call collects the value right away, allowing the child to be cleaned up (or, more grimly, ``reaped''). If there is some delay for some reason, the process is considered a zombie until that value is collected.
 
@@ -116,18 +116,18 @@ The fifth and final state will be the ``New'' state: a process that has just bee
 Thus, with the two new states added, the five states of a process in the system are:
 
 \begin{enumerate}
- \item \textbf{Running:} Actively executing right now.
- \item \textbf{Ready:} Not running, but ready to execute if selected by the scheduler.
- \item \textbf{Blocked:} Not running, and not able to run until some event happens.
- \item \textbf{New:} Just created but not yet added to the list of processes ready to run.
- \item \textbf{Terminated:} Finished executing, but not yet cleaned up (reaped).
+	\item \textbf{Running:} Actively executing right now.
+	\item \textbf{Ready:} Not running, but ready to execute if selected by the scheduler.
+	\item \textbf{Blocked:} Not running, and not able to run until some event happens.
+	\item \textbf{New:} Just created but not yet added to the list of processes ready to run.
+	\item \textbf{Terminated:} Finished executing, but not yet cleaned up (reaped).
 \end{enumerate}
 
 With five states, we will have significantly more transitions between the states. The diagram below shows the five-state model:
 
 \begin{center}
-\includegraphics[width=0.85\textwidth]{images/5-state-model.png}\\
-State diagram for the five-state model.
+	\includegraphics[width=0.85\textwidth]{images/5-state-model.png}\\
+	State diagram for the five-state model.
 \end{center}
 
 There are now eight transitions, most of which are similar to what we have seen before:
@@ -146,7 +146,7 @@ There are now eight transitions, most of which are similar to what we have seen 
 There are two additional ``Exit'' transitions that may happen but are not shown. In theory, a process that is in the Ready or Blocked state might transition directly to the Terminated state. This can happen if a process is killed, by the user or by its parent (recall that parent processes can generally kill their children at any time, something the law thankfully does not permit). It may also happen that the system has a policy of killing all the children of a parent process when the parent process dies.
 
 \subsection*{Swapping Processes to Disk}
-We can expand on the five state model with something else: the idea that a process might be swapped out to disk rather than in memory. Memory can have multiple processes in it and if the executing process gets blocked, another can be swapped into memory. Unfortunately, however, it is quite possible that the user wants to have more processes running than can currently be accommodated in main memory. The problem is not the PCBs, which are relatively small (a few thousand bytes), but the stack and heap space allocated to the running program can be very large (on the order of gigabytes). 
+We can expand on the five state model with something else: the idea that a process might be swapped out to disk rather than in memory. Memory can have multiple processes in it and if the executing process gets blocked, another can be swapped into memory. Unfortunately, however, it is quite possible that the user wants to have more processes running than can currently be accommodated in main memory. The problem is not the PCBs, which are relatively small (a few thousand bytes), but the stack and heap space allocated to the running program can be very large (on the order of gigabytes).
 
 With no other place to put them, we have to put some processes on disk, and this is what we know as swapping. Thus, when the demands for memory exceed the available memory, some of the processes will be moved to disk storage to make room for other processes. This is a notably expensive operation: swapping a process to disk might mean transferring several hundred megabytes of data, or even a few gigabytes, which, from the perspective of the CPU, takes about seven eternities. Then, when that process is going to run again, the OS will need to load it back in to memory, which, again, will take just as much time as it took to flush it out. So this is something to be done only when necessary.
 
@@ -157,8 +157,8 @@ There are two scenarios that may have occurred to you that tell us the swapped s
 The solution to both problem scenarios is to split the swapped state in two: Ready/Swapped (ready to run, and currently not in memory) and Blocked/Swapped (not ready to run, and currently not in memory). That gives us, finally, the seven-state model, a minor variation of the five-state model:
 
 \begin{center}
-\includegraphics[width=0.85\textwidth]{images/7-state-model.png}\\
-State diagram for the seven-state model.
+	\includegraphics[width=0.85\textwidth]{images/7-state-model.png}\\
+	State diagram for the seven-state model.
 \end{center}
 
 The Admit transition is modified to show that by default the new process does not start in main memory. Two new transitions, Swap In and Swap Out, are added to show a process being loaded into main memory and written out to disk respectively. Finally, there is a second Unblock transition, where a Blocked/Swapped process gets whatever it was waiting for and moves to the Ready/Swapped state, because it can now run (but is still on disk).

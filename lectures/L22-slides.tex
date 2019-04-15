@@ -4,129 +4,129 @@
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
-  University of Waterloo}
+	University of Waterloo}
 \date{\today}
 
 
 \begin{document}
 
 \begin{frame}
-  \titlepage
-
- \end{frame}
-
-
-\begin{frame}
-\frametitle{Get A Pizza This!}
-\begin{center}
-	\includegraphics[width=0.7\textwidth]{images/pizza.jpg}
-\end{center}
-\hfill Image Credit: Valerio Capello
-
-\end{frame}
-
-\begin{frame}
-\frametitle{The Pizza Makers Problem}
-
-Let's consider a more advanced concurrency problem. 
-
-It's also called the ``Cigarette Smokers Problem''. 
-
-But smoking is bad for you.
-
-Pizza, while not exactly health food, is amazing. Delicious, delicious pizza.
-
+	\titlepage
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Iron Chef: Pizza}
-\begin{center}
-	\includegraphics[width=0.5\textwidth]{images/ironchef.jpg}
-\end{center}
-
-A new show to be hosted by some famous TV chef personality is being pitched, and you're going to write a simulation of it. 
-
-A pizza requires three ingredients: dough, sauce, and cheese.
+	\frametitle{Get A Pizza This!}
+	\begin{center}
+		\includegraphics[width=0.7\textwidth]{images/pizza.jpg}
+	\end{center}
+	\hfill Image Credit: Valerio Capello
 
 \end{frame}
 
 \begin{frame}
-\frametitle{This Could Be a Real Show}
+	\frametitle{The Pizza Makers Problem}
 
-Each contestant has an unlimited supply of one ingredient. 
+	Let's consider a more advanced concurrency problem.
 
-Contestant A has an unlimited supply of dough, Contestant B has an unlimited supply of sauce, and Contestant C has an unlimited supply of cheese.
+	It's also called the ``Cigarette Smokers Problem''.
 
- Each contestant needs to get the two ingredients they do not have and then can make a pizza.
+	But smoking is bad for you.
 
-They will continue to (try to) make pizza in a loop until time is up.
+	Pizza, while not exactly health food, is amazing. Delicious, delicious pizza.
+
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Iron Chef: Pizza}
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/ironchef.jpg}
+	\end{center}
+
+	A new show to be hosted by some famous TV chef personality is being pitched, and you're going to write a simulation of it.
+
+	A pizza requires three ingredients: dough, sauce, and cheese.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Start the Show!}
-At the beginning of the episode, the host places two different random ingredients out. 
+	\frametitle{This Could Be a Real Show}
 
-Contestants can signal the host to ask for more ingredients, but they should not do so unless they actually need some. 
+	Each contestant has an unlimited supply of one ingredient.
 
-Each time the host is woken up (signalled), he again places two different random ingredients out.
+	Contestant A has an unlimited supply of dough, Contestant B has an unlimited supply of sauce, and Contestant C has an unlimited supply of cheese.
 
-When an ingredient is placed on the table, the host posts on the associated semaphore. 
+	Each contestant needs to get the two ingredients they do not have and then can make a pizza.
 
-\end{frame}
-
-\begin{frame}
-\frametitle{Is this Relevant?}
-
-In this scenario, there are resources provided by some external system and the contestants are processes that want resources. 
-
-But we shouldn't be wasteful: resources should only be requested when they are needed and processes should take only what they need. 
-
-Applications should only wake up if they can do something useful.
+	They will continue to (try to) make pizza in a loop until time is up.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{How Hard Do You Want It To Be?}
+	\frametitle{Start the Show!}
+	At the beginning of the episode, the host places two different random ingredients out.
 
-There are some restrictions, though, and they could make the problem either impossible or trivial.
+	Contestants can signal the host to ask for more ingredients, but they should not do so unless they actually need some.
 
-In the impossible version, you can't modify what the host does (which is sensible, because you don't control the other system).
+	Each time the host is woken up (signalled), he again places two different random ingredients out.
 
-But you also cannot use conditional (if) statements, which is pretty ridiculous. 
+	When an ingredient is placed on the table, the host posts on the associated semaphore.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{All Too Easy}
+	\frametitle{Is this Relevant?}
 
- In the trivial version, the host tells which contestants whose turn it is.
- 
- It requires the host system to know too much about the contestants.
+	In this scenario, there are resources provided by some external system and the contestants are processes that want resources.
 
-The interesting version has just the restriction that we can't control the host behaviour. 
+	But we shouldn't be wasteful: resources should only be requested when they are needed and processes should take only what they need.
+
+	Applications should only wake up if they can do something useful.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{How Hard Do You Want It To Be?}
+
+	There are some restrictions, though, and they could make the problem either impossible or trivial.
+
+	In the impossible version, you can't modify what the host does (which is sensible, because you don't control the other system).
+
+	But you also cannot use conditional (if) statements, which is pretty ridiculous.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{All Too Easy}
+
+	In the trivial version, the host tells which contestants whose turn it is.
+
+	It requires the host system to know too much about the contestants.
+
+	The interesting version has just the restriction that we can't control the host behaviour.
 
 
 
-\begin{center}
-	\includegraphics[width=0.5\textwidth]{images/fieri.jpg}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/fieri.jpg}
+	\end{center}
 
-And he is a TV chef personality, after all, they do wacky things.
+	And he is a TV chef personality, after all, they do wacky things.
 
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Let's Make Some Pizza!}
- All semaphores start at 0, except for \texttt{host} which starts as 1 (so the host will run the first time). Does this work?
+	\frametitle{Let's Make Some Pizza!}
+	All semaphores start at 0, except for \texttt{host} which starts as 1 (so the host will run the first time). Does this work?
 
-\begin{multicols}{3}
-\textbf{Contestant A}
-\begin{lstlisting}
+	\begin{multicols}{3}
+		\textbf{Contestant A}
+		\begin{lstlisting}
 wait( sauce )
 get_sauce()
 wait( cheese )
@@ -134,9 +134,9 @@ get_cheese()
 make_pizza( )
 post( host )
 \end{lstlisting}
-\columnbreak
-\textbf{Contestant B}
-\begin{lstlisting}
+		\columnbreak
+		\textbf{Contestant B}
+		\begin{lstlisting}
 wait( dough )
 get_dough()
 wait( cheese )
@@ -144,9 +144,9 @@ get_cheese()
 make_pizza( )
 post( host )
 \end{lstlisting}
-\columnbreak
-\textbf{Contestant C}
-\begin{lstlisting}
+		\columnbreak
+		\textbf{Contestant C}
+		\begin{lstlisting}
 wait( sauce )
 get_sauce()
 wait( dough )
@@ -154,72 +154,72 @@ get_dough()
 make_pizza( )
 post( host )
 \end{lstlisting}
-\end{multicols}
+	\end{multicols}
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Him Again!}
+	\frametitle{Him Again!}
 
-No. Deadlock can easily occur. 
+	No. Deadlock can easily occur.
 
-Suppose the host puts out sauce and dough.
+	Suppose the host puts out sauce and dough.
 
- If contestant B takes the dough and contestant A takes the sauce, then both of them are blocked and nobody can proceed and nobody gets pizza.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{This Isn't What I Ordered...}
-
-Part of the problem here is that a contestant doesn't have a good way to assess what the ingredients are before going up there. 
-
-And once there, if it finds that the ingredients match someone else's needs, we don't call that contestant over.
-
-That would be clever, but to make this work we would need a way to ``check'' what ingredients are there and semaphores don't let us do that.
-
-Can we work with what we have?
-
-\end{frame}
-
-\begin{frame}
-\frametitle{We Need a Sidekick!}
-\begin{center}
-	\includegraphics[width=0.4\textwidth]{images/robin.jpg}
-\end{center}
-
-Imagine now that each contestant gets a helper. 
-
-The job of the helper is to, well, help their contestant to make pizza by figuring out whose turn it is.
+	If contestant B takes the dough and contestant A takes the sauce, then both of them are blocked and nobody can proceed and nobody gets pizza.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Boolean Variables}
+	\frametitle{This Isn't What I Ordered...}
 
-For this there are boolean variables \texttt{dough\_present}, \texttt{sauce\_present}, and \texttt{cheese\_present} 
+	Part of the problem here is that a contestant doesn't have a good way to assess what the ingredients are before going up there.
 
-They are all initialized to \texttt{false}. 
+	And once there, if it finds that the ingredients match someone else's needs, we don't call that contestant over.
 
-They are protected by a semaphore (called \texttt{mutex}).
+	That would be clever, but to make this work we would need a way to ``check'' what ingredients are there and semaphores don't let us do that.
 
-The helpers update that variable, and based on the information available, signal which contestant should come up to the table and take ingredients.
+	Can we work with what we have?
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{We Need a Sidekick!}
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{images/robin.jpg}
+	\end{center}
+
+	Imagine now that each contestant gets a helper.
+
+	The job of the helper is to, well, help their contestant to make pizza by figuring out whose turn it is.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Boolean Variables}
+
+	For this there are boolean variables \texttt{dough\_present}, \texttt{sauce\_present}, and \texttt{cheese\_present}
+
+	They are all initialized to \texttt{false}.
+
+	They are protected by a semaphore (called \texttt{mutex}).
+
+	The helpers update that variable, and based on the information available, signal which contestant should come up to the table and take ingredients.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Working with a Sidekick}
+	\frametitle{Working with a Sidekick}
 
-Each contestant now has a semaphore (such as \texttt{contestantA} for contestant A) which the helpers will post on. 
+	Each contestant now has a semaphore (such as \texttt{contestantA} for contestant A) which the helpers will post on.
 
-Contestants are still responsible for telling the host to put out more ingredients.
+	Contestants are still responsible for telling the host to put out more ingredients.
 
-\begin{multicols}{3}
-\textbf{Helper 1}
-\begin{lstlisting}
+	\begin{multicols}{3}
+		\textbf{Helper 1}
+		\begin{lstlisting}
 wait( sauce )
 wait( mutex )
 if dough_present  
@@ -233,9 +233,9 @@ else
 end if  
 post( mutex )
 \end{lstlisting}
-\columnbreak
-\textbf{Helper 2}
-\begin{lstlisting}
+		\columnbreak
+		\textbf{Helper 2}
+		\begin{lstlisting}
 wait( dough )
 wait( mutex )
 if sauce_present  
@@ -249,9 +249,9 @@ else
 end if  
 post( mutex )
 \end{lstlisting}
-\columnbreak
-\textbf{Helper 3}
-\begin{lstlisting}
+		\columnbreak
+		\textbf{Helper 3}
+		\begin{lstlisting}
 wait( cheese )
 wait( mutex )
 if dough_present  
@@ -265,92 +265,92 @@ else
 end if  
 post( mutex )
 \end{lstlisting}
-\end{multicols}
+	\end{multicols}
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Analyzing the Helper}
+	\frametitle{Analyzing the Helper}
 
-So let's analyze Helper 1.
+	So let's analyze Helper 1.
 
-In this case, the helper is woken up when sauce is placed on the table. 
+	In this case, the helper is woken up when sauce is placed on the table.
 
-It then locks the mutex so that it can manipulate the shared variables of what ingredients are present. 
+	It then locks the mutex so that it can manipulate the shared variables of what ingredients are present.
 
-Now we decide what to do here.
+	Now we decide what to do here.
 
-Obviously, each of the other helpers will signal the appropriate contestant based on its assessment of the state of the ingredients. 
+	Obviously, each of the other helpers will signal the appropriate contestant based on its assessment of the state of the ingredients.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Working with a Sidekick}
+	\frametitle{Working with a Sidekick}
 
-\begin{multicols}{3}
-\textbf{Contestant A}
-\begin{lstlisting}
+	\begin{multicols}{3}
+		\textbf{Contestant A}
+		\begin{lstlisting}
 wait( contestantA )
 get_sauce()
 get_cheese()
 make_pizza( )
 post( host )
 \end{lstlisting}
-\columnbreak
-\textbf{Contestant B}
-\begin{lstlisting}
+		\columnbreak
+		\textbf{Contestant B}
+		\begin{lstlisting}
 wait( contestantB )
 get_dough()
 get_cheese()
 make_pizza( )
 post( host )
 \end{lstlisting}
-\columnbreak
-\textbf{Contestant C}
-\begin{lstlisting}
+		\columnbreak
+		\textbf{Contestant C}
+		\begin{lstlisting}
 wait( contestantC )
 get_sauce()
 get_dough()
 make_pizza( )
 post( host )
 \end{lstlisting}
-\end{multicols}
+	\end{multicols}
 
-The contestant code is pretty much trivial now: wait until a helper signals, then go take your ingredients and make a pizza. 
+	The contestant code is pretty much trivial now: wait until a helper signals, then go take your ingredients and make a pizza.
 
-Once the pizza is in the oven, indicate that you are ready for more ingredients.
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Rule Change}
-
-The generalized version of the problem is what happens when the host puts out ingredients periodically, without a need to be signalled to ask for more. 
-
-How do we modify the solution to deal with that?
-
-If there is no longer a need for the contestants to signal that they want more resources, \texttt{post( host )} in the contestant code has to be removed. 
-
-But what about the helpers?
+	Once the pizza is in the oven, indicate that you are ready for more ingredients.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{How Many Dough?}
+	\frametitle{Rule Change}
 
-Instead of boolean variables to indicate the presence or absence of an ingredient what we need instead is an integer counter to know how many there are. 
+	The generalized version of the problem is what happens when the host puts out ingredients periodically, without a need to be signalled to ask for more.
 
-They are: \texttt{num\_dough}, \texttt{num\_sauce}, and \texttt{num\_cheese}, and they all start as zero.
+	How do we modify the solution to deal with that?
+
+	If there is no longer a need for the contestants to signal that they want more resources, \texttt{post( host )} in the contestant code has to be removed.
+
+	But what about the helpers?
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{How Many Dough?}
+
+	Instead of boolean variables to indicate the presence or absence of an ingredient what we need instead is an integer counter to know how many there are.
+
+	They are: \texttt{num\_dough}, \texttt{num\_sauce}, and \texttt{num\_cheese}, and they all start as zero.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Updated Sidekick Code}
+	\frametitle{Updated Sidekick Code}
 
-\begin{multicols}{3}
-\textbf{Helper 1}
-\begin{lstlisting}
+	\begin{multicols}{3}
+		\textbf{Helper 1}
+		\begin{lstlisting}
 wait( sauce )
 wait( mutex )
 if num_dough > 0  
@@ -364,9 +364,9 @@ else
 end if  
 post( mutex )
 \end{lstlisting}
-\columnbreak
-\textbf{Helper 2}
-\begin{lstlisting}
+		\columnbreak
+		\textbf{Helper 2}
+		\begin{lstlisting}
 wait( dough )
 wait( mutex )
 if num_sauce > 0  
@@ -380,9 +380,9 @@ else
 end if  
 post( mutex )
 \end{lstlisting}
-\columnbreak
-\textbf{Helper 3}
-\begin{lstlisting}
+		\columnbreak
+		\textbf{Helper 3}
+		\begin{lstlisting}
 wait( cheese )
 wait( mutex )
 if num_dough > 0 
@@ -396,85 +396,85 @@ else
 end if  
 post( mutex )
 \end{lstlisting}
-\end{multicols}
+	\end{multicols}
 
-This pattern is referred to as the ``scoreboard''.
+	This pattern is referred to as the ``scoreboard''.
 
-As threads go about their actions, they take a look at the current state (the scoreboard) and decide how to act based on that.
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Barber of Seville}
-
-\begin{center}
-	\includegraphics[width=0.7\textwidth]{images/rabbitofseville.jpg}
-\end{center}
+	As threads go about their actions, they take a look at the current state (the scoreboard) and decide how to act based on that.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{The Barbershop Problem}
+	\frametitle{Barber of Seville}
 
-Consider the ``Barbershop Problem'', originally proposed by Dijkstra.
-
-A barbershop is a place where customers get their hair cut. 
-
-A barbershop consists of a waiting area with $n$ chairs, and a barber chair.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Barbershop Behaviour}
-
-If there are no customers to be served, the barber goes to sleep. 
-
-If a customer enters the barbershop and all chairs are occupied, then the customer leaves the shop. 
-
-If the barber is busy, but chairs are available, then the customer sits in one of the free chairs. 
-
-If the barber is asleep, the customer wakes up the barber. 
+	\begin{center}
+		\includegraphics[width=0.7\textwidth]{images/rabbitofseville.jpg}
+	\end{center}
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Wake Up!}
+	\frametitle{The Barbershop Problem}
 
-Customer threads should call \texttt{get\_hair\_cut()} when it is their turn. 
- 
-If the shop is full, the customer should \texttt{return} (exit/leave). 
+	Consider the ``Barbershop Problem'', originally proposed by Dijkstra.
 
-The barber thread will call \texttt{cut\_hair}.
+	A barbershop is a place where customers get their hair cut.
 
-The barber can cut only one person's hair at a time, so there should be exactly one thread calling \texttt{get\_hair\_cut()} concurrently. 
-
-You can assume that external forces cause customers to appear and the barber to keep working.
+	A barbershop consists of a waiting area with $n$ chairs, and a barber chair.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Scoreboard Pattern Again}
+	\frametitle{Barbershop Behaviour}
+
+	If there are no customers to be served, the barber goes to sleep.
+
+	If a customer enters the barbershop and all chairs are occupied, then the customer leaves the shop.
+
+	If the barber is busy, but chairs are available, then the customer sits in one of the free chairs.
+
+	If the barber is asleep, the customer wakes up the barber.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Wake Up!}
+
+	Customer threads should call \texttt{get\_hair\_cut()} when it is their turn.
+
+	If the shop is full, the customer should \texttt{return} (exit/leave).
+
+	The barber thread will call \texttt{cut\_hair}.
+
+	The barber can cut only one person's hair at a time, so there should be exactly one thread calling \texttt{get\_hair\_cut()} concurrently.
+
+	You can assume that external forces cause customers to appear and the barber to keep working.
+
+\end{frame}
 
 
-We need an integer counter for customers waiting called \texttt{customers} that starts at 0. 
+\begin{frame}
+	\frametitle{Scoreboard Pattern Again}
 
-We will also have a mutex for controlling access to \texttt{customers} called \texttt{mutex} (it obviously starts at 1). 
 
-Finally, two semaphores, \texttt{customer} and \texttt{barber} that both start at 0.
+	We need an integer counter for customers waiting called \texttt{customers} that starts at 0.
 
-Let's write down some outline of the barber and customer code...
+	We will also have a mutex for controlling access to \texttt{customers} called \texttt{mutex} (it obviously starts at 1).
+
+	Finally, two semaphores, \texttt{customer} and \texttt{barber} that both start at 0.
+
+	Let's write down some outline of the barber and customer code...
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Barbershop Solution}
+	\frametitle{Barbershop Solution}
 
-\begin{multicols}{2}
-\textbf{Customer}
-  \begin{lstlisting}
+	\begin{multicols}{2}
+		\textbf{Customer}
+		\begin{lstlisting}
 wait( mutex )
 if customers == n
     signal( mutex )
@@ -491,77 +491,77 @@ wait( mutex )
 customers--
 signal( mutex )
 \end{lstlisting}
-\columnbreak
-\textbf{Barber}
-  \begin{lstlisting}
+		\columnbreak
+		\textbf{Barber}
+		\begin{lstlisting}
 wait( customer )
 signal( barber )
 cut_hair()
   \end{lstlisting}
-\end{multicols}
+	\end{multicols}
 
-Is there a risk of deadlock?
+	Is there a risk of deadlock?
 
-Starvation?
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{I WANT TO SPEAK TO A MANAGER}
-
-We can maybe say that customers who give up in frustration are disappointed.
-
-Is that better than making them wait forever?
-
-This is actually a good lesson for services in general. 
+	Starvation?
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{SCIENCE!!!}
+	\frametitle{I WANT TO SPEAK TO A MANAGER}
 
-\begin{center}
-	\includegraphics[width=0.5\textwidth]{images/h2o2.jpg}
-\end{center}
+	We can maybe say that customers who give up in frustration are disappointed.
 
+	Is that better than making them wait forever?
 
-\end{frame}
-
-\begin{frame}
-\frametitle{Science!}
-
-There are two kinds of thread, \texttt{oxygen()} and \texttt{hydrogen()}. 
-
-As you will recall from basic chemistry, water, H$_{2}$O, requires two hydrogen modules and one oxygen module. 
-
-To assemble the desired molecule (water) a group rendezvous pattern is needed to make each thread wait until all ingredients are present in the correct amounts.
-
-As each thread passes the barrier, it should call the function \texttt{bond()} which makes the water. 
-
-Our solution must function so that all threads for one molecule invoke \texttt{bond()} before any of the threads from the next molecule do. 
+	This is actually a good lesson for services in general.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Water is Life}
+	\frametitle{SCIENCE!!!}
 
-In the example, we'll assume the \texttt{oxygen} and \texttt{hydrogen} threads are created and started correctly and in the correct proportions. 
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/h2o2.jpg}
+	\end{center}
 
-The code for the creation of those two types of threads is not shown. 
 
-The reusable two-phase barrier from earlier has also been converted into C code.
+\end{frame}
 
-The oxygen queue and hydrogen queue start as ``locked''.
+\begin{frame}
+	\frametitle{Science!}
+
+	There are two kinds of thread, \texttt{oxygen()} and \texttt{hydrogen()}.
+
+	As you will recall from basic chemistry, water, H$_{2}$O, requires two hydrogen modules and one oxygen module.
+
+	To assemble the desired molecule (water) a group rendezvous pattern is needed to make each thread wait until all ingredients are present in the correct amounts.
+
+	As each thread passes the barrier, it should call the function \texttt{bond()} which makes the water.
+
+	Our solution must function so that all threads for one molecule invoke \texttt{bond()} before any of the threads from the next molecule do.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Water is Life}
+
+	In the example, we'll assume the \texttt{oxygen} and \texttt{hydrogen} threads are created and started correctly and in the correct proportions.
+
+	The code for the creation of those two types of threads is not shown.
+
+	The reusable two-phase barrier from earlier has also been converted into C code.
+
+	The oxygen queue and hydrogen queue start as ``locked''.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Water is Life}
+	\frametitle{Water is Life}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int oxygen;
 int hydrogen;
 pthread_mutex_t barrier_mutex;
@@ -575,9 +575,9 @@ sem_t hydrogen_queue;
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Water is Life}
+	\frametitle{Water is Life}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 void barrier_enter( ) {
   pthread_mutex_lock( &barrier_mutex );
   barrier_count++;
@@ -602,9 +602,9 @@ void barrier_exit( ) {
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Water is Life}
+	\frametitle{Water is Life}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 void* oxygen( void* ignore ) {
   sem_wait( &bond );
   oxygen++;
@@ -634,8 +634,8 @@ void* oxygen( void* ignore ) {
 
 
 \begin{frame}[fragile]
-\frametitle{Water is Life}
-\begin{lstlisting}[language=C]
+	\frametitle{Water is Life}
+	\begin{lstlisting}[language=C]
 void* hydrogen( void* ignore ) {
   sem_wait( &bond );
   hydrogen++;
@@ -663,37 +663,37 @@ void* hydrogen( void* ignore ) {
 
 
 \begin{frame}
-\frametitle{Analyzing the Solution}
+	\frametitle{Analyzing the Solution}
 
 
-It is a little strange that the hydrogen threads don't post on \texttt{bond}. 
+	It is a little strange that the hydrogen threads don't post on \texttt{bond}.
 
-Isn't this a problem? 
+	Isn't this a problem?
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Posting Bond?}
+	\frametitle{Posting Bond?}
 
-It turns out no, because the oxygen threads post on it unconditionally. 
+	It turns out no, because the oxygen threads post on it unconditionally.
 
-When a thread arrives but the water molecule cannot be formed, whether it is oxygen or hydrogen, a post on \texttt{bond} takes place.
+	When a thread arrives but the water molecule cannot be formed, whether it is oxygen or hydrogen, a post on \texttt{bond} takes place.
 
-Whoever waited on \texttt{bond} does not matter, as long as one of the threads that went into the water molecule posts on it before leaving.
+	Whoever waited on \texttt{bond} does not matter, as long as one of the threads that went into the water molecule posts on it before leaving.
 
-As the chemical composition of water has one oxygen, the job is assigned to this molecule.
+	As the chemical composition of water has one oxygen, the job is assigned to this molecule.
 
 \end{frame}
 
 
 
 \begin{frame}
-\frametitle{The World is Big}
+	\frametitle{The World is Big}
 
-These are by no means all the concurrency problems in the world.
+	These are by no means all the concurrency problems in the world.
 
-But for now we will leave it here, before  we get into really obscure problems...
+	But for now we will leave it here, before  we get into really obscure problems...
 
 \end{frame}
 

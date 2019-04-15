@@ -4,58 +4,58 @@
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
-  University of Waterloo}
+	University of Waterloo}
 \date{\today}
 
 
 \begin{document}
 
 \begin{frame}
-  \titlepage
+	\titlepage
 
- \end{frame}
+\end{frame}
 
 \begin{frame}
-\frametitle{Using cURL}
+	\frametitle{Using cURL}
 
-We've already seen that network communication is a great example of a way that you could use asynchronous I/O. 
+	We've already seen that network communication is a great example of a way that you could use asynchronous I/O.
 
-You can start a network request and move on to creating more without waiting for the results of the first one. 
+	You can start a network request and move on to creating more without waiting for the results of the first one.
 
-For requests to different recipients, it certainly makes sense to do this. 
+	For requests to different recipients, it certainly makes sense to do this.
 
-And yet, we've seen that while socket programming is important and necessary, for a lot of situations we prefer to use cURL.
+	And yet, we've seen that while socket programming is important and necessary, for a lot of situations we prefer to use cURL.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Curl Multi}
+	\frametitle{Curl Multi}
 
-Curl:
-\begin{center}
-	\includegraphics[width=0.2\textwidth]{images/curling.jpg}
-\end{center}
+	Curl:
+	\begin{center}
+		\includegraphics[width=0.2\textwidth]{images/curling.jpg}
+	\end{center}
 
-Curl Multi:
-\begin{center}
-	\includegraphics[width=0.2\textwidth]{images/curling.jpg}
-	\includegraphics[width=0.2\textwidth]{images/curling.jpg}
-	\includegraphics[width=0.2\textwidth]{images/curling.jpg}
-	\includegraphics[width=0.2\textwidth]{images/curling.jpg}
-	\includegraphics[width=0.2\textwidth]{images/curling.jpg}
-\end{center}
+	Curl Multi:
+	\begin{center}
+		\includegraphics[width=0.2\textwidth]{images/curling.jpg}
+		\includegraphics[width=0.2\textwidth]{images/curling.jpg}
+		\includegraphics[width=0.2\textwidth]{images/curling.jpg}
+		\includegraphics[width=0.2\textwidth]{images/curling.jpg}
+		\includegraphics[width=0.2\textwidth]{images/curling.jpg}
+	\end{center}
 
-\hfill Photo Credit: J. Bourassa
+	\hfill Photo Credit: J. Bourassa
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{cURL Easy}
+	\frametitle{cURL Easy}
 
-Quick Recap of the Easy interface:
+	Quick Recap of the Easy interface:
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 #include <stdio.h>
 #include <curl/curl.h>
  
@@ -86,184 +86,184 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 \begin{frame}
-\frametitle{cURL Multi}
+	\frametitle{cURL Multi}
 
-The call to \texttt{curl\_easy\_perform()} is blocking and we wait for the curl execution to take place. 
+	The call to \texttt{curl\_easy\_perform()} is blocking and we wait for the curl execution to take place.
 
-We want to change that! 
+	We want to change that!
 
-The tool for this is the ``multi handle'' - this is a structure that lets us have more than one curl easy handle. 
+	The tool for this is the ``multi handle'' - this is a structure that lets us have more than one curl easy handle.
 
-And rather than waiting, we can start them and then check on their progress. 
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Some Things Don't Change}
-
-There are still the global initialization and cleanup functions. 
-
-The structure for the new multi-handle type is \texttt{CURLM}.
-
-It is initialized with the \texttt{curl\_multi\_init()} function. 
+	And rather than waiting, we can start them and then check on their progress.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Climb Aboard}
+	\frametitle{Some Things Don't Change}
 
-Once we have a multi handle, we can add easy handles -- however many we need -- to the multi handle. 
+	There are still the global initialization and cleanup functions.
 
-Creation of the easy handle is the same as it is when being used alone - use \texttt{curl\_easy\_init()} to create it.
+	The structure for the new multi-handle type is \texttt{CURLM}.
 
-Then we can set however many options on this we need. 
+	It is initialized with the \texttt{curl\_multi\_init()} function.
 
-Then, we add the easy handle to the multi handle with \texttt{curl\_multi\_add\_handle( CURLM* cm, CURL* eh )}.
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Climb Aboard}
+
+	Once we have a multi handle, we can add easy handles -- however many we need -- to the multi handle.
+
+	Creation of the easy handle is the same as it is when being used alone - use \texttt{curl\_easy\_init()} to create it.
+
+	Then we can set however many options on this we need.
+
+	Then, we add the easy handle to the multi handle with \texttt{curl\_multi\_add\_handle( CURLM* cm, CURL* eh )}.
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{BOMBARDMENT!}
-\begin{center}
-	\includegraphics[width=0.7\textwidth]{images/Bombardment.png}
-\end{center}
-\hfill Image Credit: The Simpsons
+	\frametitle{BOMBARDMENT!}
+	\begin{center}
+		\includegraphics[width=0.7\textwidth]{images/Bombardment.png}
+	\end{center}
+	\hfill Image Credit: The Simpsons
 
-We can dispatch all easy handles at once with\\
- \texttt{curl\_multi\_perform( CURLM* cm, int* still\_running )}.
-
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Still Running}
-
- The second parameter is a pointer to an integer that is updated with the number of the easy handles in that multi handle that are still running. 
- 
- If it's down to 0, then we know that they are all done. 
- 
- If it's nonzero it means that some of them are still in progress.
+	We can dispatch all easy handles at once with\\
+	\texttt{curl\_multi\_perform( CURLM* cm, int* still\_running )}.
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Asking is Okay}
+	\frametitle{Still Running}
 
-This does mean that we're going to call\texttt{curl\_multi\_perform()} more than once. 
+	The second parameter is a pointer to an integer that is updated with the number of the easy handles in that multi handle that are still running.
 
-Doing so doesn't restart or interfere with anything that was already in progress.
+	If it's down to 0, then we know that they are all done.
 
-We can check as often as we would like -- but we should be doing something useful rather than polling... right?
+	If it's nonzero it means that some of them are still in progress.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Asking is Okay}
+
+	This does mean that we're going to call\texttt{curl\_multi\_perform()} more than once.
+
+	Doing so doesn't restart or interfere with anything that was already in progress.
+
+	We can check as often as we would like -- but we should be doing something useful rather than polling... right?
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Naps Are Okay}
+	\frametitle{Naps Are Okay}
 
-Suppose we've run out of things to do though. What then? 
+	Suppose we've run out of things to do though. What then?
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 curl_multi_wait( CURLM *multi_handle, struct curl_waitfd extra_fds[], 
     unsigned int extra_nfds, int timeout_ms, int *numfds )} . 
 \end{lstlisting}
- 
-\texttt{multi\_handle}: the multi handle to watch.
 
-\texttt{extra\_fds}: an array of extra file descriptors to watch (NULL).
+	\texttt{multi\_handle}: the multi handle to watch.
 
-\texttt{extra\_nfds}: how many extra file descriptors there are (0).
+	\texttt{extra\_fds}: an array of extra file descriptors to watch (NULL).
 
-\texttt{timeout\_ms} timeout in ms... clearly...
+	\texttt{extra\_nfds}: how many extra file descriptors there are (0).
 
-\texttt{numfds} updated with the number of ``interesting'' events that occurred.
- 
-\end{frame}
+	\texttt{timeout\_ms} timeout in ms... clearly...
 
-\begin{frame}
-\frametitle{Meanwhile...}
-
-In the meantime though, the perform operations are happening, and so are whatever callbacks we have set up (if any). 
-
-And as the I/O operation moves through its life cycle, the state of the easy handle is updated appropriately. 
-
-Each easy handle has an associated status message as well as a return code.
-
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Both of them?}
-\begin{center}
-	\includegraphics[width=0.4\textwidth]{images/yoda-two.jpg}
-\end{center}
-
-The message could be, for example ``done'', but does that mean finished with success or finished with an error? 
-\end{frame}
-
-\begin{frame}
-\frametitle{Both of them?}
-We can ask about the status of the request using \texttt{curl\_multi\_info\_read( CURLM* cm, int* msgs\_left )}.
-
-This returns a pointer to information ``next'' easy handle, if there is one.
-
-The return value is a pointer to a struct of type \texttt{CURLMsg}.
-
-Along side this, the parameter \texttt{msgs\_left} is updated to say how many messages remain.
+	\texttt{numfds} updated with the number of ``interesting'' events that occurred.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Read Your E-mails!}
+	\frametitle{Meanwhile...}
 
-We will therefore check the \texttt{CURLMsg} message to see what happened and make sure all is well. 
+	In the meantime though, the perform operations are happening, and so are whatever callbacks we have set up (if any).
 
-If our message that we got back with the info read is called \texttt{m}, What we are looking for is that the \texttt{m->msg} is equal to \texttt{CURLMSG\_DONE} -- request completed. 
+	And as the I/O operation moves through its life cycle, the state of the easy handle is updated appropriately.
 
-If not, this request is still in progress and we aren't ready to evaluate whether it was successful or not.  
-
-If done, we should look at the return code in and the result, in \texttt{m->data.result}. 
-
-If it is \texttt{CURLE\_OK} then everything succeeded. If anything else, it indicates an error.
+	Each easy handle has an associated status message as well as a return code.
 
 
 \end{frame}
 
+
 \begin{frame}
-\frametitle{Remove Easy Handle}
+	\frametitle{Both of them?}
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{images/yoda-two.jpg}
+	\end{center}
 
-When a handle has finished, you need to remove it from the multi handle. 
+	The message could be, for example ``done'', but does that mean finished with success or finished with an error?
+\end{frame}
 
-A pointer to it is inside the \texttt{CURLMsg} under \texttt{m->easy\_handle}. 
+\begin{frame}
+	\frametitle{Both of them?}
+	We can ask about the status of the request using \texttt{curl\_multi\_info\_read( CURLM* cm, int* msgs\_left )}.
 
-It is removed with \texttt{curl\_multi\_remove\_handle( CURLM* cm, CURL eh )}. 
+	This returns a pointer to information ``next'' easy handle, if there is one.
 
-Once removed, clean it up with: \texttt{curl\_easy\_cleanup( CURL* eh )}.
+	The return value is a pointer to a struct of type \texttt{CURLMsg}.
+
+	Along side this, the parameter \texttt{msgs\_left} is updated to say how many messages remain.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Read Your E-mails!}
+
+	We will therefore check the \texttt{CURLMsg} message to see what happened and make sure all is well.
+
+	If our message that we got back with the info read is called \texttt{m}, What we are looking for is that the \texttt{m->msg} is equal to \texttt{CURLMSG\_DONE} -- request completed.
+
+	If not, this request is still in progress and we aren't ready to evaluate whether it was successful or not.
+
+	If done, we should look at the return code in and the result, in \texttt{m->data.result}.
+
+	If it is \texttt{CURLE\_OK} then everything succeeded. If anything else, it indicates an error.
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Clean the Multi}
+	\frametitle{Remove Easy Handle}
 
-There is the multi cleanup function \texttt{curl\_multi\_cleanup( CURLM * cm ) }.
+	When a handle has finished, you need to remove it from the multi handle.
 
-The last step, as before, is to use the global cleanup function. 
+	A pointer to it is inside the \texttt{CURLMsg} under \texttt{m->easy\_handle}.
 
-After that we are done. 
+	It is removed with \texttt{curl\_multi\_remove\_handle( CURLM* cm, CURL eh )}.
+
+	Once removed, clean it up with: \texttt{curl\_easy\_cleanup( CURL* eh )}.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Clean the Multi}
+
+	There is the multi cleanup function \texttt{curl\_multi\_cleanup( CURLM * cm ) }.
+
+	The last step, as before, is to use the global cleanup function.
+
+	After that we are done.
 
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{cURL Multi Example}
+	\frametitle{cURL Multi Example}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -287,9 +287,9 @@ size_t cb(char *d, size_t n, size_t l, void *p) {
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{cURL Multi Example}
+	\frametitle{cURL Multi Example}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 void init( CURLM *cm, int i ) {
   CURL *eh = curl_easy_init();
   curl_easy_setopt( eh, CURLOPT_WRITEFUNCTION, cb );
@@ -321,9 +321,9 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{cURL Multi Example}
+	\frametitle{cURL Multi Example}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
     curl_multi_perform( cm, &still_running );
 
     do {
@@ -341,9 +341,9 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{cURL Multi Example}
+	\frametitle{cURL Multi Example}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
     while ( ( msg = curl_multi_info_read( cm, &msgs_left ) ) ) {
         if ( msg->msg == CURLMSG_DONE ) {
             eh = msg->easy_handle;
@@ -378,9 +378,9 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{cURL Multi Example}
+	\frametitle{cURL Multi Example}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
     curl_multi_cleanup( cm );
     curl_global_cleanup();
     return 0;
@@ -390,85 +390,85 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 \begin{frame}
-\frametitle{Recycle, Reduce, Reuse}
+	\frametitle{Recycle, Reduce, Reuse}
 
-\begin{center}
-	\includegraphics[width=0.3\textwidth]{images/recycle.png}
-\end{center}
-\hfill Image Credit: Wikipedia user Krdan
+	\begin{center}
+		\includegraphics[width=0.3\textwidth]{images/recycle.png}
+	\end{center}
+	\hfill Image Credit: Wikipedia user Krdan
 
-Can we re-use an easy handle rather than destroy and create a new one?
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Recycle, Reduce, Reuse}
-
-The official docs say that you can re-use one. 
-
-But you have to remove it from the multi handle and then re-add it.
-
-... presumably after having changed anything that you want to change about that handle.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Always Running}
-
-You could have a situation where there are constantly handles in progress.
-
-You might never be at a situation where there are no messages left. 
-
-And that is okay.
+	Can we re-use an easy handle rather than destroy and create a new one?
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Scaling This}
+	\frametitle{Recycle, Reduce, Reuse}
 
-The developer claims that you can have multiple thousands of connections in a single multi handle.
+	The official docs say that you can re-use one.
 
-60k ought to be enough for anyone!
+	But you have to remove it from the multi handle and then re-add it.
+
+	... presumably after having changed anything that you want to change about that handle.
+
 \end{frame}
 
 
 \begin{frame}
-\frametitle{cURL + select}
-\begin{center}
-	\includegraphics[width=0.55\textwidth]{images/harold.jpg}
-\end{center}
+	\frametitle{Always Running}
+
+	You could have a situation where there are constantly handles in progress.
+
+	You might never be at a situation where there are no messages left.
+
+	And that is okay.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Scaling This}
+
+	The developer claims that you can have multiple thousands of connections in a single multi handle.
+
+	60k ought to be enough for anyone!
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{cURL + select}
+	\begin{center}
+		\includegraphics[width=0.55\textwidth]{images/harold.jpg}
+	\end{center}
 
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{cURL + select}
+	\frametitle{cURL + select}
 
-Well, alright, if you insist...
+	Well, alright, if you insist...
 
-The first part of using cURL with select is of course setting up your multi handle and adding all of the easy handles to that. 
+	The first part of using cURL with select is of course setting up your multi handle and adding all of the easy handles to that.
 
-Once you've done that, you can ask cURL to prep things for you:
+	Once you've done that, you can ask cURL to prep things for you:
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 CURLMcode curl_multi_fdset( CURLM *multi_handle, fd_set *read_fd_set,
     fd_set *write_fd_set, fd_set *exc_fd_set, int *max_fd );
 \end{lstlisting}
 
-It takes as arguments, the multi handle, and then pointers to the \texttt{fd\_set}s.
+	It takes as arguments, the multi handle, and then pointers to the \texttt{fd\_set}s.
 
-It's the responsibility of the caller to set these to zero with \texttt{FD\_ZERO} first. 
+	It's the responsibility of the caller to set these to zero with \texttt{FD\_ZERO} first.
 
-The function is kind enough to tell you what the maximum file descriptor is.
+	The function is kind enough to tell you what the maximum file descriptor is.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{cURL + select}
+	\frametitle{cURL + select}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 fd_set fdr;
 fd_set fdw;
 fd_set fde;
@@ -480,27 +480,27 @@ int maxfd = -1;
 CURLMCode res = curl_multi_fdset( cm, &fdr, &fdw, &fde, &maxfd );
 \end{lstlisting}
 
-When calling select we still have to put a \texttt{+1} on the max file descriptor, but that is no big deal. 
+	When calling select we still have to put a \texttt{+1} on the max file descriptor, but that is no big deal.
 
-The missing element is the timeout. For that there is another function:
+	The missing element is the timeout. For that there is another function:
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 CURLMcode curl_multi_timeout( CURLM *multi_handle, long *timeout );
 \end{lstlisting}
 
-Unfortunately, though, this returns a \texttt{long}...
+	Unfortunately, though, this returns a \texttt{long}...
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Guys, Why Can't You Get Along...}
+	\frametitle{Guys, Why Can't You Get Along...}
 
-So you have to do the math yourself.
+	So you have to do the math yourself.
 
-Use this!
+	Use this!
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 struct timeval timeout;
 long timeo;
  
@@ -518,46 +518,46 @@ timeout.tv_usec = (timeo % 1000) * 1000;
 
 
 \begin{frame}
-\frametitle{Are We Forgetting Something?}
+	\frametitle{Are We Forgetting Something?}
 
-But we aren't ready to call \texttt{select} yet -- we haven't started any of the transfers  that use the sockets.
+	But we aren't ready to call \texttt{select} yet -- we haven't started any of the transfers  that use the sockets.
 
-For that we use \texttt{curl\_multi\_perform} just as in the earlier example. 
+	For that we use \texttt{curl\_multi\_perform} just as in the earlier example.
 
-We can do that before or after setting up what we need for select.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Waking Up From a Nap}
-
-When we wake up, it is because something happened. 
-
-We still use \texttt{curl\_multi\_info\_read} to find out what's going on with a given easy handle and find out its status and also find out how many are still running.
-
-As with the earlier code where we used \texttt{select} on sockets directly, we have to remember to reset (repopulate) the values.
+	We can do that before or after setting up what we need for select.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Select Headaches}
+	\frametitle{Waking Up From a Nap}
 
-One of the other problems with \texttt{select} is that you are limited in the number of file descriptors because you could overflow the bitmasks.
+	When we wake up, it is because something happened.
 
-But even if you don't, this really does not scale, so you would be better off using the regular curl multi call.
+	We still use \texttt{curl\_multi\_info\_read} to find out what's going on with a given easy handle and find out its status and also find out how many are still running.
 
-As far as I can see it's better in pretty much every way.
+	As with the earlier code where we used \texttt{select} on sockets directly, we have to remember to reset (repopulate) the values.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Select Headaches}
+
+	One of the other problems with \texttt{select} is that you are limited in the number of file descriptors because you could overflow the bitmasks.
+
+	But even if you don't, this really does not scale, so you would be better off using the regular curl multi call.
+
+	As far as I can see it's better in pretty much every way.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Poll? Nope}
+	\frametitle{Poll? Nope}
 
-Can we use cURL with \texttt{poll}? Generally, no.
+	Can we use cURL with \texttt{poll}? Generally, no.
 
-Long story short: don't. 
+	Long story short: don't.
 
 \end{frame}
 

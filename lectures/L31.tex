@@ -5,7 +5,7 @@
 \lecture{ 31 --- Asynchronous I/O with AIO }{\term}{Jeff Zarnett}
 
 \section*{AIO}
-Previously we had talked about how just opening a file for non-blocking I/O doesn't quite do what we want. There is, however, a way to do what we want using the POSIX Asynchronous I/O Interface, which we will just call AIO from here on, because it's shorter. 
+Previously we had talked about how just opening a file for non-blocking I/O doesn't quite do what we want. There is, however, a way to do what we want using the POSIX Asynchronous I/O Interface, which we will just call AIO from here on, because it's shorter.
 
 The general approach is that you create a control block (\texttt{struct aiocb} -- AIO Control Block) that specifies what operation you want to happen. You enqueue this structure by telling the operating system that you want this to happen. And you can, if you wish, set up a callback to run if the desired event occurs, or you can check periodically if the AIO has completed instead. Your choice. Whichever one depends on your application.
 
@@ -56,7 +56,7 @@ union sigval {
 };
 \end{lstlisting}
 
-Using this, we can choose what we want to happen when the AIO event is complete, if anything. The thread approach is probably the one we'll use most commonly, because it is flexible and convenient. Alright, let's go! 
+Using this, we can choose what we want to happen when the AIO event is complete, if anything. The thread approach is probably the one we'll use most commonly, because it is flexible and convenient. Alright, let's go!
 
 When we're ready to enqueue a request, the functions are:
 \begin{lstlisting}[language=C]
@@ -254,7 +254,7 @@ The last parameter is an event that will fire once all operations are complete. 
 \paragraph{AIO is HARD!}
 There's a funny (and sad) note in~\cite{lpi} and~\cite{linuxaio} about what actually happens in Linux when it comes to the POSIX Asynchronous I/O approach: it's actually implemented internally using threads that do blocking reads (ouch). Work continues on the subject, but the current state of affairs is that for a long time people have been working on a properly in-the-kernel implementation of the AIO behaviour as specified above. The current implementation does not scale very well.
 
-Does this affect your program? No -- what we covered here does still work and is the POSIX-compliant portable way of writing your code. But should you wish to create a very large number of asynchronous I/O requests then you will want to consider an alternative approach for reading your data, such as libevent. 
+Does this affect your program? No -- what we covered here does still work and is the POSIX-compliant portable way of writing your code. But should you wish to create a very large number of asynchronous I/O requests then you will want to consider an alternative approach for reading your data, such as libevent.
 
 \input{bibliography.tex}
 

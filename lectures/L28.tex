@@ -14,7 +14,7 @@ Using \texttt{git} or something else, you and your lab partner check out a repos
 
 A \textit{transaction} is a grouping of operations that belong together and should be treated as an indivisible unit. You will recall from a great deal of discussion on the subject of concurrency that bad things can happen when an intermediate state of a multiple-step operation becomes inadvertently visible. Most of the examples looked at things like \texttt{x++;} being a read, addition, and a write and how concurrent accesses to \texttt{x} could result in the wrong value being read or written. The solution is usually mutual exclusion: forcing other accesses to \texttt{x} to wait while some operation was in progress. And this of course also scales up so you could change \texttt{x, y, z, a, b, c} all in one go. But in the copy-modify-merge scenario, people can make their changes separately and then we try to put them all together.
 
-A transaction has some sort of begin transaction statement at the beginning, then the operations to take place in the transaction, and finally an end transaction statement. Execution looks something like writing down the transaction into a log, doing the operations in the transaction, and when the last one is complete, if all went well, marking the transaction as successful. 
+A transaction has some sort of begin transaction statement at the beginning, then the operations to take place in the transaction, and finally an end transaction statement. Execution looks something like writing down the transaction into a log, doing the operations in the transaction, and when the last one is complete, if all went well, marking the transaction as successful.
 
 In the case of version control, if there are merge conflicts then we are notified that the merge cannot take place until conflicts are resolved. But in file systems, the last write wins.
 
@@ -50,19 +50,19 @@ When we're completely done, just call close on the file descriptor representing 
 There are about 23 different events that you can watch for using the bit mask. Some of them are a bit obscure, but here are some that are highlighted in the spec:
 
 \begin{center}
-\begin{tabular}{l|l}
-	\textbf{Bit Value} & \textbf{Description} \\ \hline
-	\texttt{IN\_ACCESS} & File accessed (read/execute) \\
-	\texttt{IN\_ATTRIB} & Metadata changed, such as permissions \\
-	\texttt{IN\_CLOSE\_WRITE} & File opened for writing was closed \\
-	\texttt{IN\_CLOSE\_NOWRITE} & File not opened for writing was closed \\
-	\texttt{IN\_CREATE} & File or directory created in watched directory \\
-	\texttt{IN\_DELETE} & File or directory deleted from watched directory \\
-	\texttt{IN\_DELETE\_SELF} & Watched file or directory deleted \\
-	\texttt{IN\_MODIFY} & File modified (write, for example) \\
-	\texttt{IN\_OPEN} & File opened \\
-	\texttt{IN\_ALL\_EVENTS} & Watch for all of the above (and a few more)
-\end{tabular}
+	\begin{tabular}{l|l}
+		\textbf{Bit Value}          & \textbf{Description}                             \\ \hline
+		\texttt{IN\_ACCESS}         & File accessed (read/execute)                     \\
+		\texttt{IN\_ATTRIB}         & Metadata changed, such as permissions            \\
+		\texttt{IN\_CLOSE\_WRITE}   & File opened for writing was closed               \\
+		\texttt{IN\_CLOSE\_NOWRITE} & File not opened for writing was closed           \\
+		\texttt{IN\_CREATE}         & File or directory created in watched directory   \\
+		\texttt{IN\_DELETE}         & File or directory deleted from watched directory \\
+		\texttt{IN\_DELETE\_SELF}   & Watched file or directory deleted                \\
+		\texttt{IN\_MODIFY}         & File modified (write, for example)               \\
+		\texttt{IN\_OPEN}           & File opened                                      \\
+		\texttt{IN\_ALL\_EVENTS}    & Watch for all of the above (and a few more)
+	\end{tabular}
 \end{center}
 
 Great, so imagine we have set up some files that we would like to watch. When you're ready for such an event, use \texttt{read} on the file descriptor for the inotify. If an event occurred, you get back a structure \texttt{inotify\_event} that looks like this (as described in the official docs):
@@ -151,16 +151,16 @@ We could check for inconsistent data periodically (e.g., on system boot up) and 
 Obviously we would like to prevent the problem, if we can. The solution is to use transactions, just as we do in version control. Either a change takes place in its entirety or it is as if it never happened.
 
 
-\subsection*{ZFS (Sun/Oracle File System)} 
+\subsection*{ZFS (Sun/Oracle File System)}
 Let's consider ZFS (as I understand it, pronounced ``Zee Eff Ess''), which is intended for scalability and has some interesting features. The primary source for this section is the official documentation~\cite{zfs}. Because what better place than from the source?
 
-ZFS uses the idea of transactions, making sure that the state is always consistent on disk. Much like the copy-modify-merge model, data is copied, then changed, then rewritten. Blocks are never overwritten with new data. Instead, a transaction writes all data and metadata to new blocks. Only when the transaction is complete, any references to the old blocks are replaced with the location of the new blocks. Then the old pointers and blocks can be cleaned up (reused or disposed of). 
+ZFS uses the idea of transactions, making sure that the state is always consistent on disk. Much like the copy-modify-merge model, data is copied, then changed, then rewritten. Blocks are never overwritten with new data. Instead, a transaction writes all data and metadata to new blocks. Only when the transaction is complete, any references to the old blocks are replaced with the location of the new blocks. Then the old pointers and blocks can be cleaned up (reused or disposed of).
 
 This does have an interesting weakness: if the disk becomes completely and totally full it is not possible to delete anything and make space, because there's no place to allocate new blocks. That's a problem. And not just a hypothetical: it happened to a friend of mine when he tried to put too much data in his NAS (network attached storage). He was mad. But he was going to buy a new one anyway, I guess...
 
 \subsection*{APFS (Apple File System)}
 
-Like some version control systems, APFS brings the ability to take snapshots of the file system: freeze the state of the file system and from there any additional changes are ``diffs'' against that base state, meaning only new things take up space. This is potentially quite helpful for tacking backups (you do take backups, right?)~\cite{apfs}. 
+Like some version control systems, APFS brings the ability to take snapshots of the file system: freeze the state of the file system and from there any additional changes are ``diffs'' against that base state, meaning only new things take up space. This is potentially quite helpful for tacking backups (you do take backups, right?)~\cite{apfs}.
 
 Speedier backups can result: the performance of your system can be degraded while backups are being taken because you need to compute the difference between the last backup copy and the current. This is faster! But it is also a way to avoid corruption: you can replay changes as needed to get the file back to \textit{a} consistent state (of some sort).
 
@@ -169,7 +169,7 @@ The APFS does potentially harm the most common ``backup'' system of non-technica
 Somewhat like ZFS, the APFS approach to avoiding inconsistent data amidst a crash is something like copy-on-write, though in typical Apple fashion they were pretty vague about what this means in a practical sense; the APFS lead developer Dominic Giampaolo just says it's a ``novel copy-on-write metadata scheme'' but also somehow not exactly the same as ZFS's single-atomic-update approach~\cite{apfs}.
 
 \subsection*{NTFS (Windows File System)}
-Though UNIX and similar systems have often been a focus of the examples, in this case, we will instead examine NTFS, the default file system for Windows since Windows NT and used in 2000, XP, Vista, 7, 8, 10... NTFS supports large disks and large files, and uses journalling. 
+Though UNIX and similar systems have often been a focus of the examples, in this case, we will instead examine NTFS, the default file system for Windows since Windows NT and used in 2000, XP, Vista, 7, 8, 10... NTFS supports large disks and large files, and uses journalling.
 
 A volume is laid out as follows:
 
@@ -191,7 +191,7 @@ NTFS uses journalling to ensure that the file system will be in a consistent sta
 
 All metadata changes are written sequentially to a log file; once the changes are written to the log, control may return to the program that requested the operation. Meanwhile, the log entries are actually carried out. As changes are made, a pointer is updated to indicate which of the log entries have really happened and which have not. When an entire transaction is completed, it is removed from the log file. If the system crashes, the log file will contain zero or more transactions. If there are zero there is no problem: nothing was in progress at the time of the crash. If there are some, then the transactions were not completed and the operations should still be carried out. If a transaction was aborted (not committed), we walk backwards through the log entries to undo any completed operations and go back to the state before the start of the transaction~\cite{osc}.
 
-Even though a particular write may not have taken place because of a crash, resulting in some data loss, at least the system will always remain in a consistent state. As a side benefit, we can sometimes re-order the writes to get better performance (e.g., schedule them in such a way that we get better disk utilization). 
+Even though a particular write may not have taken place because of a crash, resulting in some data loss, at least the system will always remain in a consistent state. As a side benefit, we can sometimes re-order the writes to get better performance (e.g., schedule them in such a way that we get better disk utilization).
 
 
 The actual implementation of journalling works as follows~\cite{russ}:

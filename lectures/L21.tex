@@ -7,61 +7,61 @@
 \section*{Deadlock Detection}
 Thus far we have examined several ways to prevent or avoid deadlock, but all of those solutions have come with significant drawbacks or limitations. Avoidance analyses are also conservative; they will prevent a request from taking place if there is even a small chance it could lead to a deadlock. If we cannot stop deadlock from happening or cannot live with the performance reduction that avoidance mandates, then perhaps the next best thing is to let all resource requests proceed and then determine later if a deadlock exists, and if so, do something about it.
 
-The truth is that the operating system is in the best position to detect if there is a deadlock, but commercial operating systems don't do that. We can do it ourselves in our program using some of the following techniques but we almost certainly won't have the full picture. This is because we cannot see what's going on inside other processes or inside the kernel. But we will do our best under the circumstances, if we need to. 
+The truth is that the operating system is in the best position to detect if there is a deadlock, but commercial operating systems don't do that. We can do it ourselves in our program using some of the following techniques but we almost certainly won't have the full picture. This is because we cannot see what's going on inside other processes or inside the kernel. But we will do our best under the circumstances, if we need to.
 
 The basic strategy for deadlock detection is like the deadlock avoidance strategy in that it relies on a model of the resource allocation and requests. If resources have only a single instance, we may reduce the graph to a simplified version called the \textit{wait-for} graph. This removes the resource boxes from the diagram and indicates that a process $P_{i}$ is waiting for process $P_{j}$ rather than for a resource $R_{k}$ that happens to be held by $P_{j}$. An edge $P_{i} \rightarrow P_{j}$ exists in the wait-for graph if and only if the resource allocation graph has a request $P_{i} \rightarrow R_{k}$ and an assignment edge $R_{k} \rightarrow P_{j}$~\cite{osc}. Consider the example below:
 
 \begin{center}
-\includegraphics[width=0.5\textwidth]{images/rag-waitfor.png}\\
-(a) A resource allocation graph and (b) its corresponding wait-for graph~\cite{osc}.
+	\includegraphics[width=0.5\textwidth]{images/rag-waitfor.png}\\
+	(a) A resource allocation graph and (b) its corresponding wait-for graph~\cite{osc}.
 \end{center}
 
-Given the wait-for graph, it is trivial for humans to look at this and determine if there is a cycle, but for the computer it takes slightly more work. We must execute an algorithm to determine if there is a cycle. A cycle exists in the wait for graph if and only if a deadlock exists in the system. Such cycle detection algorithms tend to have runtime characteristics of $\Theta(n^{2})$ where $n$ is the number of nodes in the graph. Though not a formal proof and probably not acceptable to write on a data structures and algorithms examination, the premise of the algorithm is: for each node $n$ in the graph, examine each possible path from that node. If a node is reached from which no further path is available, examine the next path. If node $n$ is reached on the current path, a cycle is detected and the algorithm terminates. 
+Given the wait-for graph, it is trivial for humans to look at this and determine if there is a cycle, but for the computer it takes slightly more work. We must execute an algorithm to determine if there is a cycle. A cycle exists in the wait for graph if and only if a deadlock exists in the system. Such cycle detection algorithms tend to have runtime characteristics of $\Theta(n^{2})$ where $n$ is the number of nodes in the graph. Though not a formal proof and probably not acceptable to write on a data structures and algorithms examination, the premise of the algorithm is: for each node $n$ in the graph, examine each possible path from that node. If a node is reached from which no further path is available, examine the next path. If node $n$ is reached on the current path, a cycle is detected and the algorithm terminates.
 
-\subsection*{General Deadlock Detection Algorithm} 
+\subsection*{General Deadlock Detection Algorithm}
 
 We will use the general deadlock detection algorithm from~\cite{mos} that allows for multiple resources of each type. In this algorithm, there are $n$ processes numbered $P_{1}$ through $P_{n}$ and $m$ resources. Resources are represented by two vectors: $E$, the existing resource vector -- the total number of instances of each resource; and $A$, the available resource vector -- how many instances of each resource are currently available (not assigned to a process). If resource $i$ has two instances total and one is currently assigned to a process, $E_{i}$ is 2 and $A_{i}$ is 1.
 
 We need two matrices to represent the current situation of the system. The first is $C$, the current allocation; it contains data about what resources are currently assigned to each process. Thus, row $i$ of $C$ shows how many of each resource $P_{i}$ has. The second matrix is $R$, the request matrix. Row $i$ of this matrix shows how many of each resource $P_{i}$ wants. Thus, $C_{ij}$ shows the number of instances of resource $j$ that $P_{i}$ has and $R_{ij}$ shows the number of instances of resource $j$ that $P_{i}$ wants. Or, to show what those look like:
 
 \begin{multicols}{2}
-\begin{center}
-\textsf{Resources in Existence}\\
-$[E_{1}, E_{2}, ..., E_{m}]$
+	\begin{center}
+		\textsf{Resources in Existence}\\
+		$[E_{1}, E_{2}, ..., E_{m}]$
 
-\textsf{Current Allocations}
-\[
-\left[ {\begin{array}{cccc}
-C_{11} & C_{12} & ... & C_{1m} \\
-C_{21} & C_{22} & ... & C_{2m} \\
-\vdots & \vdots &     & \vdots \\
-C_{n1} & C_{n2} & ... & C_{nm}
-\end{array} } \right]
-\]
-\end{center}
-\columnbreak
+		\textsf{Current Allocations}
+		\[
+			\left[ {\begin{array}{cccc}
+							C_{11} & C_{12} & ... & C_{1m} \\
+							C_{21} & C_{22} & ... & C_{2m} \\
+							\vdots & \vdots &     & \vdots \\
+							C_{n1} & C_{n2} & ... & C_{nm}
+						\end{array} } \right]
+		\]
+	\end{center}
+	\columnbreak
 
-\begin{center}
-\textsf{Resources Available}\\
-$[A_{1}, A_{2}, ..., A_{m}]$
+	\begin{center}
+		\textsf{Resources Available}\\
+		$[A_{1}, A_{2}, ..., A_{m}]$
 
-\textsf{Requests}
-\[
-\left[ {\begin{array}{cccc}
-R_{11} & R_{12} & ... & R_{1m} \\
-R_{21} & R_{22} & ... & R_{2m} \\
-\vdots & \vdots &     & \vdots \\
-R_{n1} & R_{n2} & ... & R_{nm}
-\end{array} } \right]
-\]
-\end{center}
+		\textsf{Requests}
+		\[
+			\left[ {\begin{array}{cccc}
+							R_{11} & R_{12} & ... & R_{1m} \\
+							R_{21} & R_{22} & ... & R_{2m} \\
+							\vdots & \vdots &     & \vdots \\
+							R_{n1} & R_{n2} & ... & R_{nm}
+						\end{array} } \right]
+		\]
+	\end{center}
 
 \end{multicols}
 
-Note that at all times a resource is considered either allocated or available. This means this mathematical relationship always holds: 
+Note that at all times a resource is considered either allocated or available. This means this mathematical relationship always holds:
 \vspace{-2em}
 \begin{center}
-$\sum\limits_{i=1}^n C_{ij} + A_{j} = E_{j}$.
+	$\sum\limits_{i=1}^n C_{ij} + A_{j} = E_{j}$.
 \end{center}
 
 There is one more bit of setup before we are ready to run the algorithm. The key idea is comparison of vectors, so let us define for notational convenience, the idea of ``less than'' for two vectors. We will say that for two vectors $A$ and $B$ of length $m$,  $A \leq B$ means that $A_{i} \leq B_{i}$ for all $i$ from 1 to $m$.
@@ -74,7 +74,7 @@ At last, the algorithm. The starting condition is that all processes are unmarke
 	\item If no process was found in the search of step 1, the algorithm terminates.
 \end{enumerate}
 
-This approach is similar to the banker's algorithm. Step one looks for a process that can run to completion, and we are certain it will be able to do so because the currently available resources equal or exceed its needs. That process can finish, and when it does so, its currently-held resources are released and available for another process to acquire. Step two reflects this by adding the resources it holds to the available set. Then another process is selected. At the end, either all processes can finish and there is no deadlock, or there is a set of processes (at least two) that are deadlocked. 
+This approach is similar to the banker's algorithm. Step one looks for a process that can run to completion, and we are certain it will be able to do so because the currently available resources equal or exceed its needs. That process can finish, and when it does so, its currently-held resources are released and available for another process to acquire. Step two reflects this by adding the resources it holds to the available set. Then another process is selected. At the end, either all processes can finish and there is no deadlock, or there is a set of processes (at least two) that are deadlocked.
 
 This algorithm has a runtime performance characteristic of $\Theta(m \times n^{2})$.
 
@@ -83,28 +83,28 @@ This algorithm has a runtime performance characteristic of $\Theta(m \times n^{2
 Let's now use this algorithm on an example also from~\cite{mos}. Let us assume we have 4 types of resources and 3 processes. The names and types of the resources do not matter - they can be anything - all that matters are the numbers. Each process has some resources currently allocated to it, and each process has some requests outstanding. Thus, the initial state of the system is:
 
 \begin{multicols}{2}
-\begin{center}
-$E = [4, 2, 3, 1]$
-\[ C =
-\left[ {\begin{array}{cccc}
-0 & 0 & 1 & 0\\
-2 & 0 & 0 & 1\\
-0 & 1 & 2 & 0\\
-\end{array} } \right]
-\]
-\end{center}
-\columnbreak
+	\begin{center}
+		$E = [4, 2, 3, 1]$
+		\[ C =
+			\left[ {\begin{array}{cccc}
+							0 & 0 & 1 & 0 \\
+							2 & 0 & 0 & 1 \\
+							0 & 1 & 2 & 0 \\
+						\end{array} } \right]
+		\]
+	\end{center}
+	\columnbreak
 
-\begin{center}
-$A = [2, 1, 0, 0]$
-\[ R =
-\left[ {\begin{array}{cccc}
-2 & 0 & 0 & 1\\
-1 & 0 & 1 & 0\\
-2 & 1 & 0 & 0
-\end{array} } \right]
-\]
-\end{center}
+	\begin{center}
+		$A = [2, 1, 0, 0]$
+		\[ R =
+			\left[ {\begin{array}{cccc}
+							2 & 0 & 0 & 1 \\
+							1 & 0 & 1 & 0 \\
+							2 & 1 & 0 & 0
+						\end{array} } \right]
+		\]
+	\end{center}
 
 \end{multicols}
 
@@ -122,7 +122,7 @@ The runtime characteristic of the simple deadlock detection algorithm was identi
 
 This prompts a question: how often should the deadlock detection algorithm be run? One strategy is to run it every time a resource is requested. Running the algorithm might be rather expensive, so perhaps this is too often. An obvious optimization: it should only run every time a resource request cannot be granted (that is, a process gets blocked). Another idea: run it periodically instead.
 
-When to run the deadlock detection algorithm depends on how often we expect deadlock to occur, and how severe a problem it is when deadlock occurs. If deadlock happens a lot, checking for deadlock often will make sense. If the consequences of a deadlock are severe, it makes sense to check frequently to identify the problem as soon as possible. 
+When to run the deadlock detection algorithm depends on how often we expect deadlock to occur, and how severe a problem it is when deadlock occurs. If deadlock happens a lot, checking for deadlock often will make sense. If the consequences of a deadlock are severe, it makes sense to check frequently to identify the problem as soon as possible.
 
 Several sources including~\cite{mos} suggest running the deadlock detection algorithm when CPU utilization is low. This is not only because it would be a bad idea to run an algorithm that is time consuming and computationally expensive while the system is busy. When a deadlock is present in the system, many processes are stuck and cannot proceed, so a drop in CPU usage may be an indication that many processes are deadlocked.
 
@@ -136,7 +136,7 @@ There are several strategies that we could apply, which we will refer to in humo
 \subsubsection*{Robbery}
 The strategy of ``robbery'' is just a humorous way of saying preemption. This is virtually identical to the discussion of knocking down the pillar of deadlock for deadlock prevention; the only difference is that recovery is run only when deadlock is detected. Suppose a process $P_{1}$ has a resource $R_{1}$ and needs $R_{2}$, while a process $P_{2}$ has $R_{2}$ and needs $R_{1}$. The operating system may block process $P_{2}$ and take away $R_{2}$ from $P_{2}$ and allow $P_{1}$ to have it. After that resource becomes available again, it is returned to $P_{2}$. In the general case, the operating system will take resources from (``rob'') some process(es) and give those resources to other processes until the deadlock cycle is broken. To do so, the operating system needs to choose a victim to rob; a subject we will examine shortly.
 
-The resource should be an appropriate type to be preempted: it must be possible to save and restore the state. Preemption of a printer is not realistic, nor is memory. However, other resources, like a processor or access to the network, may be. If the state of the resource cannot be saved and restored, then preemption is not a good strategy. 
+The resource should be an appropriate type to be preempted: it must be possible to save and restore the state. Preemption of a printer is not realistic, nor is memory. However, other resources, like a processor or access to the network, may be. If the state of the resource cannot be saved and restored, then preemption is not a good strategy.
 
 
 \subsubsection*{Mass Murder}
@@ -154,7 +154,7 @@ Perhaps instead of killing all processes involved in a deadlock, the operating s
 \subsubsection*{Time Travel}
 Time travel is just a clever way of saying \textit{rollback}: returning the state of a process to a saved state from an earlier time. To do so, of course, there must be a saved state that was created in advance of a problem (otherwise there is no state to roll back to...). The saved state is called a \textit{checkpoint} and the act of creating and saving a checkpoint is called \textit{checkpointing}\footnote{Once again, verbing weirds language.}. Checkpoints may be created periodically or before beginning a particular operation that requires a lot of resources.
 
-A checkpoint contains the memory image, including the call stack, and resource state of a process. It is written to disk and will usually persist as long as the process continues to execute. 
+A checkpoint contains the memory image, including the call stack, and resource state of a process. It is written to disk and will usually persist as long as the process continues to execute.
 
 You might already be somewhat familiar with the concept of rollbacks if you have used version control software like Subversion (\texttt{svn}) or Git (\texttt{git}). A previous state of the source code is saved and if a developer commits a change that is detrimental  to the software, that change can easily be undone by reverting the state of the source files to an earlier version. Rollbacks are also common in databases; if an attempted modification of a database record fails for some reason, such as data being too long for a field, then the state of the database is restored to what it was before the attempted change.
 
@@ -166,7 +166,7 @@ Armageddon - the end of the world. If a deadlock has occurred, sometimes the bes
 
 
 \subsection*{Victim Selection}
-If we have to choose a victim process for one of the strategies, e.g., termination, then we need a strategy for which process to choose. We could choose randomly: kill a process and hope that that was enough. Sometimes this will work, because it breaks the deadlock and the other processes can all proceed. In general, however, making an informed decision is better. 
+If we have to choose a victim process for one of the strategies, e.g., termination, then we need a strategy for which process to choose. We could choose randomly: kill a process and hope that that was enough. Sometimes this will work, because it breaks the deadlock and the other processes can all proceed. In general, however, making an informed decision is better.
 
 Note that it is, strictly speaking, not necessary to choose one of the processes involved in the deadlock. For example, if $P_{1}$ and $P_{2}$ are deadlocked, a process $P_{3}$  may have an instance of a resource that $P_{1}$ needs, and killing $P_{3}$ will allow both $P_{1}$ and $P_{2}$ to proceed.
 

@@ -4,119 +4,119 @@
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
-  University of Waterloo}
+	University of Waterloo}
 \date{\today}
 
 
 \begin{document}
 
 \begin{frame}
-  \titlepage
+	\titlepage
 
- \end{frame}
+\end{frame}
 
 
 \begin{frame}
-\frametitle{Network Communication}
+	\frametitle{Network Communication}
 
-\begin{center}
-	\includegraphics[width=0.7\textwidth]{images/seriesoftubes.jpg}\\
-	Former US Senator Ted Stevens
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.7\textwidth]{images/seriesoftubes.jpg}\\
+		Former US Senator Ted Stevens
+	\end{center}
 
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Network Communication}
+	\frametitle{Network Communication}
 
-If two processes aren't on the same machine, we need to use the network.
+	If two processes aren't on the same machine, we need to use the network.
 
-The network is frequently portrayed as a mysterious cloud blob:
+	The network is frequently portrayed as a mysterious cloud blob:
 
-\begin{center}
-	\includegraphics[width=0.35\textwidth]{images/iCloud.png}\\
-	The Apple iCloud icon
-\end{center}
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{The Socket}
-
-The \alert{socket} API describes how to communicate over the network. 
-
-The socket is the concept for how to establish a communication channel.
-
- There are two ways we can communicate: datagrams and connection streams.
-
-\begin{center}
-	\includegraphics[width=0.3\textwidth]{images/electrical-outlet.jpg}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.35\textwidth]{images/iCloud.png}\\
+		The Apple iCloud icon
+	\end{center}
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Call or Text?}
+	\frametitle{The Socket}
 
-The connection stream is like a telephone call. 
+	The \alert{socket} API describes how to communicate over the network.
 
-Both parties have to be on the line to communicate. 
+	The socket is the concept for how to establish a communication channel.
 
-Datagram is like texting or sending a letter in the mail.
+	There are two ways we can communicate: datagrams and connection streams.
 
-Datagrams are unidirectional and can get lost!
+	\begin{center}
+		\includegraphics[width=0.3\textwidth]{images/electrical-outlet.jpg}
+	\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Call or Text?}
+
+	The connection stream is like a telephone call.
+
+	Both parties have to be on the line to communicate.
+
+	Datagram is like texting or sending a letter in the mail.
+
+	Datagrams are unidirectional and can get lost!
 
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Sockets are Files}
+	\frametitle{Sockets are Files}
 
-Much like everything else in UNIX, a socket is handled like a file. 
+	Much like everything else in UNIX, a socket is handled like a file.
 
-To create a socket, we need the \texttt{sys/socket.h} header
+	To create a socket, we need the \texttt{sys/socket.h} header
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int socket( int domain, int type, int protocol )
 \end{lstlisting}
 
-Domain: address format; \texttt{AF\_INET} (IPv4)
+	Domain: address format; \texttt{AF\_INET} (IPv4)
 
-Type: what kind of data; \texttt{SOCK\_DGRAM} or\texttt {SOCK\_STREAM}
+	Type: what kind of data; \texttt{SOCK\_DGRAM} or\texttt {SOCK\_STREAM}
 
-Protocol: how data is transported; 0 for default (TCP/IP).
+	Protocol: how data is transported; 0 for default (TCP/IP).
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Check the Boot of the Car for your Jumper}
+	\frametitle{Check the Boot of the Car for your Jumper}
 
-Speaking the same dialect is important. 
+	Speaking the same dialect is important.
 
-Consider a 4-byte integer. Two possible organizations:
+	Consider a 4-byte integer. Two possible organizations:
 
-\begin{center}
-	\includegraphics[width=0.25\textwidth]{images/endian}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.25\textwidth]{images/endian}
+	\end{center}
 
-Network protocol specifies the use of big-endian!
+	Network protocol specifies the use of big-endian!
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Translate!}
+	\frametitle{Translate!}
 
-Included in the \texttt{arpa/inet.h} header are some functions to help us out. 
+	Included in the \texttt{arpa/inet.h} header are some functions to help us out.
 
-Their use is advisable even if you're sure the system you are using is big-endian, because of portability of your code.
+	Their use is advisable even if you're sure the system you are using is big-endian, because of portability of your code.
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 uint32_t htonl( uint32_t hostint32 ) /* Translate 4 byte int to network format */
 uint16_t htons( uint16_t hostint16 ) /* Translate 2 byte int to network format */
 uint32_t ntohl( uint32_t netint32 )  /* Translate 4 byte int to host format */
@@ -128,14 +128,14 @@ uint16_t ntohs( uint16_t netint16 ) /* Translate 2 byte int to host format */
 
 
 \begin{frame}[fragile]
-\frametitle{An Internet Address}
+	\frametitle{An Internet Address}
 
-When we want to call someone, we have to put in their phone number. 
+	When we want to call someone, we have to put in their phone number.
 
-If we want someone to call us, we need a phone number and we need to be ready to receive calls. 
+	If we want someone to call us, we need a phone number and we need to be ready to receive calls.
 
-An internet address is represented by the following structure:
-\begin{lstlisting}[language=C]
+	An internet address is represented by the following structure:
+	\begin{lstlisting}[language=C]
 struct sockaddr_in {
   sa_family_t sin_family; /* Address family */
   in_port_t sin_port; /* Port number */
@@ -147,98 +147,98 @@ struct sockaddr_in {
 
 
 \begin{frame}[fragile]
-\frametitle{Initializing an Address}
+	\frametitle{Initializing an Address}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 struct sockaddr_in addr;
 addr.sin_family = AF_INET;
 addr.sin_port = htons( 2520 );
 addr.sin_addr.s_addr = htonl( INADDR_ANY );
 \end{lstlisting}
 
-\texttt{AF\_INET} is IPv4.
+	\texttt{AF\_INET} is IPv4.
 
-You are probably quite familiar with how they look: 192.168.0.1
+	You are probably quite familiar with how they look: 192.168.0.1
 
-But if you want to go to uwaterloo.ca a translation to an IP address takes place.
+	But if you want to go to uwaterloo.ca a translation to an IP address takes place.
 
-Here we chose a constant value, \texttt{INADDR\_ANY}\\
-\quad Choose an address of the current computer.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Ports: Like Apartments!}
-
-Imagine your computer is then an apartment building; the port number is which apartment the connection is made with. 
-
-Different services (processes) are communicating over different ports. 
-
-No two processes can be using the same port at the same time. 
-
-By convention, ports with numbers below 1024 considered to be reserved for system services.
-
-Example: \texttt{ssh} on port 22.
+	Here we chose a constant value, \texttt{INADDR\_ANY}\\
+	\quad Choose an address of the current computer.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Address Lookup}
+	\frametitle{Ports: Like Apartments!}
 
-\begin{center}
-	\includegraphics[width=0.6\textwidth]{images/terminator-phonebook1.jpg}
-\end{center}
-\begin{center}
-	\includegraphics[width=0.6\textwidth]{images/terminator-phonebook2.jpg}
-\end{center}
+	Imagine your computer is then an apartment building; the port number is which apartment the connection is made with.
+
+	Different services (processes) are communicating over different ports.
+
+	No two processes can be using the same port at the same time.
+
+	By convention, ports with numbers below 1024 considered to be reserved for system services.
+
+	Example: \texttt{ssh} on port 22.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Address Lookup}
+
+	\begin{center}
+		\includegraphics[width=0.6\textwidth]{images/terminator-phonebook1.jpg}
+	\end{center}
+	\begin{center}
+		\includegraphics[width=0.6\textwidth]{images/terminator-phonebook2.jpg}
+	\end{center}
 
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Address Lookup}
+	\frametitle{Address Lookup}
 
-We probably only rarely use IP addresses directly; we use human-friendly names.
+	We probably only rarely use IP addresses directly; we use human-friendly names.
 
-For example, you use \texttt{ssh username@ecelinux.uwaterloo.ca} and don't need to manually look up the IP address for the server.
+	For example, you use \texttt{ssh username@ecelinux.uwaterloo.ca} and don't need to manually look up the IP address for the server.
 
-Looking up hostnames and the like is somewhat complex (and not the focus), so we will just learn one method for doing this.
+	Looking up hostnames and the like is somewhat complex (and not the focus), so we will just learn one method for doing this.
 
-Many examples and older texts use the function \texttt{gethostbyname()}, but this is now deprecated.
+	Many examples and older texts use the function \texttt{gethostbyname()}, but this is now deprecated.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Get Address Info!}
+	\frametitle{Get Address Info!}
 
-The function is prototyped in in \texttt{netdb.h}:
+	The function is prototyped in in \texttt{netdb.h}:
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int getaddrinfo(const char *node,     // e.g. "www.example.com" or IP
                 const char *service,  // e.g. "http" or port number
                 const struct addrinfo *hints,
                 struct addrinfo **res);
 \end{lstlisting}
 
-\texttt{node}: hostname or IP address.
+	\texttt{node}: hostname or IP address.
 
-\texttt{service}: protocol or port number.
+	\texttt{service}: protocol or port number.
 
-\texttt{hints}: used to restrict the kind of connection you want.
+	\texttt{hints}: used to restrict the kind of connection you want.
 
-\texttt{res}: pointer to be updated with the result.
+	\texttt{res}: pointer to be updated with the result.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Look Up an Address Example}
+	\frametitle{Look Up an Address Example}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 struct addrinfo hints;
 struct addrinfo *serverinfo;  // will point to the results
 
@@ -258,60 +258,60 @@ freeaddrinfo( serverinfo );
 \end{lstlisting}
 
 
-Assuming that all went well, the \texttt{serverinfo} pointer is now pointing to a linked list of \texttt{struct sockaddr}.
+	Assuming that all went well, the \texttt{serverinfo} pointer is now pointing to a linked list of \texttt{struct sockaddr}.
 
-Most of the time we just need the first result.
+	Most of the time we just need the first result.
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Uh, where am I again?}
+	\frametitle{Uh, where am I again?}
 
-If we are interested in getting the structure for the local computer, we can manually initialize the \texttt{struct sockaddr\_in} as we did earlier.
+	If we are interested in getting the structure for the local computer, we can manually initialize the \texttt{struct sockaddr\_in} as we did earlier.
 
-Or we can call \texttt{getaddrinfo()} with \texttt{NULL} as the \texttt{node} parameter.
+	Or we can call \texttt{getaddrinfo()} with \texttt{NULL} as the \texttt{node} parameter.
 
-It's possible to use \texttt{NULL} for the hints if you are willing to accept the defaults 
+	It's possible to use \texttt{NULL} for the hints if you are willing to accept the defaults
 
-To deallocate the information that has been allocated, use \texttt{freeaddrinfo()}.
+	To deallocate the information that has been allocated, use \texttt{freeaddrinfo()}.
 \end{frame}
 
 
 \begin{frame}
-\frametitle{If you find a fork in the road... keep it}
+	\frametitle{If you find a fork in the road... keep it}
 
-Up until now what we've learned applies to both the client and server side. 
+	Up until now what we've learned applies to both the client and server side.
 
-Now the paths diverge.
+	Now the paths diverge.
 
-If we are the client, we'd like to connect to a server. 
+	If we are the client, we'd like to connect to a server.
 
-This is the easier workflow. We just call \texttt{connect()}.
+	This is the easier workflow. We just call \texttt{connect()}.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Connect}
+	\frametitle{Connect}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int connect( int sockfd, struct sockaddr *addr, socklen_t len); 
 \end{lstlisting}
 
-\texttt{sockfd}: the socket file descriptor (the \texttt{int} we got back from the call to \texttt{socket}).
+	\texttt{sockfd}: the socket file descriptor (the \texttt{int} we got back from the call to \texttt{socket}).
 
-\texttt{addr}: address structure from our lookup.
+	\texttt{addr}: address structure from our lookup.
 
-\texttt{len}: size of the address structure. \\
-\quad Use either \texttt{sizeof} or \texttt{ai\_addrlen}.
+	\texttt{len}: size of the address structure. \\
+	\quad Use either \texttt{sizeof} or \texttt{ai\_addrlen}.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Connect Example}
+	\frametitle{Connect Example}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 struct addrinfo hints;
 struct addrinfo *res;
 int sockfd;
@@ -326,13 +326,13 @@ sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 int status = connect(sockfd, res->ai_addr, res->ai_addrlen);
 \end{lstlisting}
 
-The return value (\texttt{status}) tells us if we were successful.
+	The return value (\texttt{status}) tells us if we were successful.
 
-0 indicates success.
+	0 indicates success.
 
-Check codes by looking at the man pages: \url{http://man7.org/linux/man-pages/man2/connect.2.html}
+	Check codes by looking at the man pages: \url{http://man7.org/linux/man-pages/man2/connect.2.html}
 
-Success means we're ready to communicate!
+	Success means we're ready to communicate!
 
 \end{frame}
 
@@ -340,38 +340,38 @@ Success means we're ready to communicate!
 
 
 \begin{frame}
-\frametitle{Server: Bind, Listen, Accept}
+	\frametitle{Server: Bind, Listen, Accept}
 
 
-The overview of what steps the server is going to do is bind, listen, and accept. 
+	The overview of what steps the server is going to do is bind, listen, and accept.
 
-The bind step is how we choose what port we are going to connect to. 
+	The bind step is how we choose what port we are going to connect to.
 
-The listen step is the part where we wait for connections from a client. 
+	The listen step is the part where we wait for connections from a client.
 
-Then the last step is accept: establish the connection so we can start talking.
+	Then the last step is accept: establish the connection so we can start talking.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Bind, Listen, Accept}
+	\frametitle{Bind, Listen, Accept}
 
-\begin{center}
-	\includegraphics[width=0.5\textwidth]{images/cheezburger.jpeg}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/cheezburger.jpeg}
+	\end{center}
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Bind}
+	\frametitle{Bind}
 
-\texttt{bind()}: associate the socket with whatever port we want to use. 
+	\texttt{bind()}: associate the socket with whatever port we want to use.
 
-When the \texttt{ssh} daemon is available for connection, it's because it has bound itself to the port 22 using \texttt{bind}. 
+	When the \texttt{ssh} daemon is available for connection, it's because it has bound itself to the port 22 using \texttt{bind}.
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int socketfd = socket( AF_INET, SOCK_STREAM, 0 );
 struct sockaddr_in addr;
 addr.sin_family = AF_INET;
@@ -381,82 +381,82 @@ addr.sin_addr.s_addr = htonl( INADDR_ANY );
 bind( socketfd, (struct sockaddr*) &addr, sizeof( addr ));
 \end{lstlisting}
 
-With that done, we've acquired the resource of port 2520 for our use.
+	With that done, we've acquired the resource of port 2520 for our use.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Client Side Port?}
+	\frametitle{Client Side Port?}
 
-You'll notice also \texttt{bind()} did not happen on the client side. 
+	You'll notice also \texttt{bind()} did not happen on the client side.
 
-This is because we don't care on the client side what the outgoing port number is. 
+	This is because we don't care on the client side what the outgoing port number is.
 
-So we can just skip that step, unless we have a reason to care.
+	So we can just skip that step, unless we have a reason to care.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Listen}
+	\frametitle{Listen}
 
-\texttt{listen()}: int this step we wait for incoming connections. 
+	\texttt{listen()}: int this step we wait for incoming connections.
 
-This is the simplest step and you just call:
+	This is the simplest step and you just call:
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int listen(int sockfd, int backlog); 
 \end{lstlisting}
 
-We listen on a socket that has been bound with \texttt{bind} and we'll allow a backlog up to \texttt{backlog} connections. 
+	We listen on a socket that has been bound with \texttt{bind} and we'll allow a backlog up to \texttt{backlog} connections.
 
-If the queue is full the server system will reject additional requests.
+	If the queue is full the server system will reject additional requests.
 
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Acceptance is the Last Stage}
+	\frametitle{Acceptance is the Last Stage}
 
-So we've chosen a socket (got a phone number). 
+	So we've chosen a socket (got a phone number).
 
-We've said we're ready to listen (our phone is turned on). 
+	We've said we're ready to listen (our phone is turned on).
 
-The next step is to \texttt{accept()} incoming \texttt{connect} requests (press the green icon). 
+	The next step is to \texttt{accept()} incoming \texttt{connect} requests (press the green icon).
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int accept( int sockfd, struct sockaddr *addr, socklen_t *len ); 
 \end{lstlisting}
 
-The first parameter is, of course, the socket that we are listening to. 
+	The first parameter is, of course, the socket that we are listening to.
 
-The second and third parameters are the information about the client. We allocate these, pass them in, and they are updated by the call to \texttt{accept}.
+	The second and third parameters are the information about the client. We allocate these, pass them in, and they are updated by the call to \texttt{accept}.
 
-If we don't care at all about who the client is you can give in \texttt{NULL}.
+	If we don't care at all about who the client is you can give in \texttt{NULL}.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Accept: ``Always Two, There Are''}
+	\frametitle{Accept: ``Always Two, There Are''}
 
-The return value is a new file descriptor which describes a new socket. 
+	The return value is a new file descriptor which describes a new socket.
 
-Further communication takes places over that socket (and not the original one).
+	Further communication takes places over that socket (and not the original one).
 
- The original socket is still used for accepting connections, and the new one is the socket used for communication with the client.
+	The original socket is still used for accepting connections, and the new one is the socket used for communication with the client.
 
-If \texttt{accept} is called and no requests are in the queue, the server is blocked until a request arrives. We simply wait for the connection.
+	If \texttt{accept} is called and no requests are in the queue, the server is blocked until a request arrives. We simply wait for the connection.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Put the Pieces Together}
+	\frametitle{Put the Pieces Together}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 struct sockaddr_in client_addr;
 int client_addr_size = sizeof( struct sockaddr_in );
 int newsockfd;
@@ -482,21 +482,21 @@ close( socketfd );
 
 
 \begin{frame}
-\frametitle{Acceptance is Ongoing}
+	\frametitle{Acceptance is Ongoing}
 
-Unless communication is a one-time thing, we call \texttt{accept} in some sort of loop. 
+	Unless communication is a one-time thing, we call \texttt{accept} in some sort of loop.
 
-We then are constantly accepting new connections and doing something useful with each, before going on to the next.
+	We then are constantly accepting new connections and doing something useful with each, before going on to the next.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Blocked Number}
+	\frametitle{Blocked Number}
 
-We could save ourselves some trouble by not caring about the client address:
+	We could save ourselves some trouble by not caring about the client address:
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int newsockfd;
 
 int socketfd = socket( AF_INET, SOCK_STREAM, 0 );
@@ -522,31 +522,31 @@ close( socketfd );
 
 
 \begin{frame}
-\frametitle{Connection Established}
+	\frametitle{Connection Established}
 
-\begin{center}
-	\includegraphics[width=0.7\textwidth]{images/data-connection.jpg}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.7\textwidth]{images/data-connection.jpg}
+	\end{center}
 
-We are finally ready for the client and server to communicate.
+	We are finally ready for the client and server to communicate.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Connection Established}
+	\frametitle{Connection Established}
 
-The client communicates using its original socket file descriptor. 
+	The client communicates using its original socket file descriptor.
 
-The server communicates using the new file descriptor.
+	The server communicates using the new file descriptor.
 
-Likely you will move some of the boilerplate into your own function, e.g.:
+	Likely you will move some of the boilerplate into your own function, e.g.:
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int connect_to( const char* host, const char* port ); 
 \end{lstlisting}
 
-Next: let's actually communicate!
+	Next: let's actually communicate!
 
 \end{frame}
 

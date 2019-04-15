@@ -57,13 +57,13 @@ int sendall( int socket, char *buf, int *len ) {
 int recv( int sockfd, void * buffer, int length, int flags );
 \end{lstlisting}
 
-The socket file descriptor is the place to receive data from. The buffer parameter is the destination where the data goes, and the length is the maximum size of that buffer. Flags can also be 0 here. 
+The socket file descriptor is the place to receive data from. The buffer parameter is the destination where the data goes, and the length is the maximum size of that buffer. Flags can also be 0 here.
 
 The return value is the number of bytes actually read into the buffer. If you got back -1, then an error occurred and check \texttt{errno} for more details. If you got back 0, it means the other side hung up on you: they closed the socket. So no point in waiting anymore!
 
 Knowing that the other side is finished sending data is not necessarily all that easy. That's something to work out with the sender. This is why in movies when characters communicate with walkie-talkies, they say ``over'' when they have finished their transmission... so the recipient will know they are finished talking. In network communication, we might know in advance the size of data we are supposed to get, or we might be told as part of the (negotiated) protocol, or we might need to wait for the other side to close the connection (then we know they are definitely done).
 
-Suppose we are sending more than just a string. Can we do a fancy thing and write directly to a \texttt{struct} by making the buffer location the location of that \texttt{struct} and the length the \texttt{sizeof} that type? Yes, you can but this requires that the representation you receive over the network to be exactly the same as your struct. A more sensible approach is to serialize your data in some way, and then de-serialize it on the other side. 
+Suppose we are sending more than just a string. Can we do a fancy thing and write directly to a \texttt{struct} by making the buffer location the location of that \texttt{struct} and the length the \texttt{sizeof} that type? Yes, you can but this requires that the representation you receive over the network to be exactly the same as your struct. A more sensible approach is to serialize your data in some way, and then de-serialize it on the other side.
 
 Serialization is the process of converting the data to some sort of byte-representation so that it can be sent across the network (or stored in a database, or anything really) and then later reconstructed via the deserialization process. This means that no particular data format is needed and systems that don't use the same software or architecture, even, can communicate easily.
 
@@ -126,7 +126,7 @@ int main( int argc, char** argv ) {
 }
 \end{lstlisting}
 
-Starting from the top then: we need to include the header \texttt{curl/curl.h}. If you are trying to compile and run a program on your own system and this header is not found, you need to install \texttt{libcurl-dev} on the system. 
+Starting from the top then: we need to include the header \texttt{curl/curl.h}. If you are trying to compile and run a program on your own system and this header is not found, you need to install \texttt{libcurl-dev} on the system.
 
 At the beginning of \texttt{main} there are two variables declared. The \texttt{CURL} structure is our ``handle''. This needs to be, like many structures, initialized before use and cleaned up when we're done with it. The \texttt{CURLcode} type is also a useful structure for finding out how operations went. Unlike in many other scenarios where success is assumed, remember, in the network we should always check and see what happened.
 
@@ -144,18 +144,18 @@ A handle can be used multiple times if you need, although you may need to update
 
 If we wanted to re-use a handle but clear all the settings there is \texttt{curl\_easy\_reset}, but that's not the case in this scenario since the example is a one-time thing. Instead, we clean up. When we're done with a given handle we clean it up with \texttt{curl\_easy\_cleanup}. And then of course when all is finished there's the global cleanup. Excellent!
 
-\paragraph{Setting up Callbacks.} Almost certainly, however, we want to do something useful with the data we got. Or, we might have some data that we need to send. For each direction, what we want to set up is a \textit{callback}. 
+\paragraph{Setting up Callbacks.} Almost certainly, however, we want to do something useful with the data we got. Or, we might have some data that we need to send. For each direction, what we want to set up is a \textit{callback}.
 
-In case you haven't been introduced to the concept, it's a lot like what happens when you tell someone ``when you're finished, call me back''. They were in the middle of something when you called, and when a certain condition is fulfilled, they call you. In the context of using the cURL library, we tell the curl handle what function we would like it to call when the appropriate time comes. 
+In case you haven't been introduced to the concept, it's a lot like what happens when you tell someone ``when you're finished, call me back''. They were in the middle of something when you called, and when a certain condition is fulfilled, they call you. In the context of using the cURL library, we tell the curl handle what function we would like it to call when the appropriate time comes.
 
 The read callback is used when you are uploading data to the server (sometimes this is a POST operation). The write callback is used when you are receiving data from the server (this can be a GET operation). You may set up a read or write callback (or both) for an operation. There can be different callbacks for different easy handles, of course.
- 
+
 A write function has to have the following signature (according to the official documentation):
 \begin{lstlisting}[language=C]
 size_t write_callback( char *ptr, size_t size, size_t nmemb, void *userdata );
 \end{lstlisting}
 
-The name of the function can be anything you like. The \texttt{size\_t} type represents a size and can be treated like an integer. The \texttt{ptr} points to whatever data we received and \texttt{nmemb} is the size of that data. \texttt{size} is always 1 (the documentation does not explain why this is the case). And the last parameter is user data: we can pass some data to the processing function directly. This is helpful when we have some data that we would need to provide to make processing easier or possible. If, for example, we want to write the requested data to a file with a specified name, we can pass that name in the \texttt{userdata} pointer, and then our implementation of the write callback should know how to use it. Finally, the return type is also a \texttt{size\_t}; the spec requires that the returned size is the number of bytes of the data successfully processed. If it's not equal to the size of \texttt{nmemb} then the library interprets that as an error in writing. 
+The name of the function can be anything you like. The \texttt{size\_t} type represents a size and can be treated like an integer. The \texttt{ptr} points to whatever data we received and \texttt{nmemb} is the size of that data. \texttt{size} is always 1 (the documentation does not explain why this is the case). And the last parameter is user data: we can pass some data to the processing function directly. This is helpful when we have some data that we would need to provide to make processing easier or possible. If, for example, we want to write the requested data to a file with a specified name, we can pass that name in the \texttt{userdata} pointer, and then our implementation of the write callback should know how to use it. Finally, the return type is also a \texttt{size\_t}; the spec requires that the returned size is the number of bytes of the data successfully processed. If it's not equal to the size of \texttt{nmemb} then the library interprets that as an error in writing.
 
 A read function is very similar:
 \begin{lstlisting}[language=C]
@@ -172,7 +172,7 @@ CURLcode curl_easy_setopt( CURL *handle, CURLOPT_WRITEFUNCTION, write_callback )
 CURLcode curl_easy_setopt( CURL *handle, CURLOPT_WRITEDATA, void *pointer );
 \end{lstlisting}
 
-Alright, on to an example, then, modified from \url{https://curl.haxx.se/libcurl/c/post-callback.html}. 
+Alright, on to an example, then, modified from \url{https://curl.haxx.se/libcurl/c/post-callback.html}.
 
 \begin{lstlisting}[language=C]
 #include <stdio.h>
@@ -248,11 +248,11 @@ int main( int argc, char** argv ) {
 }
 \end{lstlisting}
 
-A brief explanation is in order. Up at the top there is \texttt{data}, some amount of sample data and a little structure that is used to reference the data and to keep track of how much data there is to send. This is going to be important in the read callback function. And then there is of course the read callback function itself. 
+A brief explanation is in order. Up at the top there is \texttt{data}, some amount of sample data and a little structure that is used to reference the data and to keep track of how much data there is to send. This is going to be important in the read callback function. And then there is of course the read callback function itself.
 
 That function conforms, as you would expect, to the function signature as expected. If we are fortunate then it is possible to send the data in one chunk. But in this example we have intentionally made the data large. So we will now figure out how much we can actually fit in there by figuring out the size of the buffer and seeing if the data to be sent is bigger than the available space. Once we've figured out the limit, we can copy the data with \texttt{memcpy} to the buffer. Then we update where we are reading from and how much space is left. Then we return the amount copied. When all data has been copied, we return 0.
 
-A large amount of the code of \texttt{main} is the same as in the previous example. Some new things of note, are obviously the initialization of the structure \texttt{d}. We set the option for the operation to be POST (upload data) since the default is GET (fetch some data), and then we have to register the read callback as well as send the data to be used when the read function runs. 
+A large amount of the code of \texttt{main} is the same as in the previous example. Some new things of note, are obviously the initialization of the structure \texttt{d}. We set the option for the operation to be POST (upload data) since the default is GET (fetch some data), and then we have to register the read callback as well as send the data to be used when the read function runs.
 
 In these examples and our brief overview, we have really only scratched the surface of what the curl library can do. But this is enough to get the flavour of how it works and to begin to do useful work with it.
 

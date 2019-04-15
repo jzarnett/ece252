@@ -4,248 +4,248 @@
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
-  University of Waterloo}
+	University of Waterloo}
 \date{\today}
 
 
 \begin{document}
 
 \begin{frame}
-  \titlepage
+	\titlepage
 
- \end{frame}
+\end{frame}
 
 \begin{frame}
-\frametitle{The Process in UNIX}
+	\frametitle{The Process in UNIX}
 
-In UNIX a process may create other processes.
+	In UNIX a process may create other processes.
 
-The creating process is the parent; newly-created is the child.
+	The creating process is the parent; newly-created is the child.
 
-Every process has a parent, stretching back to \texttt{init}.
+	Every process has a parent, stretching back to \texttt{init}.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{UNIX Process}
-Each process has a unique identifier in its process control block.
+	\frametitle{UNIX Process}
+	Each process has a unique identifier in its process control block.
 
-This is the \texttt{pid} (process ID). 
+	This is the \texttt{pid} (process ID).
 
-For the most part, users will not need to know or think about the ID.
+	For the most part, users will not need to know or think about the ID.
 
-Exception when trying to terminate one that's gotten stuck.\\
-\quad (\texttt{kill -9 24601}). 
+	Exception when trying to terminate one that's gotten stuck.\\
+	\quad (\texttt{kill -9 24601}).
 
-The \texttt{init} process always gets a \texttt{pid} of 1. 
+	The \texttt{init} process always gets a \texttt{pid} of 1.
 
-I don't recommend trying to kill \texttt{init}.
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Linux Process Tree}
-
-\begin{center}
-\includegraphics[width=\textwidth]{images/linux-process-tree.pdf}
-\end{center}
+	I don't recommend trying to kill \texttt{init}.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{The \texttt{ps} Command}
+	\frametitle{Linux Process Tree}
 
-We can obtain a list of processes with \texttt{ps}.
-
-The diagram shows each user gets a \texttt{login} process.
-
-The shell (\texttt{bash}) is spawned from \texttt{login}.
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/linux-process-tree.pdf}
+	\end{center}
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Terminal Commands}
+	\frametitle{The \texttt{ps} Command}
 
-When you issue a command, like \texttt{ls} or \texttt{top} (table of processes), the new process is created and the shell will \texttt{wait} on that process.
+	We can obtain a list of processes with \texttt{ps}.
 
-It might finish on its own (e.g., \texttt{ls}).\\
-\quad Or wait for the user to tell it to exit (\texttt{top})
+	The diagram shows each user gets a \texttt{login} process.
 
-When it does, control goes back to the shell.\\
-\quad You get presented with the prompt again (e.g., \texttt{jz@Loki:\~{}/\$}).
-
-Must I log in to the system in a second terminal window to run two things at a time? 
-
-The answer is no, and there are two ways to get around it.
+	The shell (\texttt{bash}) is spawned from \texttt{login}.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Run in the Background}
+	\frametitle{Terminal Commands}
 
-Option 1: tell the shell we want the task to run in the background. 
+	When you issue a command, like \texttt{ls} or \texttt{top} (table of processes), the new process is created and the shell will \texttt{wait} on that process.
 
-To do that, add to the command the \texttt{\&} symbol: 
+	It might finish on its own (e.g., \texttt{ls}).\\
+	\quad Or wait for the user to tell it to exit (\texttt{top})
 
-\texttt{gcc fork.c \&}
+	When it does, control goes back to the shell.\\
+	\quad You get presented with the prompt again (e.g., \texttt{jz@Loki:\~{}/\$}).
 
-Control returns almost immediately to the shell.\\
-\quad It is not waiting for \texttt{gcc} to finish.
+	Must I log in to the system in a second terminal window to run two things at a time?
 
-\end{frame}
-
-\begin{frame}
-\frametitle{Run in the Background}
-
- You may see some output like \texttt{[1] 34429}.
- 
-This is the shell saying: child has been created; it has process ID 34429. 
-
-When the process is finished, there is another update:
-
-\texttt{[1]+  Done                    gcc fork.c}
+	The answer is no, and there are two ways to get around it.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Run in the Background}
+	\frametitle{Run in the Background}
 
-Notably, any console output that the \texttt{gcc} command would generate will still appear on the console where the background task was created. 
+	Option 1: tell the shell we want the task to run in the background.
 
-Maybe you want that but maybe you want to put the output in a log file, with a command like \texttt{cat fork.c > logfile.txt \&}. 
+	To do that, add to the command the \texttt{\&} symbol:
 
-(Telling \texttt{gcc} to be silent is a somewhat more complex operation.) 
+	\texttt{gcc fork.c \&}
 
-\end{frame}
-
-\begin{frame}
-\frametitle{Example of the \&}
-
-A common example of a command I use involving the \texttt{\&}:\\
-\texttt{ sudo service xyz start \& }
-
-This will (with super user permissions) start up the service \texttt{xyz}.
-	
-It returns control to the console so I don't have to wait.
-
-Next: \texttt{tail -f /var/log/xyz/console.log}
-
-Watch the console log of the \texttt{xyz} service as it starts up.
+	Control returns almost immediately to the shell.\\
+	\quad It is not waiting for \texttt{gcc} to finish.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Option Two: \texttt{screen}}
+	\frametitle{Run in the Background}
 
-The other alternative is the \texttt{screen} command. 
+	You may see some output like \texttt{[1] 34429}.
 
-While having something run in the background is nice, it does not work for interactive processes. 
+	This is the shell saying: child has been created; it has process ID 34429.
 
-Example: text editing with \texttt{vi} and want to read e-mail with \texttt{pine}.
+	When the process is finished, there is another update:
 
-Could be done by saving and closing \texttt{vi}.
-
-Or, start them in \texttt{screen} and switch between them.
+	\texttt{[1]+  Done                    gcc fork.c}
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Using \texttt{screen}}
-Instead of just opening \texttt{vi fork.c} I can issue the command \texttt{screen vi fork.c} and this spawns \texttt{screen} and takes me right to editing the file. 
+	\frametitle{Run in the Background}
 
-The key difference is that I can ``detach'' from this screen and go back to the command line.
+	Notably, any console output that the \texttt{gcc} command would generate will still appear on the console where the background task was created.
 
-If I log out, \texttt{screen} keeps running with the \texttt{vi} inside it.
+	Maybe you want that but maybe you want to put the output in a log file, with a command like \texttt{cat fork.c > logfile.txt \&}.
 
- If I have multiple screens running, I can just ``reattach'' to the one I want.
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Spawning Child Processes}
-
-In general, when a process spawns a child, the child will need resources. 
-
-The child may request them from the OS directly.
-
-Or the parent can give some of its resources to the child. 
-
-The parent may partition resources amongst the children or allow its children to share.
-
-Restrict a child process to only some subset of its parent's resources?
-
- If so, cannot overload the system by spawning too many children.
+	(Telling \texttt{gcc} to be silent is a somewhat more complex operation.)
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Spawning Child Processes}
+	\frametitle{Example of the \&}
 
-At the time of initialization, the parent may pass the child some data.
+	A common example of a command I use involving the \texttt{\&}:\\
+	\texttt{ sudo service xyz start \& }
 
-Example: link from e-mail to browser.
+	This will (with super user permissions) start up the service \texttt{xyz}.
 
-Interesting note: child may be a duplicate or totally new.
+	It returns control to the console so I don't have to wait.
 
-\end{frame}
+	Next: \texttt{tail -f /var/log/xyz/console.log}
 
-\begin{frame}
-\frametitle{UNIX Workflow}
-
-Parent spawns the child process with the \texttt{fork} system call. 
-
-If waiting for the child process to finish, \texttt{wait}.\\
-\quad Alternatively, carry on.
-
-When the child process is finished, it returns a value with \texttt{exit} 
-
-The parent gets this as the return value of \texttt{wait} and may proceed.
-\end{frame}
-
-\begin{frame}
-\frametitle{About \texttt{fork}}
-
-Note: \texttt{fork} creates a new process as a copy of itself.
-
-\begin{center}
-	\includegraphics[width=0.4\textwidth]{images/spiderman-2.jpg}
-\end{center}
-
-Both parent and child continue after that statement.
-
-The call \texttt{fork} can return a value:\\
-\quad A negative value means the fork failed.\\
-\quad A zero value means this process is the child.\\
-\quad A positive value: this is the parent; the value is the child \texttt{pid}.
+	Watch the console log of the \texttt{xyz} service as it starts up.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{After the \texttt{fork}, the \texttt{exec}}
+	\frametitle{Option Two: \texttt{screen}}
+
+	The other alternative is the \texttt{screen} command.
+
+	While having something run in the background is nice, it does not work for interactive processes.
+
+	Example: text editing with \texttt{vi} and want to read e-mail with \texttt{pine}.
+
+	Could be done by saving and closing \texttt{vi}.
+
+	Or, start them in \texttt{screen} and switch between them.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Using \texttt{screen}}
+	Instead of just opening \texttt{vi fork.c} I can issue the command \texttt{screen vi fork.c} and this spawns \texttt{screen} and takes me right to editing the file.
+
+	The key difference is that I can ``detach'' from this screen and go back to the command line.
+
+	If I log out, \texttt{screen} keeps running with the \texttt{vi} inside it.
+
+	If I have multiple screens running, I can just ``reattach'' to the one I want.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Spawning Child Processes}
+
+	In general, when a process spawns a child, the child will need resources.
+
+	The child may request them from the OS directly.
+
+	Or the parent can give some of its resources to the child.
+
+	The parent may partition resources amongst the children or allow its children to share.
+
+	Restrict a child process to only some subset of its parent's resources?
+
+	If so, cannot overload the system by spawning too many children.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Spawning Child Processes}
+
+	At the time of initialization, the parent may pass the child some data.
+
+	Example: link from e-mail to browser.
+
+	Interesting note: child may be a duplicate or totally new.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{UNIX Workflow}
+
+	Parent spawns the child process with the \texttt{fork} system call.
+
+	If waiting for the child process to finish, \texttt{wait}.\\
+	\quad Alternatively, carry on.
+
+	When the child process is finished, it returns a value with \texttt{exit}
+
+	The parent gets this as the return value of \texttt{wait} and may proceed.
+\end{frame}
+
+\begin{frame}
+	\frametitle{About \texttt{fork}}
+
+	Note: \texttt{fork} creates a new process as a copy of itself.
+
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{images/spiderman-2.jpg}
+	\end{center}
+
+	Both parent and child continue after that statement.
+
+	The call \texttt{fork} can return a value:\\
+	\quad A negative value means the fork failed.\\
+	\quad A zero value means this process is the child.\\
+	\quad A positive value: this is the parent; the value is the child \texttt{pid}.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{After the \texttt{fork}, the \texttt{exec}}
 
 
-After the \texttt{fork}, one of the processes may use the \texttt{exec} system call.
+	After the \texttt{fork}, one of the processes may use the \texttt{exec} system call.
 
-This will replace its memory space with a new program. 
+	This will replace its memory space with a new program.
 
-There's no rule that says this must happen\\
-\quad a child can continue to be a clone of its parent if it wishes.
+	There's no rule that says this must happen\\
+	\quad a child can continue to be a clone of its parent if it wishes.
 
-The \texttt{exec} invocation loads a binary file into memory \& starts execution. 
+	The \texttt{exec} invocation loads a binary file into memory \& starts execution.
 
-At this point, the programs can go their separate ways.
+	At this point, the programs can go their separate ways.
 
-Or the parent might want to wait for the child to finish.
+	Or the parent might want to wait for the child to finish.
 
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Putting it Together}
+	\frametitle{Putting it Together}
 
-{\scriptsize
-\begin{lstlisting}[language=C]
+	{\scriptsize
+		\begin{lstlisting}[language=C]
 int main( int argc, char** argv ) {
   pid_t pid;
   int childStatus;
@@ -273,15 +273,15 @@ int main( int argc, char** argv ) {
   return 0;
 }
 \end{lstlisting}
-}
+	}
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Code Output}
+	\frametitle{Code Output}
 
-Thus, the output is:
-\begin{verbatim}
+	Thus, the output is:
+	\begin{verbatim}
 jz@Freyja:~/fork$ ./fork 
 fork   fork.c
 Child Complete with status: 0
@@ -292,78 +292,78 @@ jz@Freyja:~/fork$
 \end{frame}
 
 \begin{frame}
-\frametitle{Fork Visually}
+	\frametitle{Fork Visually}
 
-Or, to represent this visually:
+	Or, to represent this visually:
 
-\begin{center}
-\includegraphics[width=\textwidth]{images/fork-syscall.png}
-\end{center}
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Termination?}
-
-What about termination? 
-
-On the assumption that the process is terminating normally and not being killed, the system call for that is \texttt{exit}. 
-
-If the program itself has no explicit call to \texttt{exit}, the \texttt{return} statement at the end of \texttt{main} will have the same effect.
-
-Let us modify that code above to fork off a child process that will exit ``abnormally'' with an exit code of 1. 
-
-The \texttt{wait} function also returns the process ID of the child.
-
- This is so that the parent can identify which of its children has terminated, though it is not used in this example.
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/fork-syscall.png}
+	\end{center}
 
 \end{frame}
 
 \begin{frame}
-\frametitle{After the \texttt{fork}}
+	\frametitle{Termination?}
 
-Afterwards, the system will need to choose which process is going to run: 
+	What about termination?
 
-\begin{enumerate}
-	\item The parent process. The child is in the ready to run state.
-	\item The child process. The parent is in the ready to run state.
-	\item Another process. Both parent and child are in the ready to run state.
-\end{enumerate}
+	On the assumption that the process is terminating normally and not being killed, the system call for that is \texttt{exit}.
+
+	If the program itself has no explicit call to \texttt{exit}, the \texttt{return} statement at the end of \texttt{main} will have the same effect.
+
+	Let us modify that code above to fork off a child process that will exit ``abnormally'' with an exit code of 1.
+
+	The \texttt{wait} function also returns the process ID of the child.
+
+	This is so that the parent can identify which of its children has terminated, though it is not used in this example.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{After the \texttt{fork}}
+
+	Afterwards, the system will need to choose which process is going to run:
+
+	\begin{enumerate}
+		\item The parent process. The child is in the ready to run state.
+		\item The child process. The parent is in the ready to run state.
+		\item Another process. Both parent and child are in the ready to run state.
+	\end{enumerate}
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Fork Design Problem}
+	\frametitle{Fork Design Problem}
 
-There is a task that can be split into parts 'A' and 'B'. 
+	There is a task that can be split into parts 'A' and 'B'.
 
-Use \texttt{fork()} to create a child process. 
+	Use \texttt{fork()} to create a child process.
 
-The child process should call function \texttt{execute\_B()} and return the result to the parent. 
+	The child process should call function \texttt{execute\_B()} and return the result to the parent.
 
-The parent process should call \texttt{execute\_A()} and collect its result.
+	The parent process should call \texttt{execute\_A()} and collect its result.
 
-The parent should then collect the result of the child using \texttt{wait()} and then produce the console output.
+	The parent should then collect the result of the child using \texttt{wait()} and then produce the console output.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Fork Design Problem}
-If no errors occurred, \texttt{main} should return 0; otherwise it should return -1.
+	\frametitle{Fork Design Problem}
+	If no errors occurred, \texttt{main} should return 0; otherwise it should return -1.
 
-If an error occurs, it should be reported to the console including the error number (e.g., ``Error 7 Occurred.''). 
+	If an error occurs, it should be reported to the console including the error number (e.g., ``Error 7 Occurred.'').
 
-If more than one error occurs, report both errors. 
+	If more than one error occurs, report both errors.
 
-If both functions return zero, it means all is well and the program should print ``Completed.'' to the console.
+	If both functions return zero, it means all is well and the program should print ``Completed.'' to the console.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Fork Design Solution}
-\begin{lstlisting}[language=C]
+	\frametitle{Fork Design Solution}
+	\begin{lstlisting}[language=C]
 int main( int argc, char** argv ) {
   int child_result;
   int parent_result;
@@ -395,138 +395,138 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 \begin{frame}
-\frametitle{Apr\`{e}s \texttt{fork}, le d\'{e}luge}
+	\frametitle{Apr\`{e}s \texttt{fork}, le d\'{e}luge}
 
-A short digression on a denial of service attack: the ``fork bomb''.
+	A short digression on a denial of service attack: the ``fork bomb''.
 
-The idea is to call \texttt{fork} repeatedly.
+	The idea is to call \texttt{fork} repeatedly.
 
-Keep doing this until the system crashes (or no work can get done).
+	Keep doing this until the system crashes (or no work can get done).
 
-Exponential growth ($2^n$) processes after $n$ calls.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Fork Bomb}
-
-\begin{center}
-	\includegraphics[width=\textwidth]{images/forkbomb.png}
-\end{center}
-\hfill Image Credit: Wikipedia user Dake
+	Exponential growth ($2^n$) processes after $n$ calls.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Apr\`{e}s \texttt{fork}, le d\'{e}luge}
-A system can be configured to defend against this.
+	\frametitle{Fork Bomb}
 
-1. Limit total number of processes per user.
-
-2. Limit rate of process spawning.
-
-Note: do not attempt this on University computers!
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/forkbomb.png}
+	\end{center}
+	\hfill Image Credit: Wikipedia user Dake
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Signals}
+	\frametitle{Apr\`{e}s \texttt{fork}, le d\'{e}luge}
+	A system can be configured to defend against this.
 
-UNIX systems use signals to indicate events (e.g., the \texttt{Ctrl-C} on the console)
+	1. Limit total number of processes per user.
 
-Signals also are things like exceptions (division by zero, segmentation fault).
+	2. Limit rate of process spawning.
 
-It is \textit{synchronous} if the signal occurs as a result of the program execution (e.g., dividing by zero); 
-
-It is \textit{asynchronous} if it comes from outside the process (e.g., the user pressing \texttt{Ctrl-C} or one process or thread sending a signal to another). 
-
-Signals are, in the end, interrupts with a certain integer ID.
-
+	Note: do not attempt this on University computers!
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Gondor Calls For Aid}
+	\frametitle{Signals}
 
-\begin{center}
-	\includegraphics[width=\textwidth]{images/beacon_gondor.png}
-\end{center}
+	UNIX systems use signals to indicate events (e.g., the \texttt{Ctrl-C} on the console)
 
-\end{frame}
+	Signals also are things like exceptions (division by zero, segmentation fault).
 
+	It is \textit{synchronous} if the signal occurs as a result of the program execution (e.g., dividing by zero);
 
+	It is \textit{asynchronous} if it comes from outside the process (e.g., the user pressing \texttt{Ctrl-C} or one process or thread sending a signal to another).
 
-\begin{frame}
-\frametitle{Signals}
-
-By default, the kernel will handle any signal that is sent to a process with the default handler. 
-
-The behaviour of the default handler may be to ignore the signal, but some signals (segmentation fault) will result in termination of the process. 
+	Signals are, in the end, interrupts with a certain integer ID.
 
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{POSIX Signals}
+	\frametitle{Gondor Calls For Aid}
 
-Here are some of the many signals described in the POSIX.1-1990 standard:
-
-{\scriptsize
-\begin{center}
-\begin{tabular}{l|l|l|l}
-	\textbf{Signal} & \textbf{Comment} & \textbf{Value} & \textbf{Default Action}\\ \hline
-	\texttt{SIGHUP} & Hangup detected & 1 & Terminate process \\
-	\texttt{SIGINT} & Keyboard interrupt (\texttt{Ctrl-C}) & 2 & Terminate process \\
-	\texttt{SIGQUIT} & Quit from keyboard & 3 & Terminate process, dump debug info  \\
-	\texttt{SIGILL} & Illegal instruction & 4 & Terminate process, dump debug info \\
-	\texttt{SIGKILL} & Kill signal & 9 & Terminate process \\
-	\texttt{SIGSEGV} & Segmentation fault (invalid memory reference) & 11 & Terminate process, dump debug info\\
-	\texttt{SIGTERM} & Termination signal & 15 & Terminate process \\
-	\texttt{SIGCHLD} & Child stopped or terminated & 20,17,18 & Ignore \\
-	\texttt{SIGCONT} & Continue if stopped & 19,18,25 & Continue the process if stopped \\
-	\texttt{SIGSTOP} & Stop process & 18,20,24 & Stop process \\
-\end{tabular}
-\end{center}
-}
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/beacon_gondor.png}
+	\end{center}
 
 \end{frame}
 
 
+
 \begin{frame}
-\frametitle{Handling Signals}
+	\frametitle{Signals}
 
-A process may inform the OS it is prepared to handle a signal itself.
+	By default, the kernel will handle any signal that is sent to a process with the default handler.
 
-Example: doing some cleanup when \texttt{Ctrl-C} is received instead of just dying.
-
-In any event, a signal needs to be handled, even if the handling is to ignore it. 
-
-The signals \texttt{SIGKILL} and \texttt{SIGSTOP} cannot be caught, blocked, or ignored.
+	The behaviour of the default handler may be to ignore the signal, but some signals (segmentation fault) will result in termination of the process.
 
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Command-Line Signals}
+	\frametitle{POSIX Signals}
 
-On the command line: to send a signal, \texttt{kill} followed by a process ID. 
+	Here are some of the many signals described in the POSIX.1-1990 standard:
 
-Normally a command like \texttt{kill 24601} will send \texttt{SIGHUP} to a process.
+	{\scriptsize
+	\begin{center}
+		\begin{tabular}{l|l|l|l}
+			\textbf{Signal}  & \textbf{Comment}                              & \textbf{Value} & \textbf{Default Action}            \\ \hline
+			\texttt{SIGHUP}  & Hangup detected                               & 1              & Terminate process                  \\
+			\texttt{SIGINT}  & Keyboard interrupt (\texttt{Ctrl-C})          & 2              & Terminate process                  \\
+			\texttt{SIGQUIT} & Quit from keyboard                            & 3              & Terminate process, dump debug info \\
+			\texttt{SIGILL}  & Illegal instruction                           & 4              & Terminate process, dump debug info \\
+			\texttt{SIGKILL} & Kill signal                                   & 9              & Terminate process                  \\
+			\texttt{SIGSEGV} & Segmentation fault (invalid memory reference) & 11             & Terminate process, dump debug info \\
+			\texttt{SIGTERM} & Termination signal                            & 15             & Terminate process                  \\
+			\texttt{SIGCHLD} & Child stopped or terminated                   & 20,17,18       & Ignore                             \\
+			\texttt{SIGCONT} & Continue if stopped                           & 19,18,25       & Continue the process if stopped    \\
+			\texttt{SIGSTOP} & Stop process                                  & 18,20,24       & Stop process                       \\
+		\end{tabular}
+	\end{center}
+	}
 
-This will, by default, kill the process.\\
-\quad The process has an opportunity to clean things up if it wants to. 
+\end{frame}
 
-If the process is still stuck, you can ``force'' kill the process with \texttt{SIGKILL}:\\\ \quad \texttt{kill -9 24601}. 
 
-The \texttt{-9} parameter sends signal 9 (\texttt{SIGKILL}) rather than the default 1 (\texttt{SIGHUP}). 
+\begin{frame}
+	\frametitle{Handling Signals}
 
-Some users are eager to jump to \texttt{kill -9} whenever a process is stuck...
+	A process may inform the OS it is prepared to handle a signal itself.
+
+	Example: doing some cleanup when \texttt{Ctrl-C} is received instead of just dying.
+
+	In any event, a signal needs to be handled, even if the handling is to ignore it.
+
+	The signals \texttt{SIGKILL} and \texttt{SIGSTOP} cannot be caught, blocked, or ignored.
+
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Command-Line Signals}
+
+	On the command line: to send a signal, \texttt{kill} followed by a process ID.
+
+	Normally a command like \texttt{kill 24601} will send \texttt{SIGHUP} to a process.
+
+	This will, by default, kill the process.\\
+	\quad The process has an opportunity to clean things up if it wants to.
+
+	If the process is still stuck, you can ``force'' kill the process with \texttt{SIGKILL}:\\\ \quad \texttt{kill -9 24601}.
+
+	The \texttt{-9} parameter sends signal 9 (\texttt{SIGKILL}) rather than the default 1 (\texttt{SIGHUP}).
+
+	Some users are eager to jump to \texttt{kill -9} whenever a process is stuck...
 \end{frame}
 
 

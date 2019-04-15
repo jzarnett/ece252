@@ -5,7 +5,7 @@
 \lecture{ 6 --- Inter-Process Communication }{\term}{Jeff Zarnett}
 
 \section*{Inter-Process Communication (IPC)}
-When two or more processes would like to co-ordinate or exchange data the mechanism for doing so is called \textit{inter-process communication}, usually abbreviated as IPC. If a process shares data with another process in the system, the operating system will provide some facilities to make this possible. 
+When two or more processes would like to co-ordinate or exchange data the mechanism for doing so is called \textit{inter-process communication}, usually abbreviated as IPC. If a process shares data with another process in the system, the operating system will provide some facilities to make this possible.
 
 The motivations for inter-process communication are fairly obvious and we do not need to waste time with long descriptions of scenarios where IPC is desirable. Every time you send an e-mail, for example, there's IPC going on. In the context of your own program, you could consider breaking a large task into smaller subtasks, allowing multiple users to edit the same data, and system modularity.
 
@@ -16,7 +16,7 @@ The processes involved must have some agreement on what data a message should co
 Sending and receiving of messages may be either synchronous or asynchronous. If sending is synchronous, the sender sends the message and then is blocked from proceeding until the message is received. If sending is asynchronous, the sender can post the message and then carry on execution. If receiving is synchronous, the receiver is blocked until it receives the message. If receiving is asynchronous, the receiver is notified there is no message available and continues execution. Thus there are four combinations to consider, three of which are common~\cite{mte241}:
 
 \begin{enumerate}
-	\item \textbf{Synchronous send, synchronous receive:} the sender is blocked until the receiver collects the message; the receiver waits for a message and is blocked until it arrives. 
+	\item \textbf{Synchronous send, synchronous receive:} the sender is blocked until the receiver collects the message; the receiver waits for a message and is blocked until it arrives.
 	\item \textbf{Synchronous send, asynchronous receive:} the sender is blocked when the message is sent, but the receiver will continue whether or not a message is available. This is a very uncommon configuration.
 	\item \textbf{Asynchronous send, synchronous receive:} the sender continues execution when the message is sent, but the receiver will wait until the message is received before it can continue. This is the most common configuration; usually the receiver needs a message to continue.
 	\item \textbf{Asynchronous send, asynchronous receive:} the sender can continue as soon as it sends the message, and the receiver will check for a message but will continue whether or not the message is available.
@@ -55,7 +55,7 @@ This requires \textit{symmetric} addressing: the sender and receiver have to kno
 \texttt{send($A$, message)} -- Send a message to Process $A$ (unchanged).\\
 \texttt{receive(id, message)} -- Receive a message from any process; the variable \texttt{id} is set to the sender.
 
-In either case, we have to know some identifier for the other processes. This is not very flexible; if we want to replace process $B$ with some alternative software, do we have to change the identifier in $A$, recompile it, and reinstall it? Do we ``fake'' the identifier of the new software so it calls itself $B$ even though it's not the same software? Furthermore, oftentimes  the sender will produce the data but is not interested in who receives it. 
+In either case, we have to know some identifier for the other processes. This is not very flexible; if we want to replace process $B$ with some alternative software, do we have to change the identifier in $A$, recompile it, and reinstall it? Do we ``fake'' the identifier of the new software so it calls itself $B$ even though it's not the same software? Furthermore, oftentimes  the sender will produce the data but is not interested in who receives it.
 
 What we would like is \textit{indirect communication} where the messages are sent to mailboxes. That makes our send and receive functions~\cite{osc}:\\
 \texttt{send(M, message)} -- Send a message to mailbox $M$.\\
@@ -109,25 +109,25 @@ You can use \texttt{kill} to do some interesting things, like signal all your pr
 	\item \texttt{pid > 0} -- send the signal to the process with process ID \texttt{pid}.
 	\item \texttt{pid == 0} -- send the signal to all processes in the same process group as the caller.
 	\item \texttt{pid == -1} -- send the signal to all processes for which the calling process has permission to send a signal, except \texttt{init} and the calling process. Broadcast, basically.
-	\item \texttt{pid < -1} -- send the signal to all processes whose process group ID is equal to the absolute value of \texttt{pid}.	
+	\item \texttt{pid < -1} -- send the signal to all processes whose process group ID is equal to the absolute value of \texttt{pid}.
 \end{itemize}
 
 In addition to the signals we know, you can also invoke the \texttt{kill} function with a 0 argument for the signal. This is called the ``null signal''. It does not actually send any signal, but can be used to check if the recipient process exists. If not, the \texttt{errno} return value of \texttt{ESRCH} tells you that it no longer exists~\cite{apunix}. This is of limited utility, however, because (1) the process might exit between the time you check for its existence and the time you do something with that information; and (2) process IDs are only relatively unique so a given ID could be reused for a different process, and the recipient is no longer whom you expect it to be...
 
 A signal can be sent to a given process, but that process can only actually deal with it when that process is running. A signal is generated by something, and it is later delivered to the recipient. But during the time between generation and delivery, we say the signal is \textit{pending}. The pending signal is typically delivered at the first opportunity, which might be immediately if the recipient is currently executing~\cite{lpi}.
 
-Interestingly, for most (but not all) signals, your process can choose to refuse to listen.  This is called blocking signals, and can be done to any with with the exception of \texttt{SIGKILL} and \texttt{SIGSTOP}. When a signal is blocked, it just remains in the pending state until signals of that type are unblocked. Blocking signals is supposed to be temporary, although a badly-behaved program could ignore them indefinitely. 
+Interestingly, for most (but not all) signals, your process can choose to refuse to listen.  This is called blocking signals, and can be done to any with with the exception of \texttt{SIGKILL} and \texttt{SIGSTOP}. When a signal is blocked, it just remains in the pending state until signals of that type are unblocked. Blocking signals is supposed to be temporary, although a badly-behaved program could ignore them indefinitely.
 
 If the same signal is sent more than once when that signal is blocked by the recipient, it might be delivered only once, depending on your particular operating system implementation~\cite{apunix}.
 
-As introduced earlier, signals have a default action. The action that is taken when the signal is delivered is called the \textit{disposition} of the signal. If you don't explicitly change what happens when the signal arrives, the default (see the table) happens. But we can change it. There are three options (1) ignore it, (2) run a signal handler, and (3) run the default action. The third option is used to undo an earlier change (such as if we said we wanted to ignore the signal but now no longer do). We'll restrict our to the ``run a signal handler'' option in this lecture. 
+As introduced earlier, signals have a default action. The action that is taken when the signal is delivered is called the \textit{disposition} of the signal. If you don't explicitly change what happens when the signal arrives, the default (see the table) happens. But we can change it. There are three options (1) ignore it, (2) run a signal handler, and (3) run the default action. The third option is used to undo an earlier change (such as if we said we wanted to ignore the signal but now no longer do). We'll restrict our to the ``run a signal handler'' option in this lecture.
 
 If we decide to register a signal handler, the function is:
 \begin{lstlisting}[language=C]
 void (*signal( int signo, void (*handler)(int))) (int);
 \end{lstlisting}
 
-Yikes! That is difficult to read. The good news is that using this in practice is a lot easier. What we actually do is call a function to say ``for signal \texttt{X}, run function \texttt{foo}''. There are restrictions on the function signature. It must have a \texttt{void} return type and take one parameter of an \texttt{int}. It returns a pointer to the old handler (if there was one). You could use that to set it back if you wanted. 
+Yikes! That is difficult to read. The good news is that using this in practice is a lot easier. What we actually do is call a function to say ``for signal \texttt{X}, run function \texttt{foo}''. There are restrictions on the function signature. It must have a \texttt{void} return type and take one parameter of an \texttt{int}. It returns a pointer to the old handler (if there was one). You could use that to set it back if you wanted.
 
 So a sample signal handler would be:
 \begin{lstlisting}[language=C]
@@ -145,15 +145,15 @@ signal( SIGINT, sig_handler );
 Alright, with your signal handler set up, then the workflow looks like the diagram below:
 
 \begin{center}
-\includegraphics[width=0.5\textwidth]{images/sighandler.png}\\
-Signal delivery, signal handler execution and return~\cite{lpi}.
+	\includegraphics[width=0.5\textwidth]{images/sighandler.png}\\
+	Signal delivery, signal handler execution and return~\cite{lpi}.
 \end{center}
 
-The content of your signal handler, however, is restricted. Because the handler deals with an interrupt and runs between two instructions it is important to make sure that the signal handler doesn't mess anything up. If the signal handler runs in the middle of \texttt{malloc} and the signal handler itself calls \texttt{malloc} it could put the memory management in an invalid state~\cite{apunix}. 
+The content of your signal handler, however, is restricted. Because the handler deals with an interrupt and runs between two instructions it is important to make sure that the signal handler doesn't mess anything up. If the signal handler runs in the middle of \texttt{malloc} and the signal handler itself calls \texttt{malloc} it could put the memory management in an invalid state~\cite{apunix}.
 
 We can only use functions that are \textit{reentrant}. That is to say, a function that can be interrupted during execution, have another complete to that same function execute, and then resume (and have everything be okay). In particular the big ones to avoid are: \texttt{printf}, \texttt{malloc}, \texttt{free}, and anything that could possibly block the process (e.g., a read of a file!). The subject of reentrancy is a little bit more complicated than can be covered in a few sentences, and future courses should cover reentrancy in much more detail.
 
-There are tables of what functions are safe to invoke from within a signal handler. In general what you are looking for is a designation of \textit{async-signal safe}. 
+There are tables of what functions are safe to invoke from within a signal handler. In general what you are looking for is a designation of \textit{async-signal safe}.
 
 To block a signal, unblock one, or just find out what the current state is, the function is:
 \begin{lstlisting}[language=C]
