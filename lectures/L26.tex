@@ -15,14 +15,14 @@ The generic form of the Byzantine Generals problem looks something like this. Th
 
 No problem, you might imagine. The general tells the lieutenants what to do and they do it! And if one of the lieutenants does the wrong thing, that lieutenant is a traitor. But it's not so simple, because the general can be disloyal too. Horrible Bosses: Byzantium!
 
-Suppose you are a disloyal general. Your Emperor has commanded you to attack, but you want the attack to fail, but also seem like it's not your fault. What do you do? You can issue different orders to different lieutenants, they will be all confused and uncoordinated, and oh gee darn, I guess the attack didn't go as planned! And you can blame the lieutenants who are now dead for going too early, or something, because it's not like they can defend themselves now... 
+Suppose you are a disloyal general. Your Emperor has commanded you to attack, but you want the attack to fail, but also seem like it's not your fault. What do you do? You can issue different orders to different lieutenants, they will be all confused and uncoordinated, and oh gee darn, I guess the attack didn't go as planned! And you can blame the lieutenants who are now dead for going too early, or something, because it's not like they can defend themselves now...
 
 So a loyal general sends the same message to all lieutenants and a disloyal one sends different messages to different lieutenants. It's key to remember that ``loyal'' really means ``functioning'' and ``disloyal'' means ``faulty''~\cite{mte241}. It's fun to make it seem like human actors are doing things for their own evil-villainy-related reasons, but it is just computer interaction that presumably has no actual malicious intent. It's also worth noting that being in one state or the other is not permanent: a functioning unit can be damaged, a malfunctioning one can be repaired, or a problem can be transient (i.e., some electromagnetic interference flipped a bit here or there) and resolve itself with no further action.
 
 One of the key decisions is about how much disloyalty your system can tolerate. Given enough bad actors, things will go wrong. If everyone is disloyal, utter chaos will result. But is it enough to tolerate one disloyal participant? Two? The line will have to be drawn somewhere... But at the very least we don't want to let one disloyal individual ruin things for everyone, even if that disloyal individual is the boss.
 
 \subsection*{Should I Stay or Should I Go Now?}
-In the examples that we will discuss there are two kinds of command: attack and retreat. In a real system the options don't have to be quite so binary (we could give any orders) but for the purpose of demonstration and coming to grips with this problem we'll use the binary example. Attack or retreat. 
+In the examples that we will discuss there are two kinds of command: attack and retreat. In a real system the options don't have to be quite so binary (we could give any orders) but for the purpose of demonstration and coming to grips with this problem we'll use the binary example. Attack or retreat.
 
 It is possible that our system produces a tie (no matter how many participants or possible actions we have). This usually necessitates a default action be selected. So if we cannot come to a decision, we take the default choice. Usually we say that the default choice is to retreat.
 
@@ -69,7 +69,7 @@ What if we can have two disloyal participants? Each lieutenant sending its messa
 		\node[circle,draw,fill=gray!20, minimum size=0.5] (L5) at (1, -2) {L};
 		\node[circle,draw,fill=gray!20, minimum size=0.5] (L6) at (2, -2) {L};
 		\node[circle,draw,fill=gray!20, minimum size=0.5] (L7) at (3, -2) {L};
-		
+
 		\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack~~~};
 		\draw[-latex', thick] (G) -- (L2);
 		\draw[-latex', thick] (G) -- (L3);
@@ -92,7 +92,7 @@ The lieutenants all send one another their instructions. Each of the loyal lieut
 		\node[circle,draw,fill=gray!20, minimum size=0.5] (L5) at (1, -2) {L};
 		\node[circle,draw,fill=gray!20, minimum size=0.5] (L6) at (2, -2) {L};
 		\node[circle,draw,fill=gray!20, minimum size=0.5] (L7) at (3, -2) {L};
-		
+
 		\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack~~~};
 		\draw[-latex', thick] (G) -- (L2);
 		\draw[-latex', thick] (G) -- (L3);
@@ -100,13 +100,13 @@ The lieutenants all send one another their instructions. Each of the loyal lieut
 		\draw[-latex', thick] (G) -- (L5);
 		\draw[-latex', thick] (G) -- (L6);
 		\draw[-latex', thick] (G) -- (L7) node[midway, right]{~~Retreat};
-        \draw[-latex', thick] (L4.south) to [bend right] (L7.south);
-        \draw[-latex', thick] (L4.south) to [bend right] (L6.south);
-        \draw[-latex', thick] (L4.south) to [bend right] (L5.south);
+		\draw[-latex', thick] (L4.south) to [bend right] (L7.south);
+		\draw[-latex', thick] (L4.south) to [bend right] (L6.south);
+		\draw[-latex', thick] (L4.south) to [bend right] (L5.south);
 		\draw[-latex', thick] (L4.south) to [bend left] (L3.south);
 		\draw[-latex', thick] (L4.south) to [bend left] (L2.south);
 		\draw[-latex', thick] (L4.south) to [bend left] (L1.south);
-		
+
 		\node at(-1.5, -3) {Attack};
 		\node at(1.5, -3) {Retreat};
 	\end{tikzpicture}
@@ -114,7 +114,7 @@ The lieutenants all send one another their instructions. Each of the loyal lieut
 
 Now we're in trouble because half the participants think the majority action is attack and half the participants think the majority action is retreat. Summing up what we heard is not sufficient. Lieutenants should also talk about what they heard from one another. After the general issues instructions, each lieutenant should then communicate with every other to hear what the general said to them. Then by reviewing this information, they can decide what to do.
 
-Consider a simple example where the general is loyal and we have two traitorous lieutenants with a total of seven participants. The general issued an order to attack. 
+Consider a simple example where the general is loyal and we have two traitorous lieutenants with a total of seven participants. The general issued an order to attack.
 
 \begin{center}
 	\begin{tikzpicture}
@@ -125,7 +125,7 @@ Consider a simple example where the general is loyal and we have two traitorous 
 		\node[circle,draw,fill=gray!20, minimum size=0.5] (L4) at (0, -2) {L};
 		\node[circle,draw,fill=red, minimum size=0.5] (L5) at (1, -2) {L};
 		\node[circle,draw,fill=red, minimum size=0.5] (L6) at (2, -2) {L};
-		
+
 		\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack~~~};
 		\draw[-latex', thick] (G) -- (L2);
 		\draw[-latex', thick] (G) -- (L3);
@@ -139,85 +139,85 @@ Consider a simple example where the general is loyal and we have two traitorous 
 So each lieutenant constructs the following vector. We're not sure if the general is a traitor, but we'll take notes from every other participant, and see what they report. The general form is as follows, where $v_{x}$ is the forwarded order we received from lieutenant $x$:
 
 \begin{center}
-\begin{tabular}{|l|l|l|l|l|l|l|l|}
-\hline
-General & L1 & L2 & L3 & L4 & L5 & L6 \\	
-\hline
-? & $v_{1}$ & $v_{2}$ & $v_{3}$ & $v_{4}$ & $v_{5}$ & $v_{6}$ \\
-\hline
-\end{tabular}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1      & L2      & L3      & L4      & L5      & L6      \\
+		\hline
+		?       & $v_{1}$ & $v_{2}$ & $v_{3}$ & $v_{4}$ & $v_{5}$ & $v_{6}$ \\
+		\hline
+	\end{tabular}
 \end{center}
 
 So if we are lieutenant 1, we complete the table as below. The value for L1 is what we received from the general, but we get the remaining values from the other lieutenants.
 
 \begin{center}
-\begin{tabular}{|l|l|l|l|l|l|l|l|}
-\hline
-General & L1 & L2 & L3 & L4 & L5 & L6  \\	
-\hline
-? & A & A & A & A & R & R \\
-\hline
-\end{tabular}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 \\
+		\hline
+		?       & A  & A  & A  & A  & R  & R  \\
+		\hline
+	\end{tabular}
 \end{center}
 
 
-Then the lieutenants just compare notes on this subject as well! They send to one another their vectors and assemble them into a table. Whatever lieutenant $x$ received in the first round forms row $x$ of the table, and the other rows are added from this second round of communication. In the table each value $v_{i,j}$ is interpreted as ``Lieutenant $i$ says that Lieutenant $j$ reports the general said $v$''. The entries on the diagonal are redundant because of course each lieutenant agrees with itself: 
+Then the lieutenants just compare notes on this subject as well! They send to one another their vectors and assemble them into a table. Whatever lieutenant $x$ received in the first round forms row $x$ of the table, and the other rows are added from this second round of communication. In the table each value $v_{i,j}$ is interpreted as ``Lieutenant $i$ says that Lieutenant $j$ reports the general said $v$''. The entries on the diagonal are redundant because of course each lieutenant agrees with itself:
 
 \begin{center}
-\begin{tabular}{|l|l|l|l|l|l|l|l|}
-\hline
-General & L1 & L2 & L3 & L4 & L5 & L6 \\	
-\hline
-? & $v_{1,1}$ & $v_{1,2}$ & $v_{1,3}$ & $v_{1,4}$ & $v_{1,5}$ & $v_{1,6}$ \\\hline
-? & $v_{2,1}$ & $v_{2,2}$ & $v_{2,3}$ & $v_{2,4}$ & $v_{2,5}$ & $v_{2,6}$ \\\hline
-? & $v_{3,1}$ & $v_{3,2}$ & $v_{3,3}$ & $v_{3,4}$ & $v_{3,5}$ & $v_{3,6}$ \\\hline
-? & $v_{4,1}$ & $v_{4,2}$ & $v_{4,3}$ & $v_{4,4}$ & $v_{4,5}$ & $v_{4,6}$ \\\hline
-? & $v_{5,1}$ & $v_{5,2}$ & $v_{5,3}$ & $v_{5,4}$ & $v_{5,5}$ & $v_{5,6}$ \\\hline
-? & $v_{6,1}$ & $v_{6,2}$ & $v_{6,3}$ & $v_{6,4}$ & $v_{6,5}$ & $v_{6,6}$ \\\hline
-\end{tabular}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1        & L2        & L3        & L4        & L5        & L6        \\
+		\hline
+		?       & $v_{1,1}$ & $v_{1,2}$ & $v_{1,3}$ & $v_{1,4}$ & $v_{1,5}$ & $v_{1,6}$ \\\hline
+		?       & $v_{2,1}$ & $v_{2,2}$ & $v_{2,3}$ & $v_{2,4}$ & $v_{2,5}$ & $v_{2,6}$ \\\hline
+		?       & $v_{3,1}$ & $v_{3,2}$ & $v_{3,3}$ & $v_{3,4}$ & $v_{3,5}$ & $v_{3,6}$ \\\hline
+		?       & $v_{4,1}$ & $v_{4,2}$ & $v_{4,3}$ & $v_{4,4}$ & $v_{4,5}$ & $v_{4,6}$ \\\hline
+		?       & $v_{5,1}$ & $v_{5,2}$ & $v_{5,3}$ & $v_{5,4}$ & $v_{5,5}$ & $v_{5,6}$ \\\hline
+		?       & $v_{6,1}$ & $v_{6,2}$ & $v_{6,3}$ & $v_{6,4}$ & $v_{6,5}$ & $v_{6,6}$ \\\hline
+	\end{tabular}
 \end{center}
 
 Those ``redundant'' entries (the ones on the diagonal) need to be removed from the table. From the point of view of lieutenant 1, let's imagine the table looks like this (filling in for the sake of the example that L5 and L6 always say retreat).
 \begin{center}
-\begin{tabular}{|l|l|l|l|l|l|l|l|}
-\hline
-General & L1 & L2 & L3 & L4 & L5 & L6 \\	
-\hline
-? & ~ & A & A & A & R & R \\ \hline
-? & A & ~ & A & A & R & R \\ \hline
-? & A & A & ~ & A & R & R \\ \hline
-? & A & A & A & ~ & R & R \\ \hline
-? & R & R & R & R & ~ & R \\ \hline
-? & R & R & R & R & R & ~ \\ \hline
-\end{tabular}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 \\
+		\hline
+		?       & ~  & A  & A  & A  & R  & R  \\ \hline
+		?       & A  & ~  & A  & A  & R  & R  \\ \hline
+		?       & A  & A  & ~  & A  & R  & R  \\ \hline
+		?       & A  & A  & A  & ~  & R  & R  \\ \hline
+		?       & R  & R  & R  & R  & ~  & R  \\ \hline
+		?       & R  & R  & R  & R  & R  & ~  \\ \hline
+	\end{tabular}
 \end{center}
 
- One the thing we can do, however, is fill in the first column: lieutenant 1 does not care what other people THINK they said; so the whole column can be replaced with what was actually said:
- 
+One the thing we can do, however, is fill in the first column: lieutenant 1 does not care what other people THINK they said; so the whole column can be replaced with what was actually said:
+
 \begin{center}
-\begin{tabular}{|l|l|l|l|l|l|l|l|}
-\hline
-General & L1 & L2 & L3 & L4 & L5 & L6 \\	
-\hline
-? & ~ & A & A & A & R & R \\ \hline
-? & A & ~ & A & A & R & R \\ \hline
-? & A & A & ~ & A & R & R \\ \hline
-? & A & A & A & ~ & R & R \\ \hline
-? & A & R & R & R & ~ & R \\ \hline
-? & A & R & R & R & R & ~ \\ \hline
-\end{tabular}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 \\
+		\hline
+		?       & ~  & A  & A  & A  & R  & R  \\ \hline
+		?       & A  & ~  & A  & A  & R  & R  \\ \hline
+		?       & A  & A  & ~  & A  & R  & R  \\ \hline
+		?       & A  & A  & A  & ~  & R  & R  \\ \hline
+		?       & A  & R  & R  & R  & ~  & R  \\ \hline
+		?       & A  & R  & R  & R  & R  & ~  \\ \hline
+	\end{tabular}
 \end{center}
 
 Then we'll try to figure out the majority vote for each $j$ in the table. So sum up each column:
 
 \begin{center}
-\begin{tabular}{|l|l|l|l|l|l|l|l|}
-\hline
-General & L1 & L2 & L3 & L4 & L5 & L6 \\	
-\hline
-? & A & A & A & A & R & R \\
-\hline
-\end{tabular}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 \\
+		\hline
+		?       & A  & A  & A  & A  & R  & R  \\
+		\hline
+	\end{tabular}
 \end{center}
 
 And we have four lieutenants who think the general said attack and two who think the general said retreat. The majority wins and the attack proceeds. Onward to victory, brothers and sisters!
@@ -229,71 +229,71 @@ You may have figured out that since disloyal participants can lie at any step of
 Let's go back to the example of having eight participants: one general and seven lieutenants. So if we are lieutenant 1, we complete the table as below. The value for L1 is what we received from the general, but we get the remaining values from the other lieutenants.
 
 \begin{center}
-\begin{tabular}{|l|l|l|l|l|l|l|l|}
-\hline
-General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\	
-\hline
-? & A & A & A & A & R & R & R \\
-\hline
-\end{tabular}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
+		\hline
+		?       & A  & A  & A  & A  & R  & R  & R  \\
+		\hline
+	\end{tabular}
 \end{center}
 
 However, if we are lieutenant 7 our vector looks like this instead:
 
 \begin{center}
-\begin{tabular}{|l|l|l|l|l|l|l|l|}
-\hline
-General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\	
-\hline
-? & A & A & A & R & R & R & R \\
-\hline
-\end{tabular}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
+		\hline
+		?       & A  & A  & A  & R  & R  & R  & R  \\
+		\hline
+	\end{tabular}
 \end{center}
 
-From the point of view of lieutenant 1 the table is formed then as follows: 
+From the point of view of lieutenant 1 the table is formed then as follows:
 
 \begin{center}
-\begin{tabular}{|l|l|l|l|l|l|l|l|}
-\hline
-General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\	
-\hline
-? & ~ & A & A & A & R & R & R \\ \hline
-? & A & ~ & A & A & R & R & R \\ \hline
-? & A & A & ~ & A & R & R & R \\ \hline
-? & ? & ? & ? & ~ & ? & ? & ? \\ \hline
-? & A & A & A & R & ~ & R & R \\ \hline
-? & A & A & A & R & R & ~ & R \\ \hline
-? & A & A & A & R & R & R & ~ \\ \hline
-\end{tabular}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
+		\hline
+		?       & ~  & A  & A  & A  & R  & R  & R  \\ \hline
+		?       & A  & ~  & A  & A  & R  & R  & R  \\ \hline
+		?       & A  & A  & ~  & A  & R  & R  & R  \\ \hline
+		?       & ?  & ?  & ?  & ~  & ?  & ?  & ?  \\ \hline
+		?       & A  & A  & A  & R  & ~  & R  & R  \\ \hline
+		?       & A  & A  & A  & R  & R  & ~  & R  \\ \hline
+		?       & A  & A  & A  & R  & R  & R  & ~  \\ \hline
+	\end{tabular}
 \end{center}
 
 The fourth row is shown as all question marks. Why? Lieutenant 4 is the traitor and could also lie about what the other lieutenants said. Then replace the first column.
 
 \begin{center}
-\begin{tabular}{|l|l|l|l|l|l|l|l|}
-\hline
-General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\	
-\hline
-? & ~ & A & A & A & R & R & R \\ \hline
-? & A & ~ & A & A & R & R & R \\ \hline
-? & A & A & ~ & A & R & R & R \\ \hline
-? & A & ? & ? & ~ & ? & ? & ? \\ \hline
-? & A & A & A & R & ~ & R & R \\ \hline
-? & A & A & A & R & R & ~ & R \\ \hline
-? & A & A & A & R & R & R & ~ \\ \hline
-\end{tabular}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
+		\hline
+		?       & ~  & A  & A  & A  & R  & R  & R  \\ \hline
+		?       & A  & ~  & A  & A  & R  & R  & R  \\ \hline
+		?       & A  & A  & ~  & A  & R  & R  & R  \\ \hline
+		?       & A  & ?  & ?  & ~  & ?  & ?  & ?  \\ \hline
+		?       & A  & A  & A  & R  & ~  & R  & R  \\ \hline
+		?       & A  & A  & A  & R  & R  & ~  & R  \\ \hline
+		?       & A  & A  & A  & R  & R  & R  & ~  \\ \hline
+	\end{tabular}
 \end{center}
 
 Sum up each column:
 
 \begin{center}
-\begin{tabular}{|l|l|l|l|l|l|l|l|}
-\hline
-General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\	
-\hline
-? & A & A & A & ? & R & R & R \\
-\hline
-\end{tabular}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
+		\hline
+		?       & A  & A  & A  & ?  & R  & R  & R  \\
+		\hline
+	\end{tabular}
 \end{center}
 
 Each of the lieutenants figures out that we have a draw and we then choose the default choice. Well, that's grim, but it makes sense: the general issued contradictory orders and the collaborating lieutenant did the same. But now instead of half the lieutenants charging in and dying while the others hang back and watch, everyone takes the same action, even if it's not the one that helps the Empire the most.

@@ -11,15 +11,15 @@ Earlier on, we mentioned  that in UNIX, a process may create other processes. Th
 Each process has a unique identifier in its process control block, and in UNIX we call this the \texttt{pid} (process ID). For the most part, users will not need to know or think about the ID of a process except when trying to terminate one that's gotten stuck (\texttt{kill -9 24601}). The \texttt{init} process always gets a pid of 1. I don't recommend trying to kill \texttt{init}. In most cases, \texttt{init} will just laugh off your attempt (``'tis but a scratch!'') but you might end up rebooting the system or causing a crash.
 
 \begin{center}
-\includegraphics[width=0.5\textwidth]{images/linux-process-tree.pdf}\\
-A tree of processes in a Linux system.
+	\includegraphics[width=0.5\textwidth]{images/linux-process-tree.pdf}\\
+	A tree of processes in a Linux system.
 \end{center}
 
 In a UNIX system, we can obtain a list of processes at any time with the \texttt{ps} command. The diagram illustrates that each user, when logging in, spawns a \texttt{login} process (and an administrator can log people out by killing their \texttt{login} process... not that this is necessarily a good way to do it). The user's shell (these days, almost always \texttt{bash}, the Bourne Again Shell) is then spawned from \texttt{login}. That shell provides the command line interface where the user can enter a command.
 
 When you issue a command, like \texttt{ls} or \texttt{top} (table of processes), the new process is created and the shell will \texttt{wait} on that process to finish (in the case of \texttt{ls}) or for the user to tell it to exit (\texttt{top}); when it does, control goes back to the shell and you get presented with the prompt again (e.g., \texttt{jz@Loki:\~{}/\$}). This would, on its face, seem kind of limiting -- do I have to log in to the system in a second terminal window to run two things at a time? The answer is no, and there are two ways to get around it.
 
-The first thing we can do is tell the shell we want the task to run in the background. To do that, add to the command the \texttt{\&} symbol, like so: 
+The first thing we can do is tell the shell we want the task to run in the background. To do that, add to the command the \texttt{\&} symbol, like so:
 
 \texttt{gcc fork.c \&}
 
@@ -27,15 +27,15 @@ This will return control almost immediately to the shell (as it will not be wait
 
 \texttt{[1]+  Done                    gcc fork.c}
 
-Notably, any console output that the \texttt{gcc} command would generate will still appear on the console where the background task was created. Maybe you want that but maybe you want to put the output in a log file, with a command like \texttt{cat fork.c > logfile.txt \&}. (Telling \texttt{gcc} to be silent is a somewhat more complex operation.) 
+Notably, any console output that the \texttt{gcc} command would generate will still appear on the console where the background task was created. Maybe you want that but maybe you want to put the output in a log file, with a command like \texttt{cat fork.c > logfile.txt \&}. (Telling \texttt{gcc} to be silent is a somewhat more complex operation.)
 
 A common example of a command I use involving the \texttt{\&}:\\
 \texttt{ sudo service xyz start \& }\\
 This will (with super user permissions - that's the purpose of \texttt{sudo}) start up the service \texttt{xyz} but return control to the console so I don't have to wait for the \texttt{xyz} service to be started to enter my next command. This is good, because the next thing I'd like to do is \texttt{tail -f /var/log/xyz/console.log} which will allow me to watch the console log of the \texttt{xyz} service as it starts up to see if there are any errors.
 
-The other alternative to get something to run in the background is with the \texttt{screen} command. While having something run in the background is nice, it does not work for interactive processes. Suppose you are working on some code in \texttt{vi} and you would like to pause that for a minute and write an e-mail (with \texttt{pine} or whatever the cool kids use for command line e-mail these days). One approach is to save and exit \texttt{vi} and open up \texttt{pine}. The other would be to start up each of these in \texttt{screen} and switch between them. 
+The other alternative to get something to run in the background is with the \texttt{screen} command. While having something run in the background is nice, it does not work for interactive processes. Suppose you are working on some code in \texttt{vi} and you would like to pause that for a minute and write an e-mail (with \texttt{pine} or whatever the cool kids use for command line e-mail these days). One approach is to save and exit \texttt{vi} and open up \texttt{pine}. The other would be to start up each of these in \texttt{screen} and switch between them.
 
-Thus instead of just opening \texttt{vi fork.c} I can issue the command \texttt{screen vi fork.c} and this spawns \texttt{screen} and takes me right to editing the file. The key difference is that I can ``detach'' from this screen and go back to the command line that spawned it. And if I log out, \texttt{screen} keeps running with the \texttt{vi} inside it. If I have multiple screens running, I can just ``reattach'' to the one I want to use next. To get a full understanding of \texttt{screen}, try the command \texttt{man screen} and the user manual will appear to give you some information and instructions about how to use this. Or you can use Google. 
+Thus instead of just opening \texttt{vi fork.c} I can issue the command \texttt{screen vi fork.c} and this spawns \texttt{screen} and takes me right to editing the file. The key difference is that I can ``detach'' from this screen and go back to the command line that spawned it. And if I log out, \texttt{screen} keeps running with the \texttt{vi} inside it. If I have multiple screens running, I can just ``reattach'' to the one I want to use next. To get a full understanding of \texttt{screen}, try the command \texttt{man screen} and the user manual will appear to give you some information and instructions about how to use this. Or you can use Google.
 
 \subsection*{Spawning Child Processes}
 
@@ -102,8 +102,8 @@ jz@Freyja:~/fork$
 Or, to represent this visually:
 
 \begin{center}
-\includegraphics[width=0.85\textwidth]{images/fork-syscall.png}\\
-Process creation with the \texttt{fork} system call~\cite{osc}.
+	\includegraphics[width=0.85\textwidth]{images/fork-syscall.png}\\
+	Process creation with the \texttt{fork} system call~\cite{osc}.
 \end{center}
 
 What about termination? On the assumption that the process is terminating normally and not being killed, the system call for that is \texttt{exit}. If the program itself has no explicit call to \texttt{exit}, the \texttt{return} statement at the end of \texttt{main} will have the same effect.
@@ -163,29 +163,29 @@ A system configured to defend against this may impose limits on (1) the total nu
 Note: do not attempt this on anything other than your personal computer at home. It is a denial of service attack and would certainly count as misuse of resources on any system. Accordingly, trying to do it will very likely result in a ban. Getting banned from using university computer resources is not conducive to completing your degree.
 
 
-\section*{Signals} 
+\section*{Signals}
 
 UNIX systems use signals to indicate events (e.g., the \texttt{Ctrl-C} on the console). Signals also are things like exceptions (division by zero, segmentation fault), etc. A signal may be \textit{synchronous} if the signal occurs as a result of the program execution (e.g., dividing by zero); it is \textit{asynchronous} if it comes from outside the process (e.g., the user pressing \texttt{Ctrl-C} or one process or thread sending a signal to another). Signals are, in the end, interrupts with a certain integer ID.
 
-By default, the kernel will handle any signal that is sent to a process with the default handler. The behaviour of the default handler may be to ignore the signal, but some signals (segmentation fault) will result in termination of the process. 
+By default, the kernel will handle any signal that is sent to a process with the default handler. The behaviour of the default handler may be to ignore the signal, but some signals (segmentation fault) will result in termination of the process.
 
 
 Here are some of the many signals described in the POSIX.1-1990 standard:
 
 \begin{center}
-\begin{tabular}{l|l|l|l}
-	\textbf{Signal} & \textbf{Comment} & \textbf{Value} & \textbf{Default Action}\\ \hline
-	\texttt{SIGHUP} & Hangup detected & 1 & Terminate process \\
-	\texttt{SIGINT} & Keyboard interrupt (\texttt{Ctrl-C}) & 2 & Terminate process \\
-	\texttt{SIGQUIT} & Quit from keyboard & 3 & Terminate process, dump debug info  \\
-	\texttt{SIGILL} & Illegal instruction & 4 & Terminate process, dump debug info \\
-	\texttt{SIGKILL} & Kill signal & 9 & Terminate process \\
-	\texttt{SIGSEGV} & Segmentation fault (invalid memory reference) & 11 & Terminate process, dump debug info\\
-	\texttt{SIGTERM} & Termination signal & 15 & Terminate process \\
-	\texttt{SIGCHLD} & Child stopped or terminated & 20,17,18 & Ignore \\
-	\texttt{SIGCONT} & Continue if stopped & 19,18,25 & Continue the process if stopped \\
-	\texttt{SIGSTOP} & Stop process & 18,20,24 & Stop process \\
-\end{tabular}
+	\begin{tabular}{l|l|l|l}
+		\textbf{Signal}  & \textbf{Comment}                              & \textbf{Value} & \textbf{Default Action}            \\ \hline
+		\texttt{SIGHUP}  & Hangup detected                               & 1              & Terminate process                  \\
+		\texttt{SIGINT}  & Keyboard interrupt (\texttt{Ctrl-C})          & 2              & Terminate process                  \\
+		\texttt{SIGQUIT} & Quit from keyboard                            & 3              & Terminate process, dump debug info \\
+		\texttt{SIGILL}  & Illegal instruction                           & 4              & Terminate process, dump debug info \\
+		\texttt{SIGKILL} & Kill signal                                   & 9              & Terminate process                  \\
+		\texttt{SIGSEGV} & Segmentation fault (invalid memory reference) & 11             & Terminate process, dump debug info \\
+		\texttt{SIGTERM} & Termination signal                            & 15             & Terminate process                  \\
+		\texttt{SIGCHLD} & Child stopped or terminated                   & 20,17,18       & Ignore                             \\
+		\texttt{SIGCONT} & Continue if stopped                           & 19,18,25       & Continue the process if stopped    \\
+		\texttt{SIGSTOP} & Stop process                                  & 18,20,24       & Stop process                       \\
+	\end{tabular}
 \end{center}
 
 

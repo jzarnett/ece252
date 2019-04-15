@@ -6,7 +6,7 @@
 
 \section*{Concurrency in File Systems}
 
-To understand the idea of concurrency in file systems, we need to peel back the interface a bit and have at least a high-level understanding of their implementation. File can be of arbitrary size (although in a particular file system there may be a limit), so they have to be allocated on disk in some way. 
+To understand the idea of concurrency in file systems, we need to peel back the interface a bit and have at least a high-level understanding of their implementation. File can be of arbitrary size (although in a particular file system there may be a limit), so they have to be allocated on disk in some way.
 
 The contiguous allocation strategy means that a file occupies a set of contiguous blocks on disk. So a file is allocated, starting at block $b$ and is $n$ blocks in size, the file takes up blocks $b, b+1, b+2, ..., b+(n-1)$. But for a sufficiently large file, it might be difficult to find a place to put it. And we also don't know how to predict the size of a file, so how much space do we leave for where to put it?
 
@@ -35,7 +35,7 @@ Locking just a part of the file allows for more concurrency: if a process is wri
 int fcntl( int file_descriptor, int command, ... /* struct flock * flockptr */ )
 \end{lstlisting}
 
-This one looks strange! It turns out that \texttt{fcntl} can do a lot of things, and only sometimes the third argument is needed. So it is a \texttt{...} (list of args) but we would only fill it with one \texttt{struct flock} if we need to based on the value of \texttt{command}. They could have just overloaded this function, but, well, here we are. 
+This one looks strange! It turns out that \texttt{fcntl} can do a lot of things, and only sometimes the third argument is needed. So it is a \texttt{...} (list of args) but we would only fill it with one \texttt{struct flock} if we need to based on the value of \texttt{command}. They could have just overloaded this function, but, well, here we are.
 
 The \texttt{struct flock} has the following definition~\cite{apunix}:
 \begin{lstlisting}[language=C]
@@ -48,7 +48,7 @@ struct flock {
 };
 \end{lstlisting}
 
-Much like the readers-writers locks, the types of locks are read and write. The compatibility matrix is exactly what you would expect: read locks are compatible with other read locks; write locks are not compatible with any other lock. And finally, to unlock, you still use the set-lock functionality, but with type \texttt{F\_UNLCK}. This sort of locking scheme is vulnerable to deadlock, as it's possible for a process to lock file 1 and need file 2 while another process has a lock on file 2 and needs the lock on file 1. 
+Much like the readers-writers locks, the types of locks are read and write. The compatibility matrix is exactly what you would expect: read locks are compatible with other read locks; write locks are not compatible with any other lock. And finally, to unlock, you still use the set-lock functionality, but with type \texttt{F\_UNLCK}. This sort of locking scheme is vulnerable to deadlock, as it's possible for a process to lock file 1 and need file 2 while another process has a lock on file 2 and needs the lock on file 1.
 
 The value of \texttt{l\_whence} is going to be one of the three constants named in the comment above. This refers to where the offset begins. \texttt{SEEK\_SET} means at the start of the file. So if you specify \texttt{SEEK\_SET} and an offset of \texttt{1000} it means the locked region begins 1000 bytes after the start of the file. \texttt{SEEK\_END} means the relative point is the end of the file. Finally, \texttt{SEEK\_CUR} means based on the current position in the file (if you've positioned within the file using \texttt{seek()} this makes sense).
 
@@ -138,7 +138,7 @@ It is noteworthy that both kinds of lock are ``advisory'' only. That is, like th
 
 \subsection*{Using A File as a Lock}
 
-We can use the very existence of a file as a way of controlling concurrency. For example, \texttt{git} places a file \texttt{index.lock} in a particular directory to indicate that an operation is in progress so two different \texttt{git} clients do not operate on the same repository at the same time. So that is one strategy: check if the file is present; if it is, the resource is ``locked'', if no such file is present then it is ``unlocked''. 
+We can use the very existence of a file as a way of controlling concurrency. For example, \texttt{git} places a file \texttt{index.lock} in a particular directory to indicate that an operation is in progress so two different \texttt{git} clients do not operate on the same repository at the same time. So that is one strategy: check if the file is present; if it is, the resource is ``locked'', if no such file is present then it is ``unlocked''.
 
 If we want to check, we just try to \texttt{open()} the file, but unless we are careful this can lead to a problem if two processes want to create the file: if they both call \texttt{open}, they both might succeed. To get around this, we need to use the \texttt{flags} parameter of the call to open the file. See below.
 
@@ -151,14 +151,14 @@ int remove(const char *filename) ; /* Deletes a file or directory, returns 0 on 
 When opening a file the following flags may be used for the \texttt{flags} parameter (and can be combined with bitwise OR, the \texttt{|} operator):
 
 \begin{tabular}{l|l}
-	\textbf{Value} & \textbf{Meaning} \\ \hline
-	\texttt{O\_RDONLY} & Open the file read-only \\ \hline
-	\texttt{O\_WRONLY} & Open the file write-only \\ \hline
-	\texttt{O\_RDWR} & Open the file for both reading and writing \\ \hline
-	\texttt{O\_APPEND} & Append information to the end of the file \\ \hline
-	\texttt{O\_TRUNC} & Initially clear all data from the file \\ \hline
-	\texttt{O\_CREAT} & Create the file \\ \hline	
-	\texttt{O\_EXCL} & If used with \texttt{O\_CREAT}, the caller MUST create the file; if the file exists it will fail \\ 	
+	\textbf{Value}     & \textbf{Meaning}                                                                                 \\ \hline
+	\texttt{O\_RDONLY} & Open the file read-only                                                                          \\ \hline
+	\texttt{O\_WRONLY} & Open the file write-only                                                                         \\ \hline
+	\texttt{O\_RDWR}   & Open the file for both reading and writing                                                       \\ \hline
+	\texttt{O\_APPEND} & Append information to the end of the file                                                        \\ \hline
+	\texttt{O\_TRUNC}  & Initially clear all data from the file                                                           \\ \hline
+	\texttt{O\_CREAT}  & Create the file                                                                                  \\ \hline
+	\texttt{O\_EXCL}   & If used with \texttt{O\_CREAT}, the caller MUST create the file; if the file exists it will fail \\
 \end{tabular}
 
 We can combine the use of \texttt{open} with \texttt{rename} to get lock-like behaviour between different programs that share nothing except a common file system. The \texttt{open} call should be used to create the lock file, and fail if the file already exists. If we want we can use \texttt{remove} to delete the lock file if we want to let the next process try, but there's an alternative option: \texttt{rename}.

@@ -18,8 +18,8 @@ There are some restrictions, though, and they could make the problem either impo
 Consider the following solution. All semaphores start at 0, except for \texttt{host} which starts as 1 (so the host will run the first time). Does this work?
 
 \begin{multicols}{3}
-\textbf{Contestant A}
-\begin{lstlisting}
+	\textbf{Contestant A}
+	\begin{lstlisting}
 wait( sauce )
 get_sauce()
 wait( cheese )
@@ -27,9 +27,9 @@ get_cheese()
 make_pizza( )
 post( host )
 \end{lstlisting}
-\columnbreak
-\textbf{Contestant B}
-\begin{lstlisting}
+	\columnbreak
+	\textbf{Contestant B}
+	\begin{lstlisting}
 wait( dough )
 get_dough()
 wait( cheese )
@@ -37,9 +37,9 @@ get_cheese()
 make_pizza( )
 post( host )
 \end{lstlisting}
-\columnbreak
-\textbf{Contestant C}
-\begin{lstlisting}
+	\columnbreak
+	\textbf{Contestant C}
+	\begin{lstlisting}
 wait( sauce )
 get_sauce()
 wait( dough )
@@ -56,8 +56,8 @@ Part of the problem here is that a contestant doesn't have a good way to assess 
 Imagine now that each contestant gets a helper. The job of the helper is to, well, help their contestant to make pizza by figuring out whose turn it is. For this there are boolean variables \texttt{dough\_present}, \texttt{sauce\_present}, and \texttt{cheese\_present} that are all initialized to \texttt{false}. They are protected by a semaphore (called \texttt{mutex}). The helpers update that variable, and based on the information available, signal which contestant should come up to the table and take ingredients. Each contestant now has a semaphore (such as \texttt{contestantA} for contestant A) which the helpers will post on. Contestants are still responsible for telling the host to put out more ingredients.
 
 \begin{multicols}{3}
-\textbf{Helper 1}
-\begin{lstlisting}
+	\textbf{Helper 1}
+	\begin{lstlisting}
 wait( sauce )
 wait( mutex )
 if dough_present  
@@ -71,9 +71,9 @@ else
 end if  
 post( mutex )
 \end{lstlisting}
-\columnbreak
-\textbf{Helper 2}
-\begin{lstlisting}
+	\columnbreak
+	\textbf{Helper 2}
+	\begin{lstlisting}
 wait( dough )
 wait( mutex )
 if sauce_present  
@@ -87,9 +87,9 @@ else
 end if  
 post( mutex )
 \end{lstlisting}
-\columnbreak
-\textbf{Helper 3}
-\begin{lstlisting}
+	\columnbreak
+	\textbf{Helper 3}
+	\begin{lstlisting}
 wait( cheese )
 wait( mutex )
 if dough_present  
@@ -105,31 +105,31 @@ post( mutex )
 \end{lstlisting}
 \end{multicols}
 
-So let's analyze Helper 1. Each of the other helpers does the same thing but for a different ingredient. In this case, the helper is woken up when sauce is placed on the table. It then locks the mutex so that it can manipulate the shared variables of what ingredients are present. Now we decide what to do here. If the current helper is the first one to run, then all the variables will be false, so we'll end up at the else block and just set \texttt{sauce\_present} to true and then let the next helper run. If \texttt{dough\_present} is true, then Helper 2 has already run and we know that dough is present on the table. With both sauce and dough present, we know that the ingredients present match the needs of Contestant C. If \texttt{cheese\_present} is true then Helper 3 has already run and the ingredients present match the needs of Contestant A. 
+So let's analyze Helper 1. Each of the other helpers does the same thing but for a different ingredient. In this case, the helper is woken up when sauce is placed on the table. It then locks the mutex so that it can manipulate the shared variables of what ingredients are present. Now we decide what to do here. If the current helper is the first one to run, then all the variables will be false, so we'll end up at the else block and just set \texttt{sauce\_present} to true and then let the next helper run. If \texttt{dough\_present} is true, then Helper 2 has already run and we know that dough is present on the table. With both sauce and dough present, we know that the ingredients present match the needs of Contestant C. If \texttt{cheese\_present} is true then Helper 3 has already run and the ingredients present match the needs of Contestant A.
 
-Obviously, each of the other helpers will signal the appropriate contestant based on its assessment of the state of the ingredients. 
+Obviously, each of the other helpers will signal the appropriate contestant based on its assessment of the state of the ingredients.
 
 \begin{multicols}{3}
-\textbf{Contestant A}
-\begin{lstlisting}
+	\textbf{Contestant A}
+	\begin{lstlisting}
 wait( contestantA )
 get_sauce()
 get_cheese()
 make_pizza( )
 post( host )
 \end{lstlisting}
-\columnbreak
-\textbf{Contestant B}
-\begin{lstlisting}
+	\columnbreak
+	\textbf{Contestant B}
+	\begin{lstlisting}
 wait( contestantB )
 get_dough()
 get_cheese()
 make_pizza( )
 post( host )
 \end{lstlisting}
-\columnbreak
-\textbf{Contestant C}
-\begin{lstlisting}
+	\columnbreak
+	\textbf{Contestant C}
+	\begin{lstlisting}
 wait( contestantC )
 get_sauce()
 get_dough()
@@ -147,8 +147,8 @@ Obviously if there is no longer a need for the contestants to signal that they w
 Instead of boolean variables to indicate the presence or absence of an ingredient what we need instead is an integer counter to know how many there are. So let's call them \texttt{num\_dough}, \texttt{num\_sauce}, and \texttt{num\_cheese}, and they all start as zero.
 
 \begin{multicols}{3}
-\textbf{Helper 1}
-\begin{lstlisting}
+	\textbf{Helper 1}
+	\begin{lstlisting}
 wait( sauce )
 wait( mutex )
 if num_dough > 0  
@@ -162,9 +162,9 @@ else
 end if  
 post( mutex )
 \end{lstlisting}
-\columnbreak
-\textbf{Helper 2}
-\begin{lstlisting}
+	\columnbreak
+	\textbf{Helper 2}
+	\begin{lstlisting}
 wait( dough )
 wait( mutex )
 if num_sauce > 0  
@@ -178,9 +178,9 @@ else
 end if  
 post( mutex )
 \end{lstlisting}
-\columnbreak
-\textbf{Helper 3}
-\begin{lstlisting}
+	\columnbreak
+	\textbf{Helper 3}
+	\begin{lstlisting}
 wait( cheese )
 wait( mutex )
 if num_dough > 0 
@@ -201,16 +201,16 @@ Now instead of setting the variables to true and false, the variables tracking t
 \section*{The Barbershop Problem}
 Consider the ``Barbershop Problem'', originally proposed by Dijkstra. A variant of this appears in~\cite{osc}. A barbershop is a place where customers get their hair cut. A barbershop consists of a waiting area with $n$ chairs, and a barber chair.
 
- If there are no customers to be served, the barber goes to sleep. If a customer enters the barbershop and all chairs are occupied, then the customer leaves the shop. If the barber is busy, but chairs are available, then the customer sits in one of the free chairs. If the barber is asleep, the customer wakes up the barber. 
- 
- Customer threads should call \texttt{get\_hair\_cut()} when it is their turn. If the shop is full, the customer should \texttt{return} (exit/leave). The barber thread will call \texttt{cut\_hair}. The barber can cut only one person's hair at a time, so there should be exactly one thread calling \texttt{get\_hair\_cut()} concurrently. You can assume that external forces cause customers to appear and the barber to keep working (so you do not need to write any loops). Assume \texttt{n} is initialized to an appropriate value.
+If there are no customers to be served, the barber goes to sleep. If a customer enters the barbershop and all chairs are occupied, then the customer leaves the shop. If the barber is busy, but chairs are available, then the customer sits in one of the free chairs. If the barber is asleep, the customer wakes up the barber.
+
+Customer threads should call \texttt{get\_hair\_cut()} when it is their turn. If the shop is full, the customer should \texttt{return} (exit/leave). The barber thread will call \texttt{cut\_hair}. The barber can cut only one person's hair at a time, so there should be exactly one thread calling \texttt{get\_hair\_cut()} concurrently. You can assume that external forces cause customers to appear and the barber to keep working (so you do not need to write any loops). Assume \texttt{n} is initialized to an appropriate value.
 
 We need an integer counter for customers waiting called \texttt{customers} that starts at 0. We will also have a mutex for controlling access to \texttt{customers} called \texttt{mutex} (it obviously starts at 1). Finally, two semaphores, \texttt{customer} and \texttt{barber} that both start at 0.
 
 As for the solution:
 \begin{multicols}{2}
-\textbf{Customer}
-  \begin{lstlisting}
+	\textbf{Customer}
+	\begin{lstlisting}
 wait( mutex )
 if customers == n
     signal( mutex )
@@ -227,9 +227,9 @@ wait( mutex )
 customers--
 signal( mutex )
 \end{lstlisting}
-\columnbreak
-\textbf{Barber}
-  \begin{lstlisting}
+	\columnbreak
+	\textbf{Barber}
+	\begin{lstlisting}
 wait( customer )
 signal( barber )
 cut_hair()
@@ -239,11 +239,11 @@ cut_hair()
 
 The barber code is much simpler, so let's start there. The barber waits for there to be a customer. When there is one, the barber calls the customer forward by signalling on \texttt{barber}, and then cuts hair. Simple enough.
 
-As for the customer, \texttt{customers} is shared data, so its access should be protected by \texttt{mutex}. If we find that the number of customers is already $n$ -- that is, the waiting area is full, the customer should leave. But not without unlocking \texttt{mutex}! If the customer forgot to do that then no more customers could enter. That's a problem. Otherwise the count of customers is increased and the customer signals the semaphore \texttt{customer}. This will wake up the barber, if the barber is sleeping, but also indicates the number of customers waiting. Then the customer must wait for the barber. When the customer gets called forward by the barber, the customer can get their hair cut. Finally, when leaving, the customer decrements the number of customers counter. 
+As for the customer, \texttt{customers} is shared data, so its access should be protected by \texttt{mutex}. If we find that the number of customers is already $n$ -- that is, the waiting area is full, the customer should leave. But not without unlocking \texttt{mutex}! If the customer forgot to do that then no more customers could enter. That's a problem. Otherwise the count of customers is increased and the customer signals the semaphore \texttt{customer}. This will wake up the barber, if the barber is sleeping, but also indicates the number of customers waiting. Then the customer must wait for the barber. When the customer gets called forward by the barber, the customer can get their hair cut. Finally, when leaving, the customer decrements the number of customers counter.
 
-Let's look over this for a risk of deadlock. We don't see anywhere, really, the nested-waits pattern that usually indicates trouble. There isn't really any scenario where a customer can get blocked waiting for another customer or the barber, and the barber code is very simple. 
+Let's look over this for a risk of deadlock. We don't see anywhere, really, the nested-waits pattern that usually indicates trouble. There isn't really any scenario where a customer can get blocked waiting for another customer or the barber, and the barber code is very simple.
 
-As for starvation, it also won't happen. Assuming there are actually customers, the barber will have work to do. And the customers will wait for a finite period before they get their hair cut. The size of the waiting area is limited so we expect that a customer doesn't get delayed indefinitely. It is possible for them to wait quite a while, though, but they will eventually get a turn. 
+As for starvation, it also won't happen. Assuming there are actually customers, the barber will have work to do. And the customers will wait for a finite period before they get their hair cut. The size of the waiting area is limited so we expect that a customer doesn't get delayed indefinitely. It is possible for them to wait quite a while, though, but they will eventually get a turn.
 
 We can maybe say that customers who give up in frustration are disappointed but that's better than making them wait forever. If they are told they won't get service today, they can go to a different barbershop or come again some other time. That's why there's the limit on the waiting area at all. In the scenario, the barber is only human and can only cut so many people's hair in a day. The exact number will vary based on how long each hair cut takes, which depends on the person whose hair is being cut. But there is a limit of some sort: at some point the barber will go home. And only so many people can fit into the waiting room anyway: if there are too many, then nobody can move around (and this violates fire code!).
 
@@ -251,16 +251,16 @@ This is actually a good lesson for services in general. They have a certain capa
 
 
 \subsection*{Chemistry: Building H$_{2}$O}
-There are two kinds of thread, \texttt{oxygen()} and \texttt{hydrogen()}. As you will recall from basic chemistry, water, H$_{2}$O, requires two hydrogen modules and one oxygen module. To assemble the desired molecule (water) a group rendezvous pattern is needed to make each thread wait until all ingredients are present in the correct amounts. As each thread passes the barrier, it should call the function \texttt{bond()} which makes the water. Our solution must function so that all threads for one molecule invoke \texttt{bond()} before any of the threads from the next molecule do. 
+There are two kinds of thread, \texttt{oxygen()} and \texttt{hydrogen()}. As you will recall from basic chemistry, water, H$_{2}$O, requires two hydrogen modules and one oxygen module. To assemble the desired molecule (water) a group rendezvous pattern is needed to make each thread wait until all ingredients are present in the correct amounts. As each thread passes the barrier, it should call the function \texttt{bond()} which makes the water. Our solution must function so that all threads for one molecule invoke \texttt{bond()} before any of the threads from the next molecule do.
 
-To clarify, if an oxygen thread arrives at the barrier when no hydrogen threads are present, it has to wait for two hydrogen threads to arrive. If a hydrogen thread arrives a the barrier when no other threads are waiting, it has to wait for an oxygen thread and another hydrogen thread. It is not necessary for the threads to know what other threads they are matched with, as long as the correct elements are present in the correct proportions. 
+To clarify, if an oxygen thread arrives at the barrier when no hydrogen threads are present, it has to wait for two hydrogen threads to arrive. If a hydrogen thread arrives a the barrier when no other threads are waiting, it has to wait for an oxygen thread and another hydrogen thread. It is not necessary for the threads to know what other threads they are matched with, as long as the correct elements are present in the correct proportions.
 
 In the example, we'll assume the \texttt{oxygen} and \texttt{hydrogen} threads are created and started correctly and in the correct proportions. The code for the creation of those two types of threads is not shown for space reasons. The reusable two-phase barrier from earlier has also been converted into C code.
- 
+
 The oxygen queue and hydrogen queue start as ``locked'' so we'll only signal the threads when they are going to proceed. Before that we have a scoreboard pattern, where threads take a look at the state of the system and decide what to do.
 
 \begin{multicols}{2}
-\begin{lstlisting}[firstline=0, language=C]
+	\begin{lstlisting}[firstline=0, language=C]
 int oxygen;
 int hydrogen;
 pthread_mutex_t barrier_mutex;
@@ -293,8 +293,8 @@ void barrier_exit( ) {
 
 
 \end{lstlisting}
-\columnbreak
-\begin{lstlisting}[language=C]
+	\columnbreak
+	\begin{lstlisting}[language=C]
 int main( void ) {
   oxygen = 0;
   hydrogen = 0;
@@ -324,7 +324,7 @@ int main( void ) {
 \end{multicols}
 
 \begin{multicols}{2}
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 void* oxygen( void* ignore ) {
   sem_wait( &bond );
   oxygen++;
@@ -350,8 +350,8 @@ void* oxygen( void* ignore ) {
   pthread_exit( NULL )
 }
 \end{lstlisting}
-\columnbreak
-\begin{lstlisting}[language=C]
+	\columnbreak
+	\begin{lstlisting}[language=C]
 void* hydrogen( void* ignore ) {
   sem_wait( &bond );
   hydrogen++;

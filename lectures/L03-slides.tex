@@ -4,128 +4,128 @@
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
-  University of Waterloo}
+	University of Waterloo}
 \date{\today}
 
 
 \begin{document}
 
 \begin{frame}
-  \titlepage
+	\titlepage
 
- \end{frame}
+\end{frame}
 
 
 
 \begin{frame}
-\frametitle{File System}
+	\frametitle{File System}
 
-The file system is important and highly visible.
+	The file system is important and highly visible.
 
-It is more than just the way of storing data and programs, persistently.
+	It is more than just the way of storing data and programs, persistently.
 
-It also provides organization for the files through a directory structure and maintains metadata related to files. 
+	It also provides organization for the files through a directory structure and maintains metadata related to files.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{What is a File?}
+	\frametitle{What is a File?}
 
-But what is a file? The snarky UNIX answer is, ``Everything is a file!''
+	But what is a file? The snarky UNIX answer is, ``Everything is a file!''
 
-As far as the computer is concerned, any data is just 1s and 0s (bytes). 
+	As far as the computer is concerned, any data is just 1s and 0s (bytes).
 
-The file is just a logical unit to organize these. 
+	The file is just a logical unit to organize these.
 
-So an area of disk is designated as belonging to a file. 
-
-\end{frame}
-
-\begin{frame}
-\frametitle{What is a File?}
-
-Files can contain programs (\texttt{word.exe}) and/or data (\texttt{technical-report.doc}). 
-
-\begin{center}
-\includegraphics{images/file.png}
-\end{center}
-
-The content of a file is defined by its creator. 
-
-The creator could be a user if he or she is using notepad or something, or it could be a program, like a compiler creating an output binary file.
+	So an area of disk is designated as belonging to a file.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{File Attributes}
+	\frametitle{What is a File?}
 
-Files typically have attributes, which, although they can vary, tend generally to include the following things:
+	Files can contain programs (\texttt{word.exe}) and/or data (\texttt{technical-report.doc}).
 
-\begin{enumerate}
-	\item \textbf{Name}
-	\item \textbf{Identifier}
-	\item \textbf{Type}
-	\item \textbf{Location}
-	\item \textbf{Size}
-	\item \textbf{Protection}
-	\item \textbf{Time, Date, User ID}
-\end{enumerate}
+	\begin{center}
+		\includegraphics{images/file.png}
+	\end{center}
+
+	The content of a file is defined by its creator.
+
+	The creator could be a user if he or she is using notepad or something, or it could be a program, like a compiler creating an output binary file.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{File Attributes}
+
+	Files typically have attributes, which, although they can vary, tend generally to include the following things:
+
+	\begin{enumerate}
+		\item \textbf{Name}
+		\item \textbf{Identifier}
+		\item \textbf{Type}
+		\item \textbf{Location}
+		\item \textbf{Size}
+		\item \textbf{Protection}
+		\item \textbf{Time, Date, User ID}
+	\end{enumerate}
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Directory Structure}
+	\frametitle{Directory Structure}
 
-Files are maintained in a structure. 
+	Files are maintained in a structure.
 
-\begin{center}
-	\includegraphics[width=0.6\textwidth]{images/qnx-directory.png}\\
+	\begin{center}
+		\includegraphics[width=0.6\textwidth]{images/qnx-directory.png}\\
 		Image Credit: QNX
-\end{center} 
+	\end{center}
 
 
 
-The directory structure is quite familiar to us as the folders on the system. 
+	The directory structure is quite familiar to us as the folders on the system.
 
-Directories, really, are just like files; they are information about what files are in what locations, and they too will be stored on disk.
+	Directories, really, are just like files; they are information about what files are in what locations, and they too will be stored on disk.
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{File Operations}
+	\frametitle{File Operations}
 
-It makes some sense to consider a file to be a structure. 
+	It makes some sense to consider a file to be a structure.
 
-A file has some data (fields, metadata).
+	A file has some data (fields, metadata).
 
-There are defined functions, operations to allow users to work with and on files. 
+	There are defined functions, operations to allow users to work with and on files.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{File Operations}
-Six basic operations are required:
+	\frametitle{File Operations}
+	Six basic operations are required:
 
-\begin{enumerate}
-	\item Creating a file.
-	\item Writing a file.
-	\item Reading a file.
-	\item Repositioning within a file.
-	\item Deleting a file.
-	\item Truncating a file.
-\end{enumerate}
+	\begin{enumerate}
+		\item Creating a file.
+		\item Writing a file.
+		\item Reading a file.
+		\item Repositioning within a file.
+		\item Deleting a file.
+		\item Truncating a file.
+	\end{enumerate}
 
-Let's examine each of these briefly.
+	Let's examine each of these briefly.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Opening and Closing Files}
-We already saw in an earlier example how to open and close a file:
-\begin{lstlisting}[language=C]
+	\frametitle{Opening and Closing Files}
+	We already saw in an earlier example how to open and close a file:
+	\begin{lstlisting}[language=C]
     FILE* f = fopen( argv[1], "r");
     if ( f == NULL ) {
         printf("Unable to open file! %s is invalid name?\n", argv[1] );
@@ -139,77 +139,77 @@ We already saw in an earlier example how to open and close a file:
 
 
 \begin{frame}[fragile]
-\frametitle{Using the Open Call}
+	\frametitle{Using the Open Call}
 
-It turns out that creating, reading, writing, and truncating are all done with the open call. 
+	It turns out that creating, reading, writing, and truncating are all done with the open call.
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 FILE * fopen( const char* filename, const char* mode )
 \end{lstlisting}
 
-In addition to the filename as the first parameter, the function is called with the mode as the second parameter. 
+	In addition to the filename as the first parameter, the function is called with the mode as the second parameter.
 
-In the last example, the mode we provided was a string literal of \texttt{r}. 
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Mode Options}
-
-\begin{itemize}
-	\item \texttt{r} -- Open the file for reading only.
-	\item \texttt{w} -- Open the file for writing. If a file with the name exists, it's overwritten.
-	\item \texttt{a} -- Open the file, writing data at the end of the file.
-	\item \texttt{r+} -- Open for read and update (the file must exist).
-	\item \texttt{w+} -- Create a file and open it for update; if the file exists it's overwritten.
-	\item \texttt{a+} -- Open a file for update, with new output at the end of the file.
-\end{itemize}
+	In the last example, the mode we provided was a string literal of \texttt{r}.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{More Mode Options}
+	\frametitle{Mode Options}
 
-If we combine an option with a \texttt{b}, such as \texttt{rb} then we are opening the file as a binary file. 
-
-Also, as of the C 2011 standard, there is a new add-on \texttt{x} which can be used to make any write operation fail if the file exists.
-
-\end{frame}
-
-\begin{frame}
-\frametitle{They Call Me The \texttt{Seek}er}
-
-Repositioning is also sometimes called a seek operation.
-
-In C this is done with the \texttt{fseek()} call. 
-
-This adjusts the pointer for reading or writing. 
-
-This should be done with caution though, because you can go to an arbitrary location, even the middle of a two (or more) byte character. 
-
-And we can't seek when a file is opened for append.
+	\begin{itemize}
+		\item \texttt{r} -- Open the file for reading only.
+		\item \texttt{w} -- Open the file for writing. If a file with the name exists, it's overwritten.
+		\item \texttt{a} -- Open the file, writing data at the end of the file.
+		\item \texttt{r+} -- Open for read and update (the file must exist).
+		\item \texttt{w+} -- Create a file and open it for update; if the file exists it's overwritten.
+		\item \texttt{a+} -- Open a file for update, with new output at the end of the file.
+	\end{itemize}
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{\texttt{DELETE}}
+	\frametitle{More Mode Options}
 
-\begin{center}
-\includegraphics[width=0.5\textwidth]{images/delete.png}
-\end{center}
+	If we combine an option with a \texttt{b}, such as \texttt{rb} then we are opening the file as a binary file.
+
+	Also, as of the C 2011 standard, there is a new add-on \texttt{x} which can be used to make any write operation fail if the file exists.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{They Call Me The \texttt{Seek}er}
+
+	Repositioning is also sometimes called a seek operation.
+
+	In C this is done with the \texttt{fseek()} call.
+
+	This adjusts the pointer for reading or writing.
+
+	This should be done with caution though, because you can go to an arbitrary location, even the middle of a two (or more) byte character.
+
+	And we can't seek when a file is opened for append.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{\texttt{DELETE}}
+
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/delete.png}
+	\end{center}
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Deleting a File}
+	\frametitle{Deleting a File}
 
-In C a file is deleted with the \texttt{remove()} function. This simple program deletes whatever file is provided as the second argument. In reality, we would more likely delete a temporary file that the program has used for some purpose, at the end of execution. 
+	In C a file is deleted with the \texttt{remove()} function. This simple program deletes whatever file is provided as the second argument. In reality, we would more likely delete a temporary file that the program has used for some purpose, at the end of execution.
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int main( int argc, char** argv ) {
   if (argc != 2) {
     return -1;
@@ -227,89 +227,89 @@ int main( int argc, char** argv ) {
 
 
 \begin{frame}
-\frametitle{Combining the Operations}
+	\frametitle{Combining the Operations}
 
-These six operations can be combined for most of the other things we may want to do. 
+	These six operations can be combined for most of the other things we may want to do.
 
-To copy a file, for example, create a new file, read from the old file, and write it into the new file. 
+	To copy a file, for example, create a new file, read from the old file, and write it into the new file.
 
-We may also have operations to allow a user to access or set various attributes such as the owner, security descriptors, size on disk...
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Restrictions on the Operations}
-
-Aside from creation and deletion, all operations are restricted to open files.
-
-When a file is opened, a program gets a reference to it, and the operating system keeps track of which files are currently open in which process. 
-
-It is good behaviour for a process to close a file when it is no longer using it.
-
-When the process terminates, that will automatically close any open files (hopefully).
+	We may also have operations to allow a user to access or set various attributes such as the owner, security descriptors, size on disk...
 
 \end{frame}
 
 \begin{frame}
-\frametitle{File Locks}
+	\frametitle{Restrictions on the Operations}
 
-Some operating systems support file locks.
+	Aside from creation and deletion, all operations are restricted to open files.
 
-\begin{center}
-	\includegraphics[width=0.2\textwidth]{images/file-lock}
-\end{center}
+	When a file is opened, a program gets a reference to it, and the operating system keeps track of which files are currently open in which process.
 
-Locks may be exclusive, or non-exclusive. 
+	It is good behaviour for a process to close a file when it is no longer using it.
 
-When a file is locked by one process, other processes will be advised that opening failed due to someone having a lock on that file. 
-
-Similarly, files in use cannot be deleted while that file is in use. 
+	When the process terminates, that will automatically close any open files (hopefully).
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Windows and UNIX File Locks}
+	\frametitle{File Locks}
 
-Windows uses locking; any file that is open in some program cannot be deleted. 
+	Some operating systems support file locks.
 
-UNIX, however, does not, so UNIX-compatible programs can, if they need, lock a file, but by default this does not happen. 
+	\begin{center}
+		\includegraphics[width=0.2\textwidth]{images/file-lock}
+	\end{center}
 
-In UNIX if a file is open in a program, another user can still delete the file and it will be removed from the directory. 
+	Locks may be exclusive, or non-exclusive.
 
-As long as that program remains open and retains that reference to the file, it can still operate on that file. 
+	When a file is locked by one process, other processes will be advised that opening failed due to someone having a lock on that file.
 
-However, once the file is no longer open in a program, its storage space will be marked as free.
+	Similarly, files in use cannot be deleted while that file is in use.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Windows and UNIX File Locks}
+
+	Windows uses locking; any file that is open in some program cannot be deleted.
+
+	UNIX, however, does not, so UNIX-compatible programs can, if they need, lock a file, but by default this does not happen.
+
+	In UNIX if a file is open in a program, another user can still delete the file and it will be removed from the directory.
+
+	As long as that program remains open and retains that reference to the file, it can still operate on that file.
+
+	However, once the file is no longer open in a program, its storage space will be marked as free.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Locking a File}
-To lock a file in Linux, the call for this is \texttt{flock()}.
+	\frametitle{Locking a File}
+	To lock a file in Linux, the call for this is \texttt{flock()}.
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 FILE* f = fopen("myfile.txt", "r");
 int file_number = fileno( f );
 int result = flock(file_number, LOCK_EX);
 \end{lstlisting}
 
-This example locks the file exclusively. 
+	This example locks the file exclusively.
 
-A shared lock would be \texttt{LOCK\_SH}, and to unlock the parameter is \texttt{LOCK\_UN}. 
+	A shared lock would be \texttt{LOCK\_SH}, and to unlock the parameter is \texttt{LOCK\_UN}.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Writing}
+	\frametitle{Writing}
 
-Writing to a file is easy enough because it works like \texttt{printf}. 
+	Writing to a file is easy enough because it works like \texttt{printf}.
 
-In fact, the function call for it is \texttt{fprintf}.
+	In fact, the function call for it is \texttt{fprintf}.
 
-The first argument to this is the file pointer where you'd like the data to be written to:
+	The first argument to this is the file pointer where you'd like the data to be written to:
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 void write_points_to_file( point* p, FILE f ) {
   while( p != NULL ) {
     fprintf(f, "(%d, %d, %d)\n", p->x, p->y, p->z);
@@ -321,12 +321,12 @@ void write_points_to_file( point* p, FILE f ) {
 
 
 \begin{frame}[fragile]
-\frametitle{Reading}
+	\frametitle{Reading}
 
-Reading from a file involves the use of \texttt{fscanf} which is a mirror image of \texttt{fprintf}. 
+	Reading from a file involves the use of \texttt{fscanf} which is a mirror image of \texttt{fprintf}.
 
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int main( int argc, char** argv ){
   FILE *fp;
   int i, isquared;
@@ -350,277 +350,277 @@ int main( int argc, char** argv ){
 
 
 \begin{frame}
-\frametitle{File Types}
+	\frametitle{File Types}
 
-Files we are familiar with often have extensions separated from the file name by a period, like \texttt{fork.txt}. 
+	Files we are familiar with often have extensions separated from the file name by a period, like \texttt{fork.txt}.
 
-The \texttt{txt} extension tells us some information about the file, i.e. it is a text file. 
+	The \texttt{txt} extension tells us some information about the file, i.e. it is a text file.
 
-These things are mostly hints to the OS or user about what sort of file it is. 
+	These things are mostly hints to the OS or user about what sort of file it is.
 
-In most operating systems, any program can open arbitrary files... 
+	In most operating systems, any program can open arbitrary files...
 
-A \texttt{.docx} extension is only a suggestion that it should be opened by a word processing program.
+	A \texttt{.docx} extension is only a suggestion that it should be opened by a word processing program.
 
-OSes typically allow setting a default program for the extension: e.g., always open \texttt{.docx} files with LibreOffice.
-
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Directories}
-
-A directory is really just a symbol table that translates file names (user-readable representations) to their directory entries.
-
-They typically support the operations:
-
-\begin{enumerate}
-	\item \textbf{Search}
-	\item \textbf{Add a File}
-	\item \textbf{Remove a File}
-	\item \textbf{List a Directory}
-	\item \textbf{Rename a File}
-	\item \textbf{Navigate the File System}
-\end{enumerate}
+	OSes typically allow setting a default program for the extension: e.g., always open \texttt{.docx} files with LibreOffice.
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Directories}
+	\frametitle{Directories}
 
-There are simple file systems where there are no such things as subdirectories.
+	A directory is really just a symbol table that translates file names (user-readable representations) to their directory entries.
 
-Textbooks may also bring up a structure where each user has his or her own directory but cannot have subdirectories either. 
+	They typically support the operations:
 
-Tree-structured: there is a root directory, and every file in the system has a unique name when the name and path to it (from the root) are combined.
-
-\end{frame}
-
-\begin{frame}
-\frametitle{UNIX Tree Structured Directory}
-
-In UNIX the root directory is just called \texttt{/} (forward slash).\\
-\quad From there we can navigate to any file. 
-
-To run the \texttt{ls} command, we will find it in the \texttt{bin} directory as \texttt{/bin/ls}. 
-
-This is an example of an absolute path.
-
-\end{frame}
-
-\begin{frame}
-\frametitle{UNIX Tree Structured Directory}
-
-Most of the time we do not have to use the absolute path (the full file name); a relative path (the path from the current directory) will suffice. 
-
-Example: compile something with a command like \texttt{gcc code/example.c}.
-
-The file \texttt{example.c} is in a subdirectory of the current directory called \texttt{code}.
-
-The system will work out that we need to start from the current directory (e.g., \texttt{/home/jz/ece252/}) and prepend that to the given file name.
-
-This produces the absolute path of \texttt{/home/jz/ece252/code/example.c}.
-
-\end{frame}
-
-
-
-\begin{frame}
-\frametitle{Deleting a Directory}
-
-What if a directory is not empty? 
-
-If it is empty, just removing the directory is enough. 
-
-If it contains some files, either the system can refuse to delete the directory until it is empty, or automatically delete the files and subdirectories. 
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Deletion}
-
-Also, what does it mean to delete a file or folder? 
-
-The delete command sometimes does not necessarily actually delete the file or folder, but instead moves it to some deleted files directory. 
-
-If it is deleted from there then it is really gone, but while it is in that deleted file directory it can be restored.
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Sharing of Files}
-
-File systems may also support the sharing of files. 
-
-There is one copy of the file but it has more than one name. 
-
-In UNIX this is called a \alert{link} and this is effectively a pointer to another file. 
-
-Links are either ``hardlinks'' or ``symlinks''.
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Symbolic Links}
-
-Symlinks, or symbolic links, are just references by file name. 
-
-So if a symbolic link is created to a file like \texttt{/Users/jz/file.txt}, the symbolic link will just be a ``shortcut'' to that file. 
-
-If the file is later deleted, the symbolic link is left pointing to nothing. 
-
-A future attempt to use this pointer will result in an error.
-
-It would be expensive, though possible, to search through the file system to find all links and remove them.
+	\begin{enumerate}
+		\item \textbf{Search}
+		\item \textbf{Add a File}
+		\item \textbf{Remove a File}
+		\item \textbf{List a Directory}
+		\item \textbf{Rename a File}
+		\item \textbf{Navigate the File System}
+	\end{enumerate}
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Hard Links}
+	\frametitle{Directories}
 
-Creating a hardlink is creating a pointer to the underlying file in the file system. 
+	There are simple file systems where there are no such things as subdirectories.
 
-If a hardlink exists and the user deletes that file, the file still remains on disk until the last hardlink is removed. 
+	Textbooks may also bring up a structure where each user has his or her own directory but cannot have subdirectories either.
 
-The file structure maintains a count of how many hardlinks reference a file, and it is only really deleted if the count falls to zero.
+	Tree-structured: there is a root directory, and every file in the system has a unique name when the name and path to it (from the root) are combined.
 
+\end{frame}
+
+\begin{frame}
+	\frametitle{UNIX Tree Structured Directory}
+
+	In UNIX the root directory is just called \texttt{/} (forward slash).\\
+	\quad From there we can navigate to any file.
+
+	To run the \texttt{ls} command, we will find it in the \texttt{bin} directory as \texttt{/bin/ls}.
+
+	This is an example of an absolute path.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{UNIX Tree Structured Directory}
+
+	Most of the time we do not have to use the absolute path (the full file name); a relative path (the path from the current directory) will suffice.
+
+	Example: compile something with a command like \texttt{gcc code/example.c}.
+
+	The file \texttt{example.c} is in a subdirectory of the current directory called \texttt{code}.
+
+	The system will work out that we need to start from the current directory (e.g., \texttt{/home/jz/ece252/}) and prepend that to the given file name.
+
+	This produces the absolute path of \texttt{/home/jz/ece252/code/example.c}.
 
 \end{frame}
 
 
 
 \begin{frame}
-\frametitle{File Permissions}
+	\frametitle{Deleting a Directory}
 
-Files usually have some permissions associated with them:
+	What if a directory is not empty?
 
-\begin{enumerate}
-	\item Read
-	\item Write
-	\item Execute
-	\item Append (write at the end of the file)
-	\item Delete
-	\item List (view the attributes of the file)
-\end{enumerate} 
+	If it is empty, just removing the directory is enough.
+
+	If it contains some files, either the system can refuse to delete the directory until it is empty, or automatically delete the files and subdirectories.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Access Control: UNIX-Style}
+	\frametitle{Deletion}
 
-These are used often in UNIX(-like) systems.
+	Also, what does it mean to delete a file or folder?
 
-Each file has an owner and a group. 
+	The delete command sometimes does not necessarily actually delete the file or folder, but instead moves it to some deleted files directory.
 
-Permissions can be assigned for the:
-\begin{itemize}
-	\item Owner
-	\item Group
-	\item Everyone
-\end{itemize}
-
+	If it is deleted from there then it is really gone, but while it is in that deleted file directory it can be restored.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Access Control: UNIX-Style}
+	\frametitle{Sharing of Files}
 
+	File systems may also support the sharing of files.
 
-There are three basic permissions: 
+	There is one copy of the file but it has more than one name.
 
-\begin{itemize}
-	\item Read
-	\item Write
-	\item Execute
-\end{itemize}
+	In UNIX this is called a \alert{link} and this is effectively a pointer to another file.
 
-Permissions are represented by 10 bits:\\ 
-\quad 1 indicates true and 0 indicates false.
+	Links are either ``hardlinks'' or ``symlinks''.
 
-First bit is the directory bit.
+\end{frame}
 
-Next three are read, write, execute for the owner.\\
-Then read, write, execute for the group.\\
-Finally, read, write, execute for everyone.
+\begin{frame}
+	\frametitle{Symbolic Links}
+
+	Symlinks, or symbolic links, are just references by file name.
+
+	So if a symbolic link is created to a file like \texttt{/Users/jz/file.txt}, the symbolic link will just be a ``shortcut'' to that file.
+
+	If the file is later deleted, the symbolic link is left pointing to nothing.
+
+	A future attempt to use this pointer will result in an error.
+
+	It would be expensive, though possible, to search through the file system to find all links and remove them.
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Access Control: UNIX-Style}
+	\frametitle{Hard Links}
+
+	Creating a hardlink is creating a pointer to the underlying file in the file system.
+
+	If a hardlink exists and the user deletes that file, the file still remains on disk until the last hardlink is removed.
+
+	The file structure maintains a count of how many hardlinks reference a file, and it is only really deleted if the count falls to zero.
 
 
-The permissions can be shown in a human-readable format.
+\end{frame}
 
-The order is always the same, and so a dash (\texttt{-}) appears if a bit is zero (permission does not exist). 
 
-The character \texttt{d} is used to indicate a directory.
 
-\texttt{r} to indicate read access.
+\begin{frame}
+	\frametitle{File Permissions}
 
-\texttt{w} to indicate write access.
+	Files usually have some permissions associated with them:
 
-\texttt{x} to indicate execute access.
+	\begin{enumerate}
+		\item Read
+		\item Write
+		\item Execute
+		\item Append (write at the end of the file)
+		\item Delete
+		\item List (view the attributes of the file)
+	\end{enumerate}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Access Control: UNIX-Style}
+
+	These are used often in UNIX(-like) systems.
+
+	Each file has an owner and a group.
+
+	Permissions can be assigned for the:
+	\begin{itemize}
+		\item Owner
+		\item Group
+		\item Everyone
+	\end{itemize}
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Access Control: UNIX-Style}
+
+
+	There are three basic permissions:
+
+	\begin{itemize}
+		\item Read
+		\item Write
+		\item Execute
+	\end{itemize}
+
+	Permissions are represented by 10 bits:\\
+	\quad 1 indicates true and 0 indicates false.
+
+	First bit is the directory bit.
+
+	Next three are read, write, execute for the owner.\\
+	Then read, write, execute for the group.\\
+	Finally, read, write, execute for everyone.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Access Control: UNIX-Style}
+
+
+	The permissions can be shown in a human-readable format.
+
+	The order is always the same, and so a dash (\texttt{-}) appears if a bit is zero (permission does not exist).
+
+	The character \texttt{d} is used to indicate a directory.
+
+	\texttt{r} to indicate read access.
+
+	\texttt{w} to indicate write access.
+
+	\texttt{x} to indicate execute access.
 
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Access Control: UNIX-Style Example}
+	\frametitle{Access Control: UNIX-Style Example}
 
 
-Example: \texttt{-rwxr{-}{-}{-}{-}{-}} 
+	Example: \texttt{-rwxr{-}{-}{-}{-}{-}}
 
-This means:
-\begin{itemize}
-\item not a directory; 
-\item the owner can read, write, and execute; 
-\item other members of the group can read it only
-\item everyone else has no access to the file (cannot read, write, or execute).
-\end{itemize}
-
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Access Control: UNIX-Style}
-
-
-Permissions can also be written in octal (base 8): \\
-\quad r = 4, w = 2, and x = 1. 
-
-Start with 0, and then add the value of the  permissions that are present, using zero where permissions are absent. 
-
-Example: \texttt{750} \mnote{meaning that the owner has read, write and execute access (0 + 4 + 2 + 1 = 7); group members have read and execute access (0 + 4 + 0 + 1 = 5); everyone else has no access to it at all.}
+	This means:
+	\begin{itemize}
+		\item not a directory;
+		\item the owner can read, write, and execute;
+		\item other members of the group can read it only
+		\item everyone else has no access to the file (cannot read, write, or execute).
+	\end{itemize}
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Access Control: UNIX-Style}
+	\frametitle{Access Control: UNIX-Style}
 
 
-More details: like what the permissions mean on directories, 
+	Permissions can also be written in octal (base 8): \\
+	\quad r = 4, w = 2, and x = 1.
 
-Advanced topics like \texttt{setuid}, \texttt{setgid}, and ``sticky bit''.
+	Start with 0, and then add the value of the  permissions that are present, using zero where permissions are absent.
 
-Beyond the scope of this course.
+	Example: \texttt{750} \mnote{meaning that the owner has read, write and execute access (0 + 4 + 2 + 1 = 7); group members have read and execute access (0 + 4 + 0 + 1 = 5); everyone else has no access to it at all.}
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Access Control: UNIX-Style}
+	\frametitle{Access Control: UNIX-Style}
 
 
-The obvious shortcoming: very coarse grained.
+	More details: like what the permissions mean on directories,
 
-Another strategy is used by SELinux and Windows NT: ACLs.
+	Advanced topics like \texttt{setuid}, \texttt{setgid}, and ``sticky bit''.
 
-... But we will consider that beyond the scope of the course for now.
+	Beyond the scope of this course.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Access Control: UNIX-Style}
+
+
+	The obvious shortcoming: very coarse grained.
+
+	Another strategy is used by SELinux and Windows NT: ACLs.
+
+	... But we will consider that beyond the scope of the course for now.
 \end{frame}
 
 \end{document}

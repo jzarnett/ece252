@@ -6,9 +6,9 @@
 
 \section*{File Systems}
 
-The file system is important and very useful to programs. It is more than just the way of storing data and programs persistently; it also provides organization for the files through a directory structure and maintains metadata related to files. 
+The file system is important and very useful to programs. It is more than just the way of storing data and programs persistently; it also provides organization for the files through a directory structure and maintains metadata related to files.
 
-But what is a file? The snarky UNIX answer is, ``Everything is a file!'', but using the word in the definition is rather bad form. As far as the computer is concerned, any data is just 1s and 0s (bytes). The file is just a logical unit to organize these. So an area of disk is designated as belonging to a file. 
+But what is a file? The snarky UNIX answer is, ``Everything is a file!'', but using the word in the definition is rather bad form. As far as the computer is concerned, any data is just 1s and 0s (bytes). The file is just a logical unit to organize these. So an area of disk is designated as belonging to a file.
 
 Files can contain programs (e.g., \texttt{word.exe}) and/or data (e.g., \texttt{technical-report.docx}). The content of a file is defined by its creator. The creator could be a user if he or she is using notepad or something, or it could be a program, like a compiler creating an output binary file.
 
@@ -57,7 +57,7 @@ We already saw in an earlier example how to open and close a file:
 
 \paragraph{Writing a File.} Writing a file requires the name or identifier of the file and the data to be written to the file. Using the name or identifier, the system finds that file and can then start putting data in the file. A write operation may replace the existing contents or append (write at the end) to the existing contents. A pointer will be needed to keep track of where the next write will take place, and will be updated after each write (but we don't have to manage this ourselves if we don't want to).
 
-\paragraph{Reading a File.} This requires the name or identifier of the file and where in memory the next block of the file should be put. A pointer will also be required to indicate where the next read will take place (and like the write pointer, we don't have to manage this ourselves usually). 
+\paragraph{Reading a File.} This requires the name or identifier of the file and where in memory the next block of the file should be put. A pointer will also be required to indicate where the next read will take place (and like the write pointer, we don't have to manage this ourselves usually).
 
 \paragraph{Truncating a File.} If a file should be erased but its attributes maintained (e.g., all the metadata), we can truncate it: cut off all the contents. The file length is reset to zero and its data area is marked as free, but the rest of the attributes remain the same.
 
@@ -81,7 +81,7 @@ In C this is done with the \texttt{fseek()} call. This adjusts the pointer for r
 
 \paragraph{Deleting a File.} Deletion works pretty much as we would expect: find the file, mark its space as free, and remove it from the directory listing. This is a ``simple'' deletion and it does not actually get rid of any of the data, it just makes the file system forget the existence of the file. However, it might be possible to recover the data if the space it previously occupied has not been overwritten. This is a bit like a freed pointer in C possibly still being accessible. Some systems offer a more secure deletion routine that overwrites the space the file used to occupy with zeros.
 
-In C a file is deleted with the \texttt{remove()} function. This simple program deletes whatever file is provided as the second argument. In reality, we would more likely delete a temporary file that the program has used for some purpose, at the end of execution. 
+In C a file is deleted with the \texttt{remove()} function. This simple program deletes whatever file is provided as the second argument. In reality, we would more likely delete a temporary file that the program has used for some purpose, at the end of execution.
 
 \begin{lstlisting}[language=C]
 int main( int argc, char** argv ) {
@@ -100,11 +100,11 @@ These six operations can be combined for most of the other things we may want to
 
 Aside from creation and deletion, all the other operations are restricted to files that are open. When a file is opened, a program gets a reference to it, and the operating system keeps track of which files are currently open in which process. It is good behaviour for a process to close a file when it is no longer using it, but eventually when the process terminates, that will automatically close any open files (hopefully).
 
-Some operating systems support file locks. Locks may be exclusive, or non-exclusive. When a file is locked by one process, other processes will be advised that opening failed due to someone having a lock on that file. Similarly, files in use cannot be deleted while that file is in use. 
+Some operating systems support file locks. Locks may be exclusive, or non-exclusive. When a file is locked by one process, other processes will be advised that opening failed due to someone having a lock on that file. Similarly, files in use cannot be deleted while that file is in use.
 
 Windows, for example, uses locking and any file that is open in some program cannot be deleted. UNIX, however, does not, so UNIX-compatible programs can, if they need, lock a file, but by default this does not happen. In UNIX if a file is open in a program, another user can still delete the file and it will be removed from the directory. As long as that program remains open and retains that reference to the file, it can still operate on that file. However, once the file is no longer open in a program, its storage space will be marked as free.
 
-To lock a file in Linux, the call for this is \texttt{flock()}. Think ``File-Lock'', not ``flock of seagulls''. It takes two parameters, the file number and the type of lock we wish to have. But we have opened a file with \texttt{fopen()} and it returns a \texttt{FILE} pointer. To convert that to a number, there is a function \texttt{fileno()}. 
+To lock a file in Linux, the call for this is \texttt{flock()}. Think ``File-Lock'', not ``flock of seagulls''. It takes two parameters, the file number and the type of lock we wish to have. But we have opened a file with \texttt{fopen()} and it returns a \texttt{FILE} pointer. To convert that to a number, there is a function \texttt{fileno()}.
 
 \begin{lstlisting}[language=C]
 FILE* f = fopen("myfile.txt", "r");
@@ -112,7 +112,7 @@ int file_number = fileno( f );
 int result = flock(file_number, LOCK_EX);
 \end{lstlisting}
 
-This example locks the file exclusively. A shared lock would be \texttt{LOCK\_SH}, and to unlock the parameter is \texttt{LOCK\_UN}. 
+This example locks the file exclusively. A shared lock would be \texttt{LOCK\_SH}, and to unlock the parameter is \texttt{LOCK\_UN}.
 
 \subsection*{Reading and Writing}
 
@@ -150,7 +150,7 @@ int main( int argc, char** argv ){
 
 The return value of this function call is the number of elements successfully read, which in this case is supposed to be two. But it's worth noting that there's no space in the read from the file, because the \texttt{\%d} skips leading whitespaces (occasionally leading to hard-to-find bugs).
 
-If reading user input, there is of course, regular \texttt{scanf}. We can, of course, read a file with \texttt{getline} as in the earlier examples. 
+If reading user input, there is of course, regular \texttt{scanf}. We can, of course, read a file with \texttt{getline} as in the earlier examples.
 
 \subsection*{File Types}
 
@@ -175,7 +175,7 @@ In UNIX the root directory is just called \texttt{/} (forward slash) and from th
 
 OS designers have to make a choice about deletion of directories, if a directory is not empty. If it is empty, just removing the directory is enough. If it contains some files, either the system can refuse to delete the directory until it is empty, or automatically delete the files and subdirectories in their entirety. Also, what does it mean to delete a file or folder? In modern operating systems, the delete command sometimes does not necessarily actually delete the file or folder, but instead moves it to some deleted files directory (recycle bin, trash can, whatever you want to call it). If it is deleted from there then it is really gone, but while it is in that deleted file directory it can be restored.
 
-File systems may also support the sharing of files: there is one copy of the file but it has more than one name. In UNIX this concept is called a \textit{link} and this is effectively a pointer to another file. Links are either ``hardlinks'' or ``symlinks''. 
+File systems may also support the sharing of files: there is one copy of the file but it has more than one name. In UNIX this concept is called a \textit{link} and this is effectively a pointer to another file. Links are either ``hardlinks'' or ``symlinks''.
 
 Symlinks, or symbolic links, are just references by file name. So if a symbolic link is created to a file like \texttt{/Users/jz/file.txt}, the symbolic link will just be a ``shortcut'' to that file. If the file is later deleted, the symbolic link is left pointing to nothing. A future attempt to use this pointer will result in an error, so it is something to check on. It would be expensive, though possible, to search through the file system to find all links and remove them.
 
@@ -191,7 +191,7 @@ To protect users from one another and to maintain the confidentiality and integr
 	\item Append (write at the end of the file)
 	\item Delete
 	\item List (view the attributes of the file)
-\end{enumerate} 
+\end{enumerate}
 
 \paragraph{UNIX-Style Permissions.}
 UNIX-Style permissions are commonly used still today in a lot of UNIX and UNIX-like systems. Each file has an owner and a group, and a set of permissions that can be assigned for the owner, the group, and for everyone. There are three basic permissions: read, write, and execute (run as a program). The permissions are represented using 10 bits, where a 1 indicates true and a 0 indicates false. The first bit is the directory bit and indicates if the file being examined is actually a directory. The next three bits are the read, write, and execute bits for the owner, followed by the read, write, and execute bits for the group, and finally the read, write, and execute bits for everyone.
@@ -200,7 +200,7 @@ Effective permissions are determined by the user: the owner of the file gets the
 
 The permissions can be shown to the screen in a human-readable format which is ten characters long. The order is always the same, and so a dash (\texttt{-}) appears if a bit is zero (permission does not exist). The character \texttt{d} is used to indicate a directory, \texttt{r} to indicate read access, \texttt{w} to indicate write access, and \texttt{x} to indicate execute access.
 
-Example: permissions of \texttt{-rwxr{-}{-}{-}{-}{-}} indicate that a file is not a directory; the owner can read, write, and execute; other members of the group can read it only, and everyone else has no access to the file (cannot read, write, or execute). 
+Example: permissions of \texttt{-rwxr{-}{-}{-}{-}{-}} indicate that a file is not a directory; the owner can read, write, and execute; other members of the group can read it only, and everyone else has no access to the file (cannot read, write, or execute).
 
 Permissions can also be written in octal (base 8) where r = 4, w = 2, and x = 1. To get the octal representation, start with 0, and then add the value of the  permissions that are present, using zero where permissions are absent. You might then have a permission that reads \texttt{750} - meaning that the owner has read, write and execute access (0 + 4 + 2 + 1 = 7); group members have read and execute access (0 + 4 + 0 + 1 = 5); everyone else has no access to it at all.
 
