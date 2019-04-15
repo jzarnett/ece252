@@ -6,7 +6,7 @@
 
 \section*{Network Communication}
 
-Another form of inter-process communication is of course the idea of network communication. If two processes are not running on the same machine in the same environment, then to get them to communicate we can't use pipes or shared memory... instead, we must communicate over the network. But not only that: we can actually use the network as a method of communication if the two processes are on the same machine (as we will see). 
+Another form of inter-process communication is of course the idea of network communication. If two processes are not running on the same machine in the same environment, then to get them to communicate we can't use pipes or shared memory... instead, we must communicate over the network. But not only that: we can actually use the network as a method of communication if the two processes are on the same machine (as we will see).
 
 A diagram describing network communication frequently represents the network as just a mysterious cloud or blob, and for the moment we will just pretend that is how it is. There is a whole course on how computer networks function and behave and what the various layers are. For the sake of simplicity we will focus just on how we use the network, and not how the network is implemented.
 
@@ -24,7 +24,7 @@ Much like everything else in UNIX, a socket is handled like a file. It just so h
 int socket( int domain, int type, int protocol )
 \end{lstlisting}
 
-The arguments require some explanation. The \texttt{domain} value defines the address format (amongst other things) and is how we would choose between, for example, IPv4 and IPv6 (or other more things...). For the purposes of this course, we'll use IPv4 and the constant for that is defined as \texttt{AF\_INET} (address family: internet!). 
+The arguments require some explanation. The \texttt{domain} value defines the address format (amongst other things) and is how we would choose between, for example, IPv4 and IPv6 (or other more things...). For the purposes of this course, we'll use IPv4 and the constant for that is defined as \texttt{AF\_INET} (address family: internet!).
 
 The \texttt{type} argument gives what kind of information we are going to be sending. \texttt{SOCK\_DGRAM} is for datagrams and \texttt{SOCK\_STREAM} is for a bidirectional byte stream~\cite{apunix}.
 
@@ -35,7 +35,7 @@ Notice that the return type is an integer. Why is that? Well, a file descriptor 
 And just like a file that is opened, a socket that is opened needs to be closed when we are finished with it. For that we can just use \texttt{close}. You have probably noticed some asymmetry: there are different calls to open things (\texttt{open}, \texttt{pipe}, \texttt{socket}). That's because when we want to open something we have to say what kind of thing we want to open. When we want to close something, we already know what type it is.
 
 \paragraph{Check the Boot of the Car for your Jumper!}
-When we are going to communicate over the network we have to make sure that we speak the same language. More than that, we have to speak the same dialect (British English, for example, contains phrases and terms that you might not know if you only know Canadian or American English). 
+When we are going to communicate over the network we have to make sure that we speak the same language. More than that, we have to speak the same dialect (British English, for example, contains phrases and terms that you might not know if you only know Canadian or American English).
 
 Normally this is not something that we need to think about, but when communicating over the network, the system on the other side might have a different idea of how data is organized. Consider, if you will, a four byte (32 bit) integer. There are two possible (reasonable) orders for how its bytes can be stored: smallest to largest or largest to smallest. These are shown below as big-endian and little-endian respectively:
 
@@ -44,7 +44,7 @@ Normally this is not something that we need to think about, but when communicati
 	Byte order for a 4-byte (32 bit) integer~\cite{apunix}.
 \end{center}
 
-You might think that little-endian makes no sense. This is because you are a human reading a language left to right in a case where we put lower memory addresses on the left and higher ones on the right. The computer does not care about the convention. But anyway, x86 architecture is little-endian, but others (PowerPC) are not, so we can make no assumptions about what the architecture of the other side is. For this reason, network protocols specify a particular byte ordering so that everyone agrees on the meaning of the material. And this means that we need to translate the values to the big-endian format. 
+You might think that little-endian makes no sense. This is because you are a human reading a language left to right in a case where we put lower memory addresses on the left and higher ones on the right. The computer does not care about the convention. But anyway, x86 architecture is little-endian, but others (PowerPC) are not, so we can make no assumptions about what the architecture of the other side is. For this reason, network protocols specify a particular byte ordering so that everyone agrees on the meaning of the material. And this means that we need to translate the values to the big-endian format.
 
 Included in the \texttt{arpa/inet.h} header are some functions to help us out. They translate from whatever system byte order you have to the network byte order, and vice versa. Their use is advisable even if you're sure the system you are using is big-endian, because of portability of your code. They come in 32-bit and 16-bit variants depending on what you need.
 
@@ -72,11 +72,11 @@ addr.sin_port = htons( 2520 );
 addr.sin_addr.s_addr = htonl( INADDR_ANY );
 \end{lstlisting}
 
-As expected, if we want an IPv4 address then we use the matching family type of \texttt{AF\_INET}. Then there are the IP address and port fields. 
+As expected, if we want an IPv4 address then we use the matching family type of \texttt{AF\_INET}. Then there are the IP address and port fields.
 
 You're almost certainly familiar with IPv4 addresses... they take the format of \texttt{XXX.XXX.XXX.XXX} where each grouping of \texttt{XXX} is a number between 0 and 255. If you want to connect to your router, for example, you might type in \texttt{192.168.0.1} in the address bar of your browser. When you type in a name, like \texttt{uwaterloo.ca} there is a translation process that occurs that transforms this into an IP address, like \texttt{129.97.208.23}. The computer uses the number; names are nice for humans, though. But here we chose a constant value, \texttt{INADDR\_ANY}. This says, choose the current IP address of the current computer (and it could have several if it has more than one network connection). We aren't trying to use any specific address; we just want one the computer has.
 
-And what about ports? If you want to think about your computer's address as being like a street address, imagine that it's then an apartment building and the port number is which apartment the connection is made with. Different services (processes) are communicating over different ports. No two processes can be using the same port at the same time. By convention, ports with numbers below 1024 considered to be reserved for system services (and requiring superuser access to make use of). For our purposes, we will always choose ports above 1024. 
+And what about ports? If you want to think about your computer's address as being like a street address, imagine that it's then an apartment building and the port number is which apartment the connection is made with. Different services (processes) are communicating over different ports. No two processes can be using the same port at the same time. By convention, ports with numbers below 1024 considered to be reserved for system services (and requiring superuser access to make use of). For our purposes, we will always choose ports above 1024.
 
 When you log in to a server with \texttt{ssh}, for example, the default port for that is 22. This is a ``well known'' port, in that everyone agrees up front this port is the one for this service. Thus when a server starts up the daemon, it knows to listen for connections on port 22 and when you're ready to connect to that server, the \texttt{ssh} client chooses that port by default.
 
@@ -93,7 +93,7 @@ int getaddrinfo(const char *node,     // e.g. "www.example.com" or IP
                 struct addrinfo **res);
 \end{lstlisting}
 
-The \texttt{node} parameter is the hostname to connect to but can also be an IP address. The \texttt{service} parameter can be things like ``http'' to get the defined port for that protocol, but I really recommend you use explicit port number such as ``80'' for HTTP. The \texttt{hints} parameter is used (optionally) to restrict what kind of connection you want, such as saying you want IPv4, TCP Stream sockets, and letting the function fill in the IP address (see example below). And then there is a pointer to a \texttt{struct addrinfo *} (pointer to a pointer); that structure will be updated when the function is done. And the function does have a return value of an int, whereby 0 indicates success. 
+The \texttt{node} parameter is the hostname to connect to but can also be an IP address. The \texttt{service} parameter can be things like ``http'' to get the defined port for that protocol, but I really recommend you use explicit port number such as ``80'' for HTTP. The \texttt{hints} parameter is used (optionally) to restrict what kind of connection you want, such as saying you want IPv4, TCP Stream sockets, and letting the function fill in the IP address (see example below). And then there is a pointer to a \texttt{struct addrinfo *} (pointer to a pointer); that structure will be updated when the function is done. And the function does have a return value of an int, whereby 0 indicates success.
 
 Okay, so let's try it out~\cite{getaddrinfo}:
 
@@ -116,7 +116,7 @@ struct sockaddr_in * sain = (struct sockaddr_in*) serverinfo->ai_addr;
 freeaddrinfo( serverinfo );
 \end{lstlisting}
 
-Assuming that all went well, the \texttt{serverinfo} pointer is now pointing to a linked list of \texttt{struct sockaddr} (the generic form of \texttt{sockaddr\_in}) which gives us the information we need: the IP address for the server we want to communicate with. The actual info struct is in the linked list node's \texttt{ai\_addr} attribute and the pointer to the next one is \texttt{ai\_next}. Most of the time we just need the first result, though. The \texttt{struct sockaddr} structure we got out of this can be used in future calls (although we might need to cast the result to the type we need). 
+Assuming that all went well, the \texttt{serverinfo} pointer is now pointing to a linked list of \texttt{struct sockaddr} (the generic form of \texttt{sockaddr\_in}) which gives us the information we need: the IP address for the server we want to communicate with. The actual info struct is in the linked list node's \texttt{ai\_addr} attribute and the pointer to the next one is \texttt{ai\_next}. Most of the time we just need the first result, though. The \texttt{struct sockaddr} structure we got out of this can be used in future calls (although we might need to cast the result to the type we need).
 
 If we are interested in getting the structure for the local computer, we can manually initialize the \texttt{struct sockaddr\_in} as we did before learning about how \texttt{getaddrinfo()} works. Or we can call \texttt{getaddrinfo()} with \texttt{NULL} as the \texttt{node} parameter.
 
@@ -155,7 +155,7 @@ Assuming that you connected successfully, you're now ready to start using the co
 \paragraph{Server: Bind, Listen, and Accept.}
 The overview of what steps the server is going to do is bind, listen, and accept. The bind step is how we choose what port we are going to connect to. The listen step is the part where we wait for connections from a client. Then the last step is accept, that is, establish the connection so we can start talking.
 
-Step one is \texttt{bind()}: this is how we associate the socket with whatever port we want to use. When the \texttt{ssh} daemon is available for connection, it's because it has bound itself to the port 22 using \texttt{bind}. 
+Step one is \texttt{bind()}: this is how we associate the socket with whatever port we want to use. When the \texttt{ssh} daemon is available for connection, it's because it has bound itself to the port 22 using \texttt{bind}.
 
 So a quick example of using \texttt{bind} then, done without using \texttt{getaddrinfo}:
 

@@ -9,8 +9,8 @@
 This problem is about concurrent reading and modification of a data structure or record by more than one thread. A writer will modify the data; a reader will read it only without modification. Unlike the producer-consumer problem, some concurrency is allowed:
 
 \begin{enumerate}
-\item Any number of readers may be in the critical section simultaneously.
-\item Only one writer may be in the critical section (and when it is, no readers are allowed).
+	\item Any number of readers may be in the critical section simultaneously.
+	\item Only one writer may be in the critical section (and when it is, no readers are allowed).
 \end{enumerate}
 
 Or, to sum that up, a writer cannot enter the critical section while any other thread (whether reader or writer) is there. While a writer is in the critical section, neither readers nor writers may enter the critical section~\cite{lbs}. This is very often how file systems work: a file may be read concurrently by any number of threads, but only one thread may write to it at a time (and to prevent reading of inconsistent data, no thread may read during the write).
@@ -20,8 +20,8 @@ This is similar to, but distinct from, the general mutual exclusion problem and 
 Let us keep track of the number of readers at any given time with a variable \texttt{readers}. We will need a way of protecting this variable from concurrent modifications, so there will have to be a binary semaphore \texttt{mutex}. We will also need one further semaphore, \texttt{roomEmpty}, as a way of indicating that the room is empty. A writer has to wait for the room to be empty (i.e., \texttt{wait} on the \texttt{roomEmpty} semaphore) before it can enter. The solution comes from~\cite{lbs}:
 
 \begin{multicols}{2}
-\textbf{Writer}\vspace{-2em}
-  \begin{verbatim}
+	\textbf{Writer}\vspace{-2em}
+	\begin{verbatim}
 	 1. wait( roomEmpty )
 	 2. [write data]
 	 3. post( roomEmpty )
@@ -36,9 +36,9 @@ Let us keep track of the number of readers at any given time with a variable \te
 	 
 	 
   \end{verbatim}
-\columnbreak
-\textbf{Reader}\vspace{-2em}
-  \begin{verbatim}
+	\columnbreak
+	\textbf{Reader}\vspace{-2em}
+	\begin{verbatim}
 	 1. wait( mutex )
 	 2. readers++
 	 3. if readers == 1
@@ -58,7 +58,7 @@ Let us keep track of the number of readers at any given time with a variable \te
 
 The code for the writer is much simpler than that of the readers. The writer may only enter into the critical section if the room is empty. When it has finished, it signals that the room is empty. The writer can be certain that when it exits the critical section that there are no other threads in the room, because no thread may enter the room while the writer was there.
 
-The reader code is somewhat more complicated. The first reader that arrives encounters the situation that the room is empty, so it ``locks'' the room (waiting on the \texttt{roomEmpty} semaphore), and that will prevent writers from entering the room. Additional readers do not check if the room is empty; they just proceed to enter. When the last reader leaves the room, it signals that the room is empty (``unlocking it'' to allow a writer in). This pattern is sometimes called the \textit{light switch}, as in~\cite{mte241}: the first one into the room turns on the lights and the last one out turns them off again. 
+The reader code is somewhat more complicated. The first reader that arrives encounters the situation that the room is empty, so it ``locks'' the room (waiting on the \texttt{roomEmpty} semaphore), and that will prevent writers from entering the room. Additional readers do not check if the room is empty; they just proceed to enter. When the last reader leaves the room, it signals that the room is empty (``unlocking it'' to allow a writer in). This pattern is sometimes called the \textit{light switch}, as in~\cite{mte241}: the first one into the room turns on the lights and the last one out turns them off again.
 
 The reader code has that situation that makes us concerned about the possibility of deadlock: a wait on \texttt{roomEmpty} inside a critical section controlled by \texttt{mutex}. With a bit of reasoning, we can convince ourselves that there is no risk: the only situation in which a thread waits on \texttt{roomEmpty} is that a writer is currently in its critical section. No other reader thread can get the \texttt{mutex} lock. As long as the write operation takes finite time, eventually the writer will post the \texttt{roomEmpty} semaphore and the threads can continue. Deadlock is not a problem.
 
@@ -68,11 +68,11 @@ Recall criterion 3 of the list of properties we want in any mutual exclusion sol
 
 Conceptually, the solution that accomplishes the goal looks something like this: when a writer arrives, any readers currently reading should be permitted to finish their read, but no new readers should be allowed to start reading. Thus, eventually, all the readers currently in the critical section will finish, the writer will get a turn, because the room is empty, and when the writer is done, all the readers that arrived after the writer will be able to enter.
 
-A new binary semaphore is needed here, called \texttt{turnstile}. 
+A new binary semaphore is needed here, called \texttt{turnstile}.
 
 \begin{multicols}{2}
-\textbf{Writer}\vspace{-2em}
-  \begin{verbatim}
+	\textbf{Writer}\vspace{-2em}
+	\begin{verbatim}
 	 1. wait( turnstile )
 	 2. wait( roomEmpty )
 	 3. [write data]
@@ -89,9 +89,9 @@ A new binary semaphore is needed here, called \texttt{turnstile}.
 	 
 	 
   \end{verbatim}
-\columnbreak
-\textbf{Reader}\vspace{-2em}
-  \begin{verbatim}
+	\columnbreak
+	\textbf{Reader}\vspace{-2em}
+	\begin{verbatim}
 	 1. wait( turnstile )
 	 2. post( turnstile )
 	 3. wait( mutex )
@@ -111,7 +111,7 @@ A new binary semaphore is needed here, called \texttt{turnstile}.
 \end{multicols}
 \vspace{-2em}
 
-As before, the writer code is simpler, so we will examine it first. When the writer arrives, it will wait on the turnstile. If it is not the first writer, subsequent writers will queue up there, but if proceeds then it will wait for the room to be empty. Because the writer has locked the turnstile, no new readers can enter. There may be an arbitrary number of readers currently in the room, but each is there for only a finite amount of time. These existing-readers will be allowed to finish and leave the room. Then the writer gets a turn. When the writer is done, it posts the turnstile, which might unblock a reader or another writer. 
+As before, the writer code is simpler, so we will examine it first. When the writer arrives, it will wait on the turnstile. If it is not the first writer, subsequent writers will queue up there, but if proceeds then it will wait for the room to be empty. Because the writer has locked the turnstile, no new readers can enter. There may be an arbitrary number of readers currently in the room, but each is there for only a finite amount of time. These existing-readers will be allowed to finish and leave the room. Then the writer gets a turn. When the writer is done, it posts the turnstile, which might unblock a reader or another writer.
 
 Readers first get to the turnstile, and if they find it is locked, a writer is in its critical section. Thus, readers will queue at the turnstile if necessary, otherwise proceed. After that, the code is the same as we saw before: keep track of the number of readers and post if the room is empty or not empty.
 
@@ -123,11 +123,11 @@ On to deadlock: the reader code is minimally changed from before; we have identi
 Note that this solution does not give writers any particular priority: when a writer exits it posts \texttt{turnstile} and that may unblock a reader or a writer. If it unblocks a reader, a whole bunch of readers may enter before the next writer is unblocked and locks the turnstile again. That may or may not be desirable, depending on the application. In any event, it does mean it is possible for readers to proceed even if a writer is queued. If there is a need to give writers priority, there are several techniques for doing so~\cite{lbs}.
 
 
-Let's modify the solution so that writers have priority over readers. Giving writers priority may potentially cause readers to starve, but you may ignore this. We will probably want to break up the \texttt{roomEmpty} semaphore into \texttt{noReaders} and \texttt{noWriters}. A reader in the critical section should hold the \texttt{noReaders} semaphore and a writer should hold \texttt{noWriters} and \texttt{noReaders}. 
+Let's modify the solution so that writers have priority over readers. Giving writers priority may potentially cause readers to starve, but you may ignore this. We will probably want to break up the \texttt{roomEmpty} semaphore into \texttt{noReaders} and \texttt{noWriters}. A reader in the critical section should hold the \texttt{noReaders} semaphore and a writer should hold \texttt{noWriters} and \texttt{noReaders}.
 
 \begin{multicols}{2}
-\textbf{Writer}\vspace{-1em}
-  \begin{verbatim}
+	\textbf{Writer}\vspace{-1em}
+	\begin{verbatim}
      1. wait( writeMutex )
      2. writers++
      3. if writers == 1
@@ -144,9 +144,9 @@ Let's modify the solution so that writers have priority over readers. Giving wri
     14. end if
     15. post( writeMutex )     
   \end{verbatim}
-\columnbreak
-\textbf{Reader}\vspace{-2em}
-  \begin{verbatim}
+	\columnbreak
+	\textbf{Reader}\vspace{-2em}
+	\begin{verbatim}
      1. wait( noReaders )
      2. wait( readMutex )
      3. readers++
@@ -166,9 +166,9 @@ Let's modify the solution so that writers have priority over readers. Giving wri
 \end{multicols}
 \vspace{-2em}
 
-Yikes! The complexity for the writer increased dramatically. The reader is not all that different than it was before, however, and the writer now is to some extent the mirror image of the reader. 
+Yikes! The complexity for the writer increased dramatically. The reader is not all that different than it was before, however, and the writer now is to some extent the mirror image of the reader.
 
-\subsection*{Readers Writers Example} 
+\subsection*{Readers Writers Example}
 Using the pseudocode as above, we can implement the readers-writers behaviour in a given program using only semaphores (optionally using a mutex to replace a semaphore). But in the pthread library there is support for readers-writers lock types, meaning we don't have to reinvent the wheel. We can probably well imagine the actual complexity of the previous solution, so it's our hope that the readers-writers lock would make our code simpler to read and harder to make mistakes.
 
 The type for the lock is \texttt{pthread\_rwlock\_t}. It is analogous, obviously, to the mutex type \texttt{pthread\_mutex\_t}. Let's consider the functions that we have:
@@ -194,7 +194,7 @@ As for whether readers or writers get priority, the specification says this is i
 Consider the following example of the simple readers-writers (without writer priority and with risk of starvation) using the ``old'' way:
 
 \begin{multicols}{2}
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 int readers;
 pthread_mutex_t mutex;
 sem_t roomEmpty;
@@ -211,9 +211,9 @@ void cleanup( ) {
 }
 \end{lstlisting}
 
-\columnbreak
+	\columnbreak
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 void* writer( void* arg ) {
   sem_wait( &roomEmpty );
   write_data( arg );
@@ -242,7 +242,7 @@ void* reader( void* read ) {
 Now see it as it would be with the use of a rwlock!
 
 \begin{multicols}{2}
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 pthread_rwlock_t rwlock;
 
 void init( ) {
@@ -254,9 +254,9 @@ void cleanup( ) {
 }
 \end{lstlisting}
 
-\columnbreak
+	\columnbreak
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 void* writer( void* arg ) {
   pthread_rwlock_wrlock( &rwlock );
   write_data( arg );
@@ -274,20 +274,20 @@ void* reader( void* read ) {
 
 \subsection*{Seek and Destroy: the Search-Insert-Delete Problem}
 
-This is an extension of the readers-writers problem called the search-insert-delete problem. Instead of two types of thread, reader and writer, there are three types of thread: searchers, inserters, deleters. They operate on a shared linked list of data. 
+This is an extension of the readers-writers problem called the search-insert-delete problem. Instead of two types of thread, reader and writer, there are three types of thread: searchers, inserters, deleters. They operate on a shared linked list of data.
 
-\textit{Searchers} merely examine the list; hence they can execute concurrently with each other. Searcher threads must call \texttt{void search( void* target )} where the argument to the searcher thread is the element to be found. These most closely resemble readers in the readers-writers problem. 
+\textit{Searchers} merely examine the list; hence they can execute concurrently with each other. Searcher threads must call \texttt{void search( void* target )} where the argument to the searcher thread is the element to be found. These most closely resemble readers in the readers-writers problem.
 
-\textit{Inserters} add new items to the end of the list; only one insertion may take place at a time. However, one insert can proceed in parallel with any number of searches. Inserter threads call \texttt{node* find\_insert\_loc()} to find where to do the insertion; then \texttt{void insert( void* to\_insert )} where the arguments are the location and the element to be inserted. Assume \texttt{insert} is written so the insertion can be done in parallel with the searches. Inserters resemble readers with an additional rule that only one of them can manipulate the list at a time. 
+\textit{Inserters} add new items to the end of the list; only one insertion may take place at a time. However, one insert can proceed in parallel with any number of searches. Inserter threads call \texttt{node* find\_insert\_loc()} to find where to do the insertion; then \texttt{void insert( void* to\_insert )} where the arguments are the location and the element to be inserted. Assume \texttt{insert} is written so the insertion can be done in parallel with the searches. Inserters resemble readers with an additional rule that only one of them can manipulate the list at a time.
 
 \textit{Deleters} remove items from anywhere in the list. At most one deleter process can access the list at a time, and when the deleter is accessing the list, no inserters and no searchers may be accessing the list. Deleter threads call \texttt{void delete( void* to\_delete )} where the argument to the deleter thread is the element to be deleted. These most closely resemble writers in the readers-writers problem.
 
 It turns out we don't need to modify things too much to allow for this third kind of thread. We need to keep track of when there are ``no inserters'' and ``no searchers'' (some hints for our semaphores) and another mutex to go around the actual insertion... See the code implementation below.
 
-{\scriptsize
-\begin{multicols}{2}
+	{\scriptsize
+		\begin{multicols}{2}
 
-\begin{lstlisting}[language=C]
+			\begin{lstlisting}[language=C]
 pthread_mutex_t searcher_mutex;
 pthread_mutex_t inserter_mutex;
 pthread_mutex_t perform_insert;
@@ -325,8 +325,8 @@ void* searcher_thread( void *target ) {
   pthread_mutex_unlock( &searcher_mutex );
 }
 \end{lstlisting}
-\columnbreak
-\begin{lstlisting}[language=C]
+			\columnbreak
+			\begin{lstlisting}[language=C]
 void* deleter_thread( void* to_delete ) {
   sem_wait( &no_searchers );
   sem_wait( &no_inserters );
@@ -359,8 +359,8 @@ void* inserter_thread( void *to_insert ) {
   pthread_mutex_unlock( &inserter_mutex );
 }
 \end{lstlisting}
-\end{multicols}
-}
+		\end{multicols}
+	}
 
 
 

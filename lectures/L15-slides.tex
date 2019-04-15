@@ -4,278 +4,278 @@
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
-  University of Waterloo}
+	University of Waterloo}
 \date{\today}
 
 
 \begin{document}
 
 \begin{frame}
-  \titlepage
+	\titlepage
 
- \end{frame}
+\end{frame}
 
 \begin{frame}
-\frametitle{Synchronization Patterns}
+	\frametitle{Synchronization Patterns}
 
 
-There are a number of common synchronization patterns that occur frequently and we can use semaphores to solve them. 
+	There are a number of common synchronization patterns that occur frequently and we can use semaphores to solve them.
 
-These synchronization patterns are ways of co-ordinating threads or processes. 
+	These synchronization patterns are ways of co-ordinating threads or processes.
 
-We have already examined serialization and mutual exclusion; there are more. 
+	We have already examined serialization and mutual exclusion; there are more.
 
-Throughout this section we will use pseudocode and something like ``Statement A1'' could be any valid statement in the program.
+	Throughout this section we will use pseudocode and something like ``Statement A1'' could be any valid statement in the program.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{So Text Me, Maybe}
+	\frametitle{So Text Me, Maybe}
 
-\begin{center}
-	\includegraphics[width=0.9\textwidth]{images/texting.jpeg}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.9\textwidth]{images/texting.jpeg}
+	\end{center}
 
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Signalling}
+	\frametitle{Signalling}
 
-Recall from earlier the example with Alice and Bob at the power plant. 
+	Recall from earlier the example with Alice and Bob at the power plant.
 
-This was postling.
+	This was postling.
 
-Signalling can be used in general as a way of indicating that something has happened. 
+	Signalling can be used in general as a way of indicating that something has happened.
 
-Suppose we have a semaphore named \texttt{sem}, initialized to 0.
+	Suppose we have a semaphore named \texttt{sem}, initialized to 0.
 
-\begin{multicols}{2}
-\textbf{Thread A}
-  \begin{verbatim}
+	\begin{multicols}{2}
+		\textbf{Thread A}
+		\begin{verbatim}
 	1. Statement A1
 	2. post( sem )
   \end{verbatim}
-\columnbreak
-\textbf{Thread B}
-  \begin{verbatim}
+		\columnbreak
+		\textbf{Thread B}
+		\begin{verbatim}
 	1. wait( sem )
 	2. Statement B2
   \end{verbatim}
-\end{multicols}
-\vspace{-2em}
+	\end{multicols}
+	\vspace{-2em}
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Analysis of Signalling}
+	\frametitle{Analysis of Signalling}
 
-If $B$ gets to the \texttt{wait} statement first, it will be blocked (as the semaphore is 0) and cannot proceed until someone posts on that semaphore. 
+	If $B$ gets to the \texttt{wait} statement first, it will be blocked (as the semaphore is 0) and cannot proceed until someone posts on that semaphore.
 
-When $A$ does call \texttt{post}, then $B$ may proceed. 
+	When $A$ does call \texttt{post}, then $B$ may proceed.
 
-If instead $A$ gets to the \texttt{post} statement first, it will post and the semaphore value will be 1. 
+	If instead $A$ gets to the \texttt{post} statement first, it will post and the semaphore value will be 1.
 
-Then, when $B$ gets to the \texttt{wait} statement, it can proceed without delay.
+	Then, when $B$ gets to the \texttt{wait} statement, it can proceed without delay.
 
-Regardless of the actual order that the threads run, we are certain that statement A1 will execute before statement B2.
+	Regardless of the actual order that the threads run, we are certain that statement A1 will execute before statement B2.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Rendezvous}
+	\frametitle{Rendezvous}
 
-\begin{center}
-	\includegraphics[width=0.5\textwidth]{images/nasa-rendezvous.jpg}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/nasa-rendezvous.jpg}
+	\end{center}
 
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Rendezvous}
+	\frametitle{Rendezvous}
 
-The rendezvous is an expansion of the post pattern so that it works both ways.
+	The rendezvous is an expansion of the post pattern so that it works both ways.
 
-Two threads should be at the same point before either of them may proceed (they ``meet up'').
+	Two threads should be at the same point before either of them may proceed (they ``meet up'').
 
-Suppose we have:
+	Suppose we have:
 
-\begin{multicols}{2}
-\textbf{Thread A}
-  \begin{verbatim}
+	\begin{multicols}{2}
+		\textbf{Thread A}
+		\begin{verbatim}
 	1. Statement A1
 	2. Statement A2
   \end{verbatim}
-\columnbreak
-\textbf{Thread B}
-  \begin{verbatim}
+		\columnbreak
+		\textbf{Thread B}
+		\begin{verbatim}
 	1. Statement B1
 	2. Statement B2
   \end{verbatim}
-\end{multicols}
-\vspace{-2em}
+	\end{multicols}
+	\vspace{-2em}
 
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Rendezvous}
+	\frametitle{Rendezvous}
 
-The desirable property is that A1 should take place before B2 and that B1 should take place before A2. 
+	The desirable property is that A1 should take place before B2 and that B1 should take place before A2.
 
-As each thread must wait for the other, two semaphores will be needed: one to indicate that $A$ has arrived and one for $B$. 
+	As each thread must wait for the other, two semaphores will be needed: one to indicate that $A$ has arrived and one for $B$.
 
-We will assign them the names \texttt{aArrived} and \texttt{bArrived} and initialize both to 0. 
+	We will assign them the names \texttt{aArrived} and \texttt{bArrived} and initialize both to 0.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Rendezvous Solution 1}
+	\frametitle{Rendezvous Solution 1}
 
-A first attempt at a solution: 
+	A first attempt at a solution:
 
-\begin{multicols}{2}
-\textbf{Thread A}
-  \begin{verbatim}
+	\begin{multicols}{2}
+		\textbf{Thread A}
+		\begin{verbatim}
 	1. Statement A1
 	2. wait( bArrived )
 	3. post( aArrived )
 	4. Statement A2
   \end{verbatim}
-\columnbreak
-\textbf{Thread B}
-  \begin{verbatim}
+		\columnbreak
+		\textbf{Thread B}
+		\begin{verbatim}
 	1. Statement B1
 	2. wait( aArrived )
 	3. post( bArrived )
 	4. Statement B2
   \end{verbatim}
-\end{multicols}
-\vspace{-2em}
+	\end{multicols}
+	\vspace{-2em}
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Rendezvous Solution 1 Analysis}
+	\frametitle{Rendezvous Solution 1 Analysis}
 
-The problem here should be obvious: thread $A$ gets to the \texttt{wait} statement and will wait until $B$ posts its arrival before it can proceed. 
+	The problem here should be obvious: thread $A$ gets to the \texttt{wait} statement and will wait until $B$ posts its arrival before it can proceed.
 
-Thread $B$ gets to its \texttt{wait} statement and will wait until $A$ posts its arrival before it will proceed. 
+	Thread $B$ gets to its \texttt{wait} statement and will wait until $A$ posts its arrival before it will proceed.
 
-Unfortunately, each thread is waiting for the other to post and neither of them can get to the actual \texttt{post} statement because they are both blocked. 
+	Unfortunately, each thread is waiting for the other to post and neither of them can get to the actual \texttt{post} statement because they are both blocked.
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Deadlock}
+	\frametitle{Deadlock}
 
-Neither thread can proceed. 
+	Neither thread can proceed.
 
-The situation can never be resolved, because there is no external force that would cause one or the other to be unblocked. 
+	The situation can never be resolved, because there is no external force that would cause one or the other to be unblocked.
 
-This is a situation called \alert{deadlock}, and it is a subject that will receive a great deal of examination later on. 
+	This is a situation called \alert{deadlock}, and it is a subject that will receive a great deal of examination later on.
 
-For now, an informal definition is: all threads are permanently stuck. 
+	For now, an informal definition is: all threads are permanently stuck.
 
-Obviously, this is undesirable.
+	Obviously, this is undesirable.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Rendezvous Solution 2}
+	\frametitle{Rendezvous Solution 2}
 
-What if instead, the threads reverse the order and post first before waiting?
+	What if instead, the threads reverse the order and post first before waiting?
 
-\begin{multicols}{2}
-\textbf{Thread A}
-  \begin{verbatim}
+	\begin{multicols}{2}
+		\textbf{Thread A}
+		\begin{verbatim}
 	1. Statement A1
 	2. post( aArrived )
 	3. wait( bArrived )
 	4. Statement A2
   \end{verbatim}
-\columnbreak
-\textbf{Thread B}
-  \begin{verbatim}
+		\columnbreak
+		\textbf{Thread B}
+		\begin{verbatim}
 	1. Statement B1
 	2. post( bArrived )
 	3. wait( aArrived )
 	4. Statement B2
   \end{verbatim}
-\end{multicols}
-\vspace{-2em}
+	\end{multicols}
+	\vspace{-2em}
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Rendezvous Solution 2 Analysis}
+	\frametitle{Rendezvous Solution 2 Analysis}
 
-This solution works: if $A$ gets to the rendezvous point first, it posts its arrival and waits for $B$. 
+	This solution works: if $A$ gets to the rendezvous point first, it posts its arrival and waits for $B$.
 
-If $B$ gets there first, it posts its arrival and waits for $A$. 
+	If $B$ gets there first, it posts its arrival and waits for $A$.
 
-Whichever gets there last will post and unblock the other, before it calls \texttt{wait}.
+	Whichever gets there last will post and unblock the other, before it calls \texttt{wait}.
 
-It will be able to proceed directly; the first thread to arrive already posted. 
+	It will be able to proceed directly; the first thread to arrive already posted.
 
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Rendezvous Solution 3}
+	\frametitle{Rendezvous Solution 3}
 
-A variation on this can also work where only one thread posts first and the other thread posts second.
+	A variation on this can also work where only one thread posts first and the other thread posts second.
 
-\begin{multicols}{2}
-\textbf{Thread A}
-  \begin{verbatim}
+	\begin{multicols}{2}
+		\textbf{Thread A}
+		\begin{verbatim}
 	1. Statement A1
 	2. wait( bArrived )
 	3. post( aArrived )
 	4. Statement A2
   \end{verbatim}
-\columnbreak
-\textbf{Thread B}
-  \begin{verbatim}
+		\columnbreak
+		\textbf{Thread B}
+		\begin{verbatim}
 	1. Statement B1
 	2. post( bArrived )
 	3. wait( aArrived )
 	4. Statement B2
   \end{verbatim}
-\end{multicols}
-\vspace{-2em}
+	\end{multicols}
+	\vspace{-2em}
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Rendezvous Solution 3 Analysis}
+	\frametitle{Rendezvous Solution 3 Analysis}
 
-While this solution will not result in deadlock, it is somewhat less efficient than the previous: it may require an extra switch between processes.
+	While this solution will not result in deadlock, it is somewhat less efficient than the previous: it may require an extra switch between processes.
 
-As long as we are certain that deadlock will not occur, a solution is acceptable. 
+	As long as we are certain that deadlock will not occur, a solution is acceptable.
 
-Nevertheless, the previous solution is provably better.
+	Nevertheless, the previous solution is provably better.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Rendezvous Analysis}
+	\frametitle{Rendezvous Analysis}
 
-What if we needed to add a third thread, C, to this rendezvous?
+	What if we needed to add a third thread, C, to this rendezvous?
 
-What would we have to change?
+	What would we have to change?
 
 
 \end{frame}
@@ -283,165 +283,165 @@ What would we have to change?
 
 
 \begin{frame}
-\frametitle{Waiting Our Turn...}
+	\frametitle{Waiting Our Turn...}
 
-\begin{center}
-	\includegraphics[width=0.9\textwidth]{images/waiting-in-line.jpg}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.9\textwidth]{images/waiting-in-line.jpg}
+	\end{center}
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Mutual Exclusion}
+	\frametitle{Mutual Exclusion}
 
-We saw previously the motivation and concept of mutual exclusion through messages in the linked list example. 
+	We saw previously the motivation and concept of mutual exclusion through messages in the linked list example.
 
-The general form in pseudocode is of course:
+	The general form in pseudocode is of course:
 
-\begin{multicols}{2}
-\textbf{Thread A}
-  \begin{verbatim}
+	\begin{multicols}{2}
+		\textbf{Thread A}
+		\begin{verbatim}
 	1. wait( mutex )
 	2. critical section
 	3. post( mutex )
   \end{verbatim}
-\columnbreak
-\textbf{Thread B}
-  \begin{verbatim}
+		\columnbreak
+		\textbf{Thread B}
+		\begin{verbatim}
 	1. wait( mutex )
 	2. critical section
 	3. post( mutex )
   \end{verbatim}
-\end{multicols}
-\vspace{-2em}
+	\end{multicols}
+	\vspace{-2em}
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Mutual Exclusion}
+	\frametitle{Mutual Exclusion}
 
-The mutex semaphore is originally initialized to 1.
+	The mutex semaphore is originally initialized to 1.
 
-Whichever thread gets to the \texttt{wait} statement first will proceed immediately and not be blocked at all. 
+	Whichever thread gets to the \texttt{wait} statement first will proceed immediately and not be blocked at all.
 
-If the semaphore were initialized to 0 then neither thread could ever get to the \texttt{post} statement or ever get into the critical section (deadlock).
-
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Symmetric vs. Asymmetric Solutions}
-
-Threads $A$ and $B$ are identical here.
-
-This is a \alert{symmetric} solution.
-
-It is easier to make predictions about the behaviour of the threads when they all do the same thing. 
-
-If the different threads have different sections of code, they are \alert{asymmetric}. 
-
-The symmetric solutions very often scale well.
+	If the semaphore were initialized to 0 then neither thread could ever get to the \texttt{post} statement or ever get into the critical section (deadlock).
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Multiplex}
-In addition to the binary semaphore, we also discussed the general semaphore. 
+	\frametitle{Symmetric vs. Asymmetric Solutions}
 
-If the general semaphore is initialized to $n$, then at most $n$ threads can be in the critical section at a time. 
+	Threads $A$ and $B$ are identical here.
 
-Example: restaurants have a certain number of tables and seats. 
+	This is a \alert{symmetric} solution.
 
-If more people wish to dine than there are seats available, those customers must wait until some seats become available (other customers leave). 
+	It is easier to make predictions about the behaviour of the threads when they all do the same thing.
 
-Restaurants generally want to pack in as many seats as possible, but fire safety regulations set a maximum occupancy for a given space.
+	If the different threads have different sections of code, they are \alert{asymmetric}.
+
+	The symmetric solutions very often scale well.
+
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Multiplex}
+	\frametitle{Multiplex}
+	In addition to the binary semaphore, we also discussed the general semaphore.
 
-Suppose that the system has a problem that when too many concurrent database requests are happening. 
+	If the general semaphore is initialized to $n$, then at most $n$ threads can be in the critical section at a time.
 
-The queries become slow and eventually time out. 
+	Example: restaurants have a certain number of tables and seats.
 
-A potential solution is to protect all database accesses with a binary semaphore, so only one database query can run at any time. 
+	If more people wish to dine than there are seats available, those customers must wait until some seats become available (other customers leave).
 
-Analysis may reveal that this is too restrictive a policy; perhaps we can execute 5 queries concurrently without any slowdown. 
+	Restaurants generally want to pack in as many seats as possible, but fire safety regulations set a maximum occupancy for a given space.
 
-Then initialize the semaphore with a value of 5, allowing at most 5 threads into the critical section at any time.
+\end{frame}
+
+\begin{frame}
+	\frametitle{Multiplex}
+
+	Suppose that the system has a problem that when too many concurrent database requests are happening.
+
+	The queries become slow and eventually time out.
+
+	A potential solution is to protect all database accesses with a binary semaphore, so only one database query can run at any time.
+
+	Analysis may reveal that this is too restrictive a policy; perhaps we can execute 5 queries concurrently without any slowdown.
+
+	Then initialize the semaphore with a value of 5, allowing at most 5 threads into the critical section at any time.
 
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Multiplex}
+	\frametitle{Multiplex}
 
 
-This is a symmetric solution, so it will work for arbitrarily many threads.
+	This is a symmetric solution, so it will work for arbitrarily many threads.
 
-\textbf{Thread \textit{K}}\vspace{-6em}
-  \begin{verbatim}
+	\textbf{Thread \textit{K}}\vspace{-6em}
+	\begin{verbatim}
 	1. wait( mutex )
 	2. critical section
 	3. post( mutex )
   \end{verbatim}
-\vspace{-2em}
+	\vspace{-2em}
 
-This looks exactly like the solution for mutual exclusion, as it should. 
+	This looks exactly like the solution for mutual exclusion, as it should.
 
-The only difference is how many threads can enter the critical section at a time.
-
-
-
-\end{frame}
+	The only difference is how many threads can enter the critical section at a time.
 
 
-\begin{frame}
-\frametitle{That's One Kind of Barrier}
-
-\begin{center}
-	\includegraphics[width=0.9\textwidth]{images/fence-barrier.jpg}
-\end{center}
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Barrier}
+	\frametitle{That's One Kind of Barrier}
 
-The barrier pattern is a generalization of the rendezvous pattern;\\
-\quad A way of having more than two threads meet up at the same point. 
+	\begin{center}
+		\includegraphics[width=0.9\textwidth]{images/fence-barrier.jpg}
+	\end{center}
 
-Given $n$ threads, each of which knows that the total number of threads is $n$.
+\end{frame}
 
-When the first $n-1$ threads arrive, they should wait until the $n$th arrives. 
 
-As a solution we might consider a variable to keep track of the number of threads that have reached the appropriate point. 
+\begin{frame}
+	\frametitle{Barrier}
 
-This variable is shared data; modification of it should be in a critical section.
+	The barrier pattern is a generalization of the rendezvous pattern;\\
+	\quad A way of having more than two threads meet up at the same point.
+
+	Given $n$ threads, each of which knows that the total number of threads is $n$.
+
+	When the first $n-1$ threads arrive, they should wait until the $n$th arrives.
+
+	As a solution we might consider a variable to keep track of the number of threads that have reached the appropriate point.
+
+	This variable is shared data; modification of it should be in a critical section.
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Barrier}
+	\frametitle{Barrier}
 
-Thus we will have a semaphore, initialized to 1, called \texttt{mutex} to protect that counter.
+	Thus we will have a semaphore, initialized to 1, called \texttt{mutex} to protect that counter.
 
- Then we will have a second semaphore, \texttt{barrier} that will be the place where threads wait until the $n$th thread arrives.
+	Then we will have a second semaphore, \texttt{barrier} that will be the place where threads wait until the $n$th thread arrives.
 
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Barrier Solution 1}
+	\frametitle{Barrier Solution 1}
 
-\textbf{Thread \textit{K}}\vspace{-10em}
-  \begin{verbatim}
+	\textbf{Thread \textit{K}}\vspace{-10em}
+	\begin{verbatim}
 	1. wait( mutex )
 	2. count++
 	3. post( mutex )
@@ -450,44 +450,44 @@ Thus we will have a semaphore, initialized to 1, called \texttt{mutex} to protec
 	6. end if
 	7. wait( barrier )
   \end{verbatim}
-\vspace{-2em}
+	\vspace{-2em}
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Barrier Solution 1 Analysis}
+	\frametitle{Barrier Solution 1 Analysis}
 
-When the $n$th thread arrives, it unlocks the barrier and then may proceed. 
+	When the $n$th thread arrives, it unlocks the barrier and then may proceed.
 
-If there is more than one thread waiting at the barrier, the first thread will be unblocked when the $n$th thread posts on it.
+	If there is more than one thread waiting at the barrier, the first thread will be unblocked when the $n$th thread posts on it.
 
-There are no other \texttt{post} statements!
+	There are no other \texttt{post} statements!
 
-The other threads waiting are stuck, waiting for a post that never comes.
+	The other threads waiting are stuck, waiting for a post that never comes.
 
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Barrier Solution 2}
+	\frametitle{Barrier Solution 2}
 
-\begin{center}
-\includegraphics[width=0.7\textwidth]{images/oprah.jpg}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.7\textwidth]{images/oprah.jpg}
+	\end{center}
 
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Barrier Solution 2}
+	\frametitle{Barrier Solution 2}
 
-The $n$th thread to arrive should post $n-1$ times:
+	The $n$th thread to arrive should post $n-1$ times:
 
-\textbf{Thread \textit{K}}\vspace{-6em}
-  \begin{verbatim}
+	\textbf{Thread \textit{K}}\vspace{-6em}
+	\begin{verbatim}
 	1. wait( mutex )
 	2. count++
 	3. post( mutex )
@@ -498,7 +498,7 @@ The $n$th thread to arrive should post $n-1$ times:
 	8. end if
 	9. wait( barrier )
   \end{verbatim}
-\vspace{-2em} 
+	\vspace{-2em}
 
 
 
@@ -506,28 +506,28 @@ The $n$th thread to arrive should post $n-1$ times:
 \end{frame}
 
 \begin{frame}
-\frametitle{Barrier Solution 2 Analysis}
+	\frametitle{Barrier Solution 2 Analysis}
 
-This allows all $n$ threads to proceed (none get stuck), but it is less than ideal. 
+	This allows all $n$ threads to proceed (none get stuck), but it is less than ideal.
 
-The thread that runs last is very likely the lowest priority thread.
+	The thread that runs last is very likely the lowest priority thread.
 
-When it posts on the semaphore, the thread that has just been unblocked will be the next to run.
+	When it posts on the semaphore, the thread that has just been unblocked will be the next to run.
 
-Then the system switches back, at some later time, to the thread currently unblocking all the others. 
+	Then the system switches back, at some later time, to the thread currently unblocking all the others.
 
-Worst case, $2n$ process switches, when it could be accomplished with $n$.
+	Worst case, $2n$ process switches, when it could be accomplished with $n$.
 
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Barrier Solution 3}
+	\frametitle{Barrier Solution 3}
 
-Have each thread unblock the next:
+	Have each thread unblock the next:
 
-\textbf{Thread \textit{K}}\vspace{-6em}
-  \begin{verbatim}
+	\textbf{Thread \textit{K}}\vspace{-6em}
+	\begin{verbatim}
 	1. wait( mutex )
 	2. count++
 	3. post( mutex )
@@ -537,48 +537,48 @@ Have each thread unblock the next:
 	7. wait( barrier )
 	8. post( barrier )
   \end{verbatim}
-\vspace{-2em}
+	\vspace{-2em}
 
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{This Has a Name!}
-\begin{center}
-	\includegraphics[width=0.9\textwidth]{images/nyc-subway-turnstile.jpg}
-\end{center}
+	\frametitle{This Has a Name!}
+	\begin{center}
+		\includegraphics[width=0.9\textwidth]{images/nyc-subway-turnstile.jpg}
+	\end{center}
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Barrier Solution 3 Analysis: The Turnstile}
+	\frametitle{Barrier Solution 3 Analysis: The Turnstile}
 
-This pattern (wait followed immediately by post) is called a \alert{turnstile}.
+	This pattern (wait followed immediately by post) is called a \alert{turnstile}.
 
-The analogy should be familiar to anyone who has travelled by subway.\\
-\quad A turnstile allows one person at a time to go through. 
+	The analogy should be familiar to anyone who has travelled by subway.\\
+	\quad A turnstile allows one person at a time to go through.
 
-A turnstile pattern allows one thread at a time to proceed through, but can be locked to bar all threads from proceeding. 
+	A turnstile pattern allows one thread at a time to proceed through, but can be locked to bar all threads from proceeding.
 
-Initially the turnstile in the above example is locked, and the $n$th thread unlocks it and permits all $n$ threads to go through.
+	Initially the turnstile in the above example is locked, and the $n$th thread unlocks it and permits all $n$ threads to go through.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Barrier Solution 3 Analysis}
+	\frametitle{Barrier Solution 3 Analysis}
 
-In this solution we are reading the value of \texttt{count}, a shared variable, without the protection of a semaphore. 
+	In this solution we are reading the value of \texttt{count}, a shared variable, without the protection of a semaphore.
 
-Is this dangerous? 
+	Is this dangerous?
 
-Yes, but the alternative is, in this specific instance, worse. 
+	Yes, but the alternative is, in this specific instance, worse.
 
-Consider this instead:
+	Consider this instead:
 
-\textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
+	\textbf{Thread \textit{K}}\vspace{-2em}
+	\begin{verbatim}
 	1. wait( mutex )
 	2. count++
 	3. if count == n
@@ -588,57 +588,57 @@ Consider this instead:
 	7. post( barrier )
 	8. post( mutex )
   \end{verbatim}
-\vspace{-2em}
+	\vspace{-2em}
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Barrier Solution 3A Analysis}
+	\frametitle{Barrier Solution 3A Analysis}
 
-The problem here is deadlock once again. 
+	The problem here is deadlock once again.
 
-The first thread waits on \texttt{mutex} and then goes to wait on the \texttt{barrier} semaphore. 
+	The first thread waits on \texttt{mutex} and then goes to wait on the \texttt{barrier} semaphore.
 
-At this point, the first thread is blocked.
+	At this point, the first thread is blocked.
 
-When a second thread comes along, it will wait on \texttt{mutex} but can get no further because the first thread has not posted on it. 
+	When a second thread comes along, it will wait on \texttt{mutex} but can get no further because the first thread has not posted on it.
 
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Barrier Solution 3A Analysis}
-
-The counter will be 1, but cannot get past 1. 
-
-The condition of \texttt{count} equalling $n$ can never be true. 
-
-Thus, all the threads are stuck. 
-
-This is a common source of deadlock: blocking on a semaphore while inside a critical region.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Reusable Barrier}
+	\frametitle{Barrier Solution 3A Analysis}
 
-The barrier solution we have is good.
+	The counter will be 1, but cannot get past 1.
 
-The way it is implemented now, \texttt{count} can increase but never decrease.
+	The condition of \texttt{count} equalling $n$ can never be true.
 
-Once the barrier is open, it can never be closed again.
+	Thus, all the threads are stuck.
 
-Programs very often do the same thing repeatedly, so a one-time use barrier is not ideal; it would be better to have a reusable barrier.
+	This is a common source of deadlock: blocking on a semaphore while inside a critical region.
 
-Idea: Decrement \texttt{count} after the rendezvous has taken place. 
+\end{frame}
+
+\begin{frame}
+	\frametitle{Reusable Barrier}
+
+	The barrier solution we have is good.
+
+	The way it is implemented now, \texttt{count} can increase but never decrease.
+
+	Once the barrier is open, it can never be closed again.
+
+	Programs very often do the same thing repeatedly, so a one-time use barrier is not ideal; it would be better to have a reusable barrier.
+
+	Idea: Decrement \texttt{count} after the rendezvous has taken place.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Reusable Barrier Solution 1}
+	\frametitle{Reusable Barrier Solution 1}
 
-\textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
+	\textbf{Thread \textit{K}}\vspace{-2em}
+	\begin{verbatim}
 	 1. wait( mutex )
 	 2. count++
 	 3. post( mutex )
@@ -655,29 +655,29 @@ Idea: Decrement \texttt{count} after the rendezvous has taken place.
 	14.     wait( turnstile )
 	15. end if
   \end{verbatim}
-\vspace{-2em}
+	\vspace{-2em}
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Reusable Barrier Solution 1 Analysis}
+	\frametitle{Reusable Barrier Solution 1 Analysis}
 
-There are two problems with the above implementation. 
+	There are two problems with the above implementation.
 
-Suppose thread $n-1$ is about to execute line 4 and then there is a process switch and the $n$th thread comes to this point. 
+	Suppose thread $n-1$ is about to execute line 4 and then there is a process switch and the $n$th thread comes to this point.
 
-Both of them will find that \texttt{count} is equal to $n$ and therefore both threads will post the turnstile. 
+	Both of them will find that \texttt{count} is equal to $n$ and therefore both threads will post the turnstile.
 
-The same problem occurs on line 13.
+	The same problem occurs on line 13.
 
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Reusable Barrier Solution 2}
+	\frametitle{Reusable Barrier Solution 2}
 
-\textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
+	\textbf{Thread \textit{K}}\vspace{-2em}
+	\begin{verbatim}
 	 1. wait( mutex )
 	 2. count++
 	 3. if count == n
@@ -694,43 +694,43 @@ The same problem occurs on line 13.
 	14. end if
 	15. post( mutex )
   \end{verbatim}
-\vspace{-2em}
+	\vspace{-2em}
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Reusable Barrier Solution 2 Analysis}
+	\frametitle{Reusable Barrier Solution 2 Analysis}
 
-This solves the problem previously identified by putting the checks of \texttt{count} inside the critical section controlled by \texttt{mutex}. 
+	This solves the problem previously identified by putting the checks of \texttt{count} inside the critical section controlled by \texttt{mutex}.
 
-Suppose one particular thread gets through the second mutex but is running in a loop and gets back through the first mutex again. 
+	Suppose one particular thread gets through the second mutex but is running in a loop and gets back through the first mutex again.
 
-This would be like one thread being one ``lap'' ahead of the others. 
+	This would be like one thread being one ``lap'' ahead of the others.
 
-We can prevent this by having two turnstiles: first all threads wait at the first turnstile until the last gets there and lets them through. 
+	We can prevent this by having two turnstiles: first all threads wait at the first turnstile until the last gets there and lets them through.
 
-Then all threads wait at a second turnstile until the last gets there and lets them all through again. 
+	Then all threads wait at a second turnstile until the last gets there and lets them all through again.
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Reusable Barrier Visually}
+	\frametitle{Reusable Barrier Visually}
 
-\begin{center}
-\includegraphics[width=\textwidth]{images/reusable-barrier.png}
-\end{center}
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/reusable-barrier.png}
+	\end{center}
 
-This solution can also be called a \alert{two-phase barrier} because all threads have to wait twice: once at each turnstile.
+	This solution can also be called a \alert{two-phase barrier} because all threads have to wait twice: once at each turnstile.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Reusable Barrier Solution 3}
-\vspace{-0.5em}
-\textbf{Thread \textit{K}}\vspace{-0.5em}
-  \begin{verbatim}
+	\frametitle{Reusable Barrier Solution 3}
+	\vspace{-0.5em}
+	\textbf{Thread \textit{K}}\vspace{-0.5em}
+	\begin{verbatim}
 	 1. wait( mutex )
 	 2. count++
 	 3. if count == n
@@ -751,7 +751,7 @@ This solution can also be called a \alert{two-phase barrier} because all threads
 	18. wait( turnstile2 )
 	19. post( turnstile2 )
   \end{verbatim}
-\vspace{-2em}
+	\vspace{-2em}
 
 
 \end{frame}

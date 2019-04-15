@@ -12,14 +12,14 @@ There are a number of common synchronization patterns that occur frequently and 
 Recall from earlier the example with Alice and Bob at the power plant. This was postling: Bob sends a post to Alice to indicate that he has arrived to work and Alice may go home. Signalling can be used in general as a way of indicating that something has happened. Suppose we have a semaphore named \texttt{sem}, initialized to 0.
 
 \begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
-  \begin{verbatim}
+	\textbf{Thread A}\vspace{-2em}
+	\begin{verbatim}
 	1. Statement A1
 	2. post( sem )
   \end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
-  \begin{verbatim}
+	\columnbreak
+	\textbf{Thread B}\vspace{-2em}
+	\begin{verbatim}
 	1. wait( sem )
 	2. Statement B2
   \end{verbatim}
@@ -34,14 +34,14 @@ Note that this is a situation where it makes sense for a thread to post a semaph
 The rendezvous is an expansion of the post pattern so that it works both ways: two threads should be at the same point before either of them may proceed (they ``meet up''). Given the following code:
 
 \begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
-  \begin{verbatim}
+	\textbf{Thread A}\vspace{-2em}
+	\begin{verbatim}
 	1. Statement A1
 	2. Statement A2
   \end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
-  \begin{verbatim}
+	\columnbreak
+	\textbf{Thread B}\vspace{-2em}
+	\begin{verbatim}
 	1. Statement B1
 	2. Statement B2
   \end{verbatim}
@@ -51,16 +51,16 @@ The rendezvous is an expansion of the post pattern so that it works both ways: t
 The desirable property is that A1 should take place before B2 and that B1 should take place before A2. As each thread must wait for the other, two semaphores will be needed: one to indicate that $A$ has arrived and one for $B$. We will assign them the names \texttt{aArrived} and \texttt{bArrived} and initialize both to 0. A first attempt at a solution:
 
 \begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
-  \begin{verbatim}
+	\textbf{Thread A}\vspace{-2em}
+	\begin{verbatim}
 	1. Statement A1
 	2. wait( bArrived )
 	3. post( aArrived )
 	4. Statement A2
   \end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
-  \begin{verbatim}
+	\columnbreak
+	\textbf{Thread B}\vspace{-2em}
+	\begin{verbatim}
 	1. Statement B1
 	2. wait( aArrived )
 	3. post( bArrived )
@@ -70,23 +70,23 @@ The desirable property is that A1 should take place before B2 and that B1 should
 \vspace{-2em}
 
 
-The problem here should be obvious: thread $A$ gets to the \texttt{wait} statement and will wait until $B$ posts its arrival before it can proceed. Thread $B$ gets to its \texttt{wait} statement and will wait until $A$ posts its arrival before it will proceed. Unfortunately, each thread is waiting for the other to post and neither of them can get to the actual \texttt{post} statement because they are both blocked. 
+The problem here should be obvious: thread $A$ gets to the \texttt{wait} statement and will wait until $B$ posts its arrival before it can proceed. Thread $B$ gets to its \texttt{wait} statement and will wait until $A$ posts its arrival before it will proceed. Unfortunately, each thread is waiting for the other to post and neither of them can get to the actual \texttt{post} statement because they are both blocked.
 
 Neither thread can proceed. The situation can never be resolved, because there is no external force (e.g., a hardware interrupt that means the data has been read from a device) that would cause one or the other to be unblocked. This is a situation called \textit{deadlock}, and it is a subject that will receive a great deal of examination later on. For now, an informal definition is: all threads are permanently stuck. Obviously, this is undesirable.
 
 What if instead, the threads reverse the order and post first before waiting?
 
 \begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
-  \begin{verbatim}
+	\textbf{Thread A}\vspace{-2em}
+	\begin{verbatim}
 	1. Statement A1
 	2. post( aArrived )
 	3. wait( bArrived )
 	4. Statement A2
   \end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
-  \begin{verbatim}
+	\columnbreak
+	\textbf{Thread B}\vspace{-2em}
+	\begin{verbatim}
 	1. Statement B1
 	2. post( bArrived )
 	3. wait( aArrived )
@@ -95,21 +95,21 @@ What if instead, the threads reverse the order and post first before waiting?
 \end{multicols}
 \vspace{-2em}
 
-This solution works: if $A$ gets to the rendezvous point first, it posts its arrival and waits for $B$. If $B$ gets there first, it posts its arrival and waits for $A$. Whichever gets there last will post and unblock the other, before it calls \texttt{wait} and will be able to proceed directly because the first thread to arrive already posted. 
+This solution works: if $A$ gets to the rendezvous point first, it posts its arrival and waits for $B$. If $B$ gets there first, it posts its arrival and waits for $A$. Whichever gets there last will post and unblock the other, before it calls \texttt{wait} and will be able to proceed directly because the first thread to arrive already posted.
 
 A variation on this can also work where only one thread posts first and the other thread posts second. This is shown below:
 
 \begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
-  \begin{verbatim}
+	\textbf{Thread A}\vspace{-2em}
+	\begin{verbatim}
 	1. Statement A1
 	2. wait( bArrived )
 	3. post( aArrived )
 	4. Statement A2
   \end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
-  \begin{verbatim}
+	\columnbreak
+	\textbf{Thread B}\vspace{-2em}
+	\begin{verbatim}
 	1. Statement B1
 	2. post( bArrived )
 	3. wait( aArrived )
@@ -124,15 +124,15 @@ While this solution will not result in deadlock, it is somewhat less efficient t
 We saw previously the motivation and concept of mutual exclusion through messages in the linked list example. The general form in pseudocode is of course:
 
 \begin{multicols}{2}
-\textbf{Thread A}\vspace{-2em}
-  \begin{verbatim}
+	\textbf{Thread A}\vspace{-2em}
+	\begin{verbatim}
 	1. wait( mutex )
 	2. critical section
 	3. post( mutex )
   \end{verbatim}
-\columnbreak
-\textbf{Thread B}\vspace{-2em}
-  \begin{verbatim}
+	\columnbreak
+	\textbf{Thread B}\vspace{-2em}
+	\begin{verbatim}
 	1. wait( mutex )
 	2. critical section
 	3. post( mutex )
@@ -152,14 +152,14 @@ In a computer related example, suppose that the system has a problem that when t
 Now, to represent this in pseudocode. This is a symmetric solution, so it will work for arbitrarily many threads (and showing $A$ and $B$ side by side is not necessary).
 
 \textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
+\begin{verbatim}
 	1. wait( mutex )
 	2. critical section
 	3. post( mutex )
   \end{verbatim}
 \vspace{-2em}
 
-This looks exactly like the solution for mutual exclusion, as it should. The only difference is how many threads can enter the critical section at a time (1 vs. many). 
+This looks exactly like the solution for mutual exclusion, as it should. The only difference is how many threads can enter the critical section at a time (1 vs. many).
 
 
 \subsection*{Barrier}
@@ -167,7 +167,7 @@ The barrier pattern is a generalization of the rendezvous pattern; a way of havi
 
 
 \textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
+\begin{verbatim}
 	1. wait( mutex )
 	2. count++
 	3. post( mutex )
@@ -183,7 +183,7 @@ When the $n$th thread arrives, it unlocks the barrier (posts it) and then may pr
 Perhaps the idea occurred to you that the $n$th thread to arrive should post $n-1$ times:
 
 \textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
+\begin{verbatim}
 	1. wait( mutex )
 	2. count++
 	3. post( mutex )
@@ -194,12 +194,12 @@ Perhaps the idea occurred to you that the $n$th thread to arrive should post $n-
 	8. end if
 	9. wait( barrier )
   \end{verbatim}
-\vspace{-2em} 
+\vspace{-2em}
 
 This is a solution that allows all of the $n$ threads to proceed (none get stuck), but it is less than ideal. The thread that runs last is very likely the lowest priority thread (if it were high priority it would likely have run first) and therefore when it posts on the semaphore, the thread that has just been unblocked will be the next to run. Then the system switches back, at some later time, to the thread currently unblocking all the others. Thus, in the worst case, there are $2n$ process switches, when it could be accomplished with just $n$~\cite{mte241}. Have each thread unblock the next:
 
 \textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
+\begin{verbatim}
 	1. wait( mutex )
 	2. count++
 	3. post( mutex )
@@ -216,7 +216,7 @@ This pattern of a wait followed immediately by a post is a common pattern called
 Alert readers may have noticed something that causes some minor distress: on line 4 in this solution (and the previous, suboptimal one), we are reading the value of \texttt{count}, a shared variable, without the protection of a semaphore. Is this dangerous? Yes, but the alternative is, in this specific instance, worse. Consider this instead:
 
 \textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
+\begin{verbatim}
 	1. wait( mutex )
 	2. count++
 	3. if count == n
@@ -235,7 +235,7 @@ The barrier solution we have is good (as long as we can live with the read of th
 
 
 \textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
+\begin{verbatim}
 	 1. wait( mutex )
 	 2. count++
 	 3. post( mutex )
@@ -258,7 +258,7 @@ There are two problems with the above implementation. Suppose thread $n-1$ is ab
 
 
 \textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
+\begin{verbatim}
 	 1. wait( mutex )
 	 2. count++
 	 3. if count == n
@@ -280,7 +280,7 @@ There are two problems with the above implementation. Suppose thread $n-1$ is ab
 This solves the problem previously identified by putting the checks of \texttt{count} inside the critical section controlled by \texttt{mutex}. Unfortunately, there is another problem that can occur here: suppose one particular thread gets through the second mutex but is running in a loop and gets back through the first mutex again. This would be like one thread being one ``lap'' ahead of the others. We can prevent this by having two turnstiles: first all threads wait at the first turnstile until the last gets there and lets them through. Then all threads wait at a second turnstile until the last gets there and lets them all through again. The form of the solution represented visually, is:
 
 \begin{center}
-\includegraphics[width=0.75\textwidth]{images/reusable-barrier.png}\\
+	\includegraphics[width=0.75\textwidth]{images/reusable-barrier.png}\\
 	A visual representation of the group rendezvous with two turnstiles~\cite{mte241}.
 \end{center}
 
@@ -296,7 +296,7 @@ From left to right, the seven steps of the diagram are~\cite{mte241}:
 \end{enumerate}
 
 \textbf{Thread \textit{K}}\vspace{-2em}
-  \begin{verbatim}
+\begin{verbatim}
 	 1. wait( mutex )
 	 2. count++
 	 3. if count == n

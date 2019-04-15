@@ -4,58 +4,58 @@
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
-  University of Waterloo}
+	University of Waterloo}
 \date{\today}
 
 
 \begin{document}
 
 \begin{frame}
-  \titlepage
-
- \end{frame}
-
-
-\begin{frame}
-\frametitle{Condition Variables}
-
-\begin{center}
-	\includegraphics[width=0.4\textwidth]{images/monday.png}
-\end{center}
-
-Condition variables are another way to achieve synchronization.
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Condition Variables}
-
-How do we know if some condition has been fulfilled?
-
-Signal on a semaphore?
-
-Lock mutex, read variable(s), unlock mutex?
-
-Or: a Condition Variable.
+	\titlepage
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Condition Variable}
+	\frametitle{Condition Variables}
 
-We can think of condition variables as ``events'' that occur.
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{images/monday.png}
+	\end{center}
 
-What differentiates it: broadcast!
+	Condition variables are another way to achieve synchronization.
 
-We have the option, when an event occurs, to signal either one thread waiting for that event to occur, or to broadcast (signal) to all threads waiting for the event.
+\end{frame}
+
+\begin{frame}
+	\frametitle{Condition Variables}
+
+	How do we know if some condition has been fulfilled?
+
+	Signal on a semaphore?
+
+	Lock mutex, read variable(s), unlock mutex?
+
+	Or: a Condition Variable.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Condition Variable}
+
+	We can think of condition variables as ``events'' that occur.
+
+	What differentiates it: broadcast!
+
+	We have the option, when an event occurs, to signal either one thread waiting for that event to occur, or to broadcast (signal) to all threads waiting for the event.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Condition Variable Syntax}
+	\frametitle{Condition Variable Syntax}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 pthread_cond_init( pthread_cond_t *cv, pthread_condattr_t *attributes );
 pthread_cond_wait( pthread_cond_t *cv, pthread_mutex_t *mutex );
 pthread_cond_signal( pthread_cond_t *cv );
@@ -63,46 +63,46 @@ pthread_cond_broadcast( pthread_cond_t *cv );
 pthread_cond_destroy( pthread_cond_t *cv );
 \end{lstlisting}
 
-As with other pthread functions we've seen there are create and destroy calls.
+	As with other pthread functions we've seen there are create and destroy calls.
 
-Signal is self-explanatory; but broadcast is new and wait looks weird!
+	Signal is self-explanatory; but broadcast is new and wait looks weird!
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Wait, in Two Parts}
+	\frametitle{Wait, in Two Parts}
 
-Condition variables are always used in conjunction with a mutex. 
+	Condition variables are always used in conjunction with a mutex.
 
-\texttt{pthread\_cond\_wait} takes the condition variable and a mutex. 
+	\texttt{pthread\_cond\_wait} takes the condition variable and a mutex.
 
-This routine should be called only while the mutex is locked. 
+	This routine should be called only while the mutex is locked.
 
-It will automatically release the mutex while it waits for the condition!
+	It will automatically release the mutex while it waits for the condition!
 
-When the condition is true, then the mutex will be automatically locked again so the thread may proceed.
+	When the condition is true, then the mutex will be automatically locked again so the thread may proceed.
 
-Then, manually unlock when finished.
+	Then, manually unlock when finished.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{HEY GUYS!!! GUESS WHAT!!!}
-\begin{center}
-	\includegraphics[width=0.6\textwidth]{images/newsanchor.jpg}
-\end{center}
+	\frametitle{HEY GUYS!!! GUESS WHAT!!!}
+	\begin{center}
+		\includegraphics[width=0.6\textwidth]{images/newsanchor.jpg}
+	\end{center}
 
-\texttt{pthread\_cond\_broadcast} signals all threads waiting on that condition variable. 
+	\texttt{pthread\_cond\_broadcast} signals all threads waiting on that condition variable.
 
-It's this ``broadcast'' idea that makes the condition variable more interesting than the simple ``signalling'' pattern we covered much earlier on.
+	It's this ``broadcast'' idea that makes the condition variable more interesting than the simple ``signalling'' pattern we covered much earlier on.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Condition Variable Example}
+	\frametitle{Condition Variable Example}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -131,9 +131,9 @@ void* inc_count( void* arg ) {
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Condition Variable Example}
+	\frametitle{Condition Variable Example}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 void* watch_count( void *arg ) {
   pthread_mutex_lock( &count_mutex );  
   if ( count < COUNT_LIMIT ) {
@@ -148,8 +148,8 @@ void* watch_count( void *arg ) {
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Condition Variable Example}
-\begin{lstlisting}[language=C]
+	\frametitle{Condition Variable Example}
+	\begin{lstlisting}[language=C]
 int main( int argc, char **argv ) {
   pthread_t threads[3];
 
@@ -173,34 +173,34 @@ int main( int argc, char **argv ) {
 
 
 \begin{frame}
-\frametitle{Anybody Listening?}
+	\frametitle{Anybody Listening?}
 
-If a thread signals a condition variable that an event has occurred, but no thread is waiting for that event, the event is ``lost''. 
+	If a thread signals a condition variable that an event has occurred, but no thread is waiting for that event, the event is ``lost''.
 
-This is sometimes called the ``lost wakeup problem'', because threads don't get woken up if they weren't waiting for this. 
+	This is sometimes called the ``lost wakeup problem'', because threads don't get woken up if they weren't waiting for this.
 
-That's usually an error, but it might be acceptable.
+	That's usually an error, but it might be acceptable.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Can We Apply This To What We Know?}
+	\frametitle{Can We Apply This To What We Know?}
 
-The condition variable with broadcast can be used to replace some of the synchronization constructs we've seen already. 
+	The condition variable with broadcast can be used to replace some of the synchronization constructs we've seen already.
 
-What patterns could be replaced?
+	What patterns could be replaced?
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Broadcast Barrier}
+	\frametitle{Broadcast Barrier}
 
-Consider the barrier pattern from earlier. 
+	Consider the barrier pattern from earlier.
 
-There are $n$ threads and we wait for the last one to arrive.
-{\scriptsize
-\begin{multicols}{2}
-  \begin{verbatim}
+	There are $n$ threads and we wait for the last one to arrive.
+		{\scriptsize
+			\begin{multicols}{2}
+				\begin{verbatim}
 	1. wait( mutex )
 	2. count++
 	3. if count == n
@@ -210,8 +210,8 @@ There are $n$ threads and we wait for the last one to arrive.
 	7. wait( barrier )
 	8. post( barrier )
   \end{verbatim}
-\columnbreak
-  \begin{verbatim}
+				\columnbreak
+				\begin{verbatim}
 	1. wait( mutex )
 	2. count++
 	3. if count < n
@@ -221,33 +221,33 @@ There are $n$ threads and we wait for the last one to arrive.
 	7. end if
 	8. post( mutex )
   \end{verbatim}
-\end{multicols}
-}
+			\end{multicols}
+		}
 
-The \texttt{wait} takes place before the post on \texttt{mutex}. That looks strange, doesn't it?
+	The \texttt{wait} takes place before the post on \texttt{mutex}. That looks strange, doesn't it?
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Spidey Sense Tingling?}
+	\frametitle{Spidey Sense Tingling?}
 
 
-We give up the mutex \texttt{lock} when we wait on the condition variable.
+	We give up the mutex \texttt{lock} when we wait on the condition variable.
 
-The fact that we don't get to the unlock statement first does not cause a problem. 
+	The fact that we don't get to the unlock statement first does not cause a problem.
 
-So we are alright. 
+	So we are alright.
 
-The last thread doesn't wait on the condition at all because there's no need to!
+	The last thread doesn't wait on the condition at all because there's no need to!
 
-It knows that it is last and there's nothing to wait for so it should proceed.
+	It knows that it is last and there's nothing to wait for so it should proceed.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Barrier Pattern Code Example}
-\begin{lstlisting}[language=C]
+	\frametitle{Barrier Pattern Code Example}
+	\begin{lstlisting}[language=C]
 int count;
 pthread_mutex_t lock;
 pthread_cond_t cv; 
@@ -264,39 +264,39 @@ void barrier( ) {
 }
 \end{lstlisting}
 
-Will this work?
+	Will this work?
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Monitors}
-\begin{center}
-	\includegraphics[width=0.5\textwidth]{images/monitor.jpg}
-\end{center}
+	\frametitle{Monitors}
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/monitor.jpg}
+	\end{center}
 
-Uh... wait... this isn't the right kind.
+	Uh... wait... this isn't the right kind.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{What's a Monitor?}
+	\frametitle{What's a Monitor?}
 
-A condition variable can be used to create a \alert{monitor}, a higher level synchronization construct. 
+	A condition variable can be used to create a \alert{monitor}, a higher level synchronization construct.
 
-This is a bit like in OOP the idea of a class.
+	This is a bit like in OOP the idea of a class.
 
-When we use a monitor we are packaging up the shared data and operations on that data.
+	When we use a monitor we are packaging up the shared data and operations on that data.
 
-Eliminate the need to write synchronization code ourselves.
+	Eliminate the need to write synchronization code ourselves.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Did We Forget Something?}
+	\frametitle{Did We Forget Something?}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 void foo( ) {
   pthread_mutex_lock( &l );
   /* Read some data */
@@ -314,24 +314,24 @@ void foo( ) {
 
 
 \begin{frame}
-\frametitle{Control Flow Problems}
+	\frametitle{Control Flow Problems}
 
-There is control flow that could lead to exiting this function \texttt{foo} without unlocking the mutex \texttt{l}.
+	There is control flow that could lead to exiting this function \texttt{foo} without unlocking the mutex \texttt{l}.
 
-It looks super obvious in this case, but in real life it's harder to see!
+	It looks super obvious in this case, but in real life it's harder to see!
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Java Anyone?}
+	\frametitle{Java Anyone?}
 
-The idea of monitors should be familiar to you if you have used Java synchronization constructs, notably the \texttt{synchronized} keyword. 
+	The idea of monitors should be familiar to you if you have used Java synchronization constructs, notably the \texttt{synchronized} keyword.
 
-In Java we can declare a method to be \texttt{synchronized}.
+	In Java we can declare a method to be \texttt{synchronized}.
 
-There is a lock created around that method. Locking and unlocking is handled automatically.
+	There is a lock created around that method. Locking and unlocking is handled automatically.
 
-\begin{lstlisting}[language=Java]
+	\begin{lstlisting}[language=Java]
 public synchronized void doSomething() {
     // Synchronized area
 }
@@ -340,11 +340,11 @@ public synchronized void doSomething() {
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Synchronized Blocks}
+	\frametitle{Synchronized Blocks}
 
-in Java one can also define a block as synchronized:
+	in Java one can also define a block as synchronized:
 
-\begin{lstlisting}[language=Java]
+	\begin{lstlisting}[language=Java]
 public void exampleMethod() {
     synchronized( object ) { // Lock must be acquired to enter this block
            // Critical section 
@@ -352,130 +352,129 @@ public void exampleMethod() {
 }
 \end{lstlisting}
 
-This sort of ``automatic'' locking and releasing is intended to simplify the process of writing multithreaded code.
+	This sort of ``automatic'' locking and releasing is intended to simplify the process of writing multithreaded code.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{This isn't an endorsement of Java...}
+	\frametitle{This isn't an endorsement of Java...}
 
-Monitors don't have to be written in Java (or similar).
+	Monitors don't have to be written in Java (or similar).
 
-They do frequently appear in Object-Oriented languages because the concepts are familiar enough.
+	They do frequently appear in Object-Oriented languages because the concepts are familiar enough.
 
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Atomic Types}
-\begin{center}
-	\includegraphics[width=0.5\textwidth]{images/bohrmodel.png}
-\end{center}
-\hfill Image Credit: Wikipedia user JabberWok
+	\frametitle{Atomic Types}
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/bohrmodel.png}
+	\end{center}
+	\hfill Image Credit: Wikipedia user JabberWok
 
-A testament to how good humans are at blowing things up...
+	A testament to how good humans are at blowing things up...
 
 \end{frame}
 
 
 
 \begin{frame}[fragile]
-\frametitle{Atomic Types}
+	\frametitle{Atomic Types}
 
-Frequently we have a code pattern that looks something like this:
+	Frequently we have a code pattern that looks something like this:
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 pthread_mutex_lock( lock );
 shared_var++;
 pthread_mutex_unlock( lock );
 \end{lstlisting}
 
-It seems like a lot of work to lock and unlock the mutex, no?
+	It seems like a lot of work to lock and unlock the mutex, no?
 
-Thinking back to the ``test and set'' type of instruction from earlier, wouldn't it be nice if we could do that sort of thing for something like incrementing a variable?
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Hey Kernel, Could You Please...}
-
-The Linux kernel provides operations that are guaranteed to execute atomically, to avoid simple race conditions. 
-
-In a uniprocessor system, the CPU cannot be interrupted until the operation is finished. 
-
-In a multiprocessor system, the variable is locked until the operation is finished.
-
- There are two types of atomic operations: those that operate on integers and those that operate on a single bit in a bitmap.
+	Thinking back to the ``test and set'' type of instruction from earlier, wouldn't it be nice if we could do that sort of thing for something like incrementing a variable?
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Prevent Confusion}
+	\frametitle{Hey Kernel, Could You Please...}
 
-Rather than just using an integer for atomic integer operations, there is a defined type \texttt{atomic\_t}.
+	The Linux kernel provides operations that are guaranteed to execute atomically, to avoid simple race conditions.
 
- This prevents programming errors and hides architecture-specific implementation details.
+	In a uniprocessor system, the CPU cannot be interrupted until the operation is finished.
+
+	In a multiprocessor system, the variable is locked until the operation is finished.
+
+	There are two types of atomic operations: those that operate on integers and those that operate on a single bit in a bitmap.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Prevent Confusion}
+
+	Rather than just using an integer for atomic integer operations, there is a defined type \texttt{atomic\_t}.
+
+	This prevents programming errors and hides architecture-specific implementation details.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Operation Table}
+	\frametitle{Operation Table}
 
-{\scriptsize
-\begin{center}
-\begin{tabular}{l|l}
-	\textbf{Function} & \textbf{Description}\\\hline
+	{\scriptsize
+		\begin{center}
+			\begin{tabular}{l|l}
+				\textbf{Function}                                          & \textbf{Description}                                                   \\\hline
 
-	\texttt{atomic\_t ATOMIC\_INIT( int i )} & At declaration, initialize an \texttt{atomic\_t} to \texttt{i}\\\hline
+				\texttt{atomic\_t ATOMIC\_INIT( int i )}                   & At declaration, initialize an \texttt{atomic\_t} to \texttt{i}         \\\hline
 
-\texttt{int atomic\_read( atomic\_t *v )} &  Read the integer value of \texttt{v}\\\hline
+				\texttt{int atomic\_read( atomic\_t *v )}                  & Read the integer value of \texttt{v}                                   \\\hline
 
-\texttt{void atomic\_set( atomic\_t *v, int i )} & Set \texttt{v} equal to \texttt{i}\\\hline
+				\texttt{void atomic\_set( atomic\_t *v, int i )}           & Set \texttt{v} equal to \texttt{i}                                     \\\hline
 
-\texttt{void atomic\_add( int i, atomic\_t *v )} & Add \texttt{i} to \texttt{v}\\\hline
+				\texttt{void atomic\_add( int i, atomic\_t *v )}           & Add \texttt{i} to \texttt{v}                                           \\\hline
 
-\texttt{void atomic\_sub( int i, atomic\_t *v )} & Subtract \texttt{i} from \texttt{v}\\\hline
+				\texttt{void atomic\_sub( int i, atomic\_t *v )}           & Subtract \texttt{i} from \texttt{v}                                    \\\hline
 
-\texttt{void atomic\_inc( atomic\_t *v )} & Add 1 to \texttt{v}\\\hline
+				\texttt{void atomic\_inc( atomic\_t *v )}                  & Add 1 to \texttt{v}                                                    \\\hline
 
-\texttt{void atomic\_dec( atomic\_t *v )} & Subtract 1 from \texttt{v}\\\hline
+				\texttt{void atomic\_dec( atomic\_t *v )}                  & Subtract 1 from \texttt{v}                                             \\\hline
 
-\texttt{int atomic\_sub\_and\_test( int i, atomic\_t *v )} & Subtract \texttt{i} from \texttt{v}; return true if 0; otherwise false\\\hline
+				\texttt{int atomic\_sub\_and\_test( int i, atomic\_t *v )} & Subtract \texttt{i} from \texttt{v}; return true if 0; otherwise false \\\hline
 
-\texttt{int atomic\_add\_negative( int i, atomic\_t *v )} & Add \texttt{i} to \texttt{v}; return true if negative; otherwise false\\\hline
+				\texttt{int atomic\_add\_negative( int i, atomic\_t *v )}  & Add \texttt{i} to \texttt{v}; return true if negative; otherwise false \\\hline
 
-\texttt{int atomic\_dec\_and\_test( atomic\_t *v )} & Decrement \texttt{v} by 1; return true if 0; otherwise false\\\hline
+				\texttt{int atomic\_dec\_and\_test( atomic\_t *v )}        & Decrement \texttt{v} by 1; return true if 0; otherwise false           \\\hline
 
-\texttt{int atomic\_inc\_and\_test( atomic\_t *v )} & Increment \texttt{v} by 1; return true if 0; otherwise false\\ \hline\hline
+				\texttt{int atomic\_inc\_and\_test( atomic\_t *v )}        & Increment \texttt{v} by 1; return true if 0; otherwise false           \\ \hline\hline
 
-\texttt{void set\_bit( int n, void *addr )} &  Set the $n^{th}$ bit starting from \texttt{addr}\\\hline
+				\texttt{void set\_bit( int n, void *addr )}                & Set the $n^{th}$ bit starting from \texttt{addr}                       \\\hline
 
-\texttt{void clear\_bit( int n, void *addr )} &  Clear the $n^{th}$ bit starting from \texttt{addr}\\\hline
+				\texttt{void clear\_bit( int n, void *addr )}              & Clear the $n^{th}$ bit starting from \texttt{addr}                     \\\hline
 
-\texttt{void change\_bit( int n, void *addr )} &  Flip the value of the $n^{th}$ bit starting from \texttt{addr}\\\hline
+				\texttt{void change\_bit( int n, void *addr )}             & Flip the value of the $n^{th}$ bit starting from \texttt{addr}         \\\hline
 
-\texttt{int test\_and\_set\_bit( int n, void *addr )} &  Set $n^{th}$ bit starting from \texttt{addr}; return previous value\\\hline
+				\texttt{int test\_and\_set\_bit( int n, void *addr )}      & Set $n^{th}$ bit starting from \texttt{addr}; return previous value    \\\hline
 
-\texttt{int test\_and\_clear\_bit( int n, void *addr )} &  Clear $n^{th}$ bit starting from \texttt{addr}; return previous value\\\hline
+				\texttt{int test\_and\_clear\_bit( int n, void *addr )}    & Clear $n^{th}$ bit starting from \texttt{addr}; return previous value  \\\hline
 
-\texttt{int test\_and\_change\_bit( int n, void *addr )} &  Flip $n^{th}$ bit starting from \texttt{addr}; return previous value\\\hline
+				\texttt{int test\_and\_change\_bit( int n, void *addr )}   & Flip $n^{th}$ bit starting from \texttt{addr}; return previous value   \\\hline
 
-\texttt{int test\_bit( int n, void *addr )} &  Return value of $n^{th}$ bit starting from \texttt{addr}\\\hline
+				\texttt{int test\_bit( int n, void *addr )}                & Return value of $n^{th}$ bit starting from \texttt{addr}               \\\hline
+			\end{tabular}
+		\end{center}
+	}
 
-\end{tabular}
-\end{center}
-}
-
-These are Linux-specific and not portable (necessarily).
+	These are Linux-specific and not portable (necessarily).
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Use Tool Appropriately}
+	\frametitle{Use Tool Appropriately}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 struct point {
   atomic_t x;
   atomic_t y;
@@ -488,70 +487,70 @@ atomic_set( p1->x, 25 );
 atomic_set( p1->y, 30 );
 \end{lstlisting}
 
-Does this work?
+	Does this work?
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Use Tool Appropriately}
+	\frametitle{Use Tool Appropriately}
 
-Although the set of each of \texttt{x} and \texttt{y} is atomic, the operation as a whole is not.
+	Although the set of each of \texttt{x} and \texttt{y} is atomic, the operation as a whole is not.
 
-Although the set of each of \texttt{x} and \texttt{y} is atomic, the operation as a whole is not.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{You Spin Me Right Round...}
-
-Another common technique for protecting a critical section in Linux is the \textit{spinlock}.
-
-This is a handy way to implement constant checking to acquire a lock. 
-
-Unlike semaphores where the process is blocked if it fails to acquire the lock, a thread will constantly try to acquire the lock. 
-
-When would we want this behaviour?
+	Although the set of each of \texttt{x} and \texttt{y} is atomic, the operation as a whole is not.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{When It's Worth It!}
+	\frametitle{You Spin Me Right Round...}
 
-It would be better to let another thread execute.
+	Another common technique for protecting a critical section in Linux is the \textit{spinlock}.
 
-Except when the amount of time waiting on the lock might be small.
+	This is a handy way to implement constant checking to acquire a lock.
 
-Specifically, less than it would take to block the process, switch to another, and unblock it when the value changes.
+	Unlike semaphores where the process is blocked if it fails to acquire the lock, a thread will constantly try to acquire the lock.
+
+	When would we want this behaviour?
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{When It's Worth It!}
+
+	It would be better to let another thread execute.
+
+	Except when the amount of time waiting on the lock might be small.
+
+	Specifically, less than it would take to block the process, switch to another, and unblock it when the value changes.
 
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Spinlock}
+	\frametitle{Spinlock}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 spin_lock( &lock )
     /* Critical Section */
 spin_unlock( &lock )
 \end{lstlisting}
 
 
-In addition to the regular spinlock, there are \textit{reader-writer-spinlocks}.
+	In addition to the regular spinlock, there are \textit{reader-writer-spinlocks}.
 
-Like the readers-writers problem discussed earlier, the goal is to allow multiple readers but give exclusive access to a writer. 
+	Like the readers-writers problem discussed earlier, the goal is to allow multiple readers but give exclusive access to a writer.
 
-\begin{center}
-\begin{tabular}{l|l|l}
-	\textbf{Counter} & \textbf{Flag} & \textbf{Interpretation}\\\hline
-	0 & 1 & The spinlock is released and available. \\
-	0 & 0 & The spinlock has been acquired for writing.\\
-	$n$ ($n > 0$) & 0 & The spin lock has been acquired for reading by $n$ threads.\\
-	$n$ ($n > 0$) & 1 & Invalid state.\\
-\end{tabular}
-\end{center}
+	\begin{center}
+		\begin{tabular}{l|l|l}
+			\textbf{Counter} & \textbf{Flag} & \textbf{Interpretation}                                     \\\hline
+			0                & 1             & The spinlock is released and available.                     \\
+			0                & 0             & The spinlock has been acquired for writing.                 \\
+			$n$ ($n > 0$)    & 0             & The spin lock has been acquired for reading by $n$ threads. \\
+			$n$ ($n > 0$)    & 1             & Invalid state.                                              \\
+		\end{tabular}
+	\end{center}
 
 
 \end{frame}

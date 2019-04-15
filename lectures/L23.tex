@@ -85,12 +85,12 @@ int main( int argc, char **argv ) {
 }
 \end{lstlisting}
 
-It should be noted that if a thread signals a condition variable that an event has occurred, but no thread is waiting for that event, the event is ``lost''.  Because an event that takes place when no thread is listening is simply lost, it is (almost always) a logical error to signal or broadcast on a condition variable before some thread is waiting on it. This is sometimes called the ``lost wakeup problem'', because threads don't get woken up if they weren't waiting for this. Maybe it's not as dire as that, however, because sometimes an event is broadcast but nobody is interested and that's fine. 
+It should be noted that if a thread signals a condition variable that an event has occurred, but no thread is waiting for that event, the event is ``lost''.  Because an event that takes place when no thread is listening is simply lost, it is (almost always) a logical error to signal or broadcast on a condition variable before some thread is waiting on it. This is sometimes called the ``lost wakeup problem'', because threads don't get woken up if they weren't waiting for this. Maybe it's not as dire as that, however, because sometimes an event is broadcast but nobody is interested and that's fine.
 
 The condition variable with broadcast can be used to replace some of the synchronization constructs we've seen already. Consider the barrier pattern from earlier. There are $n$ threads and we wait for the last one to arrive. Then the last thread signals to unlock the barrier and then each thread calls post to unblock the next thread until all of them are through. This is a lot of calls and maybe it would be better to make it a broadcast instead. Remember the simple barrier (one phase rather than two), on the left, and then the condition variable on the right:
 
 \begin{multicols}{2}
-  \begin{verbatim}
+	\begin{verbatim}
 	1. wait( mutex )
 	2. count++
 	3. if count == n
@@ -100,8 +100,8 @@ The condition variable with broadcast can be used to replace some of the synchro
 	7. wait( barrier )
 	8. post( barrier )
   \end{verbatim}
-\columnbreak
-  \begin{verbatim}
+	\columnbreak
+	\begin{verbatim}
 	1. wait( mutex )
 	2. count++
 	3. if count < n
@@ -115,7 +115,7 @@ The condition variable with broadcast can be used to replace some of the synchro
 
 The \texttt{wait} takes place before the post on \texttt{mutex}. That looks strange, doesn't it? What's important to remember is that we give up the mutex \texttt{lock} when we wait on the condition variable so the fact that we don't get to the unlock statement first does not cause a problem. So we are alright. The last thread doesn't wait on the condition at all because there's no need to: it knows that it is last and there's nothing to wait for so it should proceed.
 
-Okay, let's think about how to put that to use in an actual code example. Assume that \texttt{count}, \texttt{lock} and \texttt{cv} are initialized correctly as they should be. 
+Okay, let's think about how to put that to use in an actual code example. Assume that \texttt{count}, \texttt{lock} and \texttt{cv} are initialized correctly as they should be.
 
 \begin{lstlisting}[language=C]
 int count;
@@ -155,9 +155,9 @@ void foo( ) {
 }
 \end{lstlisting}
 
-In this case, there is control flow that could lead to exiting this function \texttt{foo} without unlocking the mutex \texttt{l}. Sure, when I cut the remaining code out and just replace it with some comments so the control flow that causes the problem here is obvious, but in a real code example the function in question is likely to be in the hundreds of lines and it's easy to overlook something. 
+In this case, there is control flow that could lead to exiting this function \texttt{foo} without unlocking the mutex \texttt{l}. Sure, when I cut the remaining code out and just replace it with some comments so the control flow that causes the problem here is obvious, but in a real code example the function in question is likely to be in the hundreds of lines and it's easy to overlook something.
 
-The idea of monitors should be familiar to you if you have used Java synchronization constructs, notably the \texttt{synchronized} keyword. In Java we can declare a method to be \texttt{synchronized}, adding it after the access modifier keyword (public, private, etc) in the function definition, and then there is a lock created around that method. Only one thread can be inside that method at a time; if a second would like to call that method on the same instance, it will be placed in the entry set for the lock: a set of threads waiting for the lock to become available~\cite{osc}. 
+The idea of monitors should be familiar to you if you have used Java synchronization constructs, notably the \texttt{synchronized} keyword. In Java we can declare a method to be \texttt{synchronized}, adding it after the access modifier keyword (public, private, etc) in the function definition, and then there is a lock created around that method. Only one thread can be inside that method at a time; if a second would like to call that method on the same instance, it will be placed in the entry set for the lock: a set of threads waiting for the lock to become available~\cite{osc}.
 
 \begin{lstlisting}[language=Java]
 public synchronized void doSomething() {
@@ -190,7 +190,7 @@ shared_var++;
 pthread_mutex_unlock( lock );
 \end{lstlisting}
 
-While is is fully correct, if this happens frequently there is a lot of locking and unlocking on the same mutex, just to do the increment. So there's a fair amount of overhead on this. Thinking back to the ``test and set'' type of instruction from earlier, wouldn't it be nice if we could do that sort of thing for something like incrementing a variable? We can! 
+While is is fully correct, if this happens frequently there is a lot of locking and unlocking on the same mutex, just to do the increment. So there's a fair amount of overhead on this. Thinking back to the ``test and set'' type of instruction from earlier, wouldn't it be nice if we could do that sort of thing for something like incrementing a variable? We can!
 
 The Linux kernel provides operations that are guaranteed to execute atomically, to avoid simple race conditions. In a uniprocessor system, the CPU cannot be interrupted until the operation is finished; in a multiprocessor system, the variable is locked until the operation is finished. There are two types of atomic operations: those that operate on integers and those that operate on a single bit in a bitmap. On some architectures, the atomic operations are translated into uninterruptible assembly instructions; on others, the memory bus is locked to ensure the operation is atomic~\cite{osi}.
 
@@ -199,46 +199,45 @@ Rather than just using an integer for atomic integer operations, there is a defi
 The following table gives an overview of the atomic integer and bitmap operations, from~\cite{lkd}. These are, however, linux specific, and not necessarily available in a general system. In the C11 (2011) standard, atomic types were finally introduced as part of the language specification itself. But before this we just had implementation-specific options:
 
 \begin{center}
-\begin{tabular}{l|l}
-	\textbf{Function} & \textbf{Description}\\\hline
+	\begin{tabular}{l|l}
+		\textbf{Function}                                          & \textbf{Description}                                                   \\\hline
 
-	\texttt{atomic\_t ATOMIC\_INIT( int i )} & At declaration, initialize an \texttt{atomic\_t} to \texttt{i}\\\hline
+		\texttt{atomic\_t ATOMIC\_INIT( int i )}                   & At declaration, initialize an \texttt{atomic\_t} to \texttt{i}         \\\hline
 
-\texttt{int atomic\_read( atomic\_t *v )} &  Read the integer value of \texttt{v}\\\hline
+		\texttt{int atomic\_read( atomic\_t *v )}                  & Read the integer value of \texttt{v}                                   \\\hline
 
-\texttt{void atomic\_set( atomic\_t *v, int i )} & Set \texttt{v} equal to \texttt{i}\\\hline
+		\texttt{void atomic\_set( atomic\_t *v, int i )}           & Set \texttt{v} equal to \texttt{i}                                     \\\hline
 
-\texttt{void atomic\_add( int i, atomic\_t *v )} & Add \texttt{i} to \texttt{v}\\\hline
+		\texttt{void atomic\_add( int i, atomic\_t *v )}           & Add \texttt{i} to \texttt{v}                                           \\\hline
 
-\texttt{void atomic\_sub( int i, atomic\_t *v )} & Subtract \texttt{i} from \texttt{v}\\\hline
+		\texttt{void atomic\_sub( int i, atomic\_t *v )}           & Subtract \texttt{i} from \texttt{v}                                    \\\hline
 
-\texttt{void atomic\_inc( atomic\_t *v )} & Add 1 to \texttt{v}\\\hline
+		\texttt{void atomic\_inc( atomic\_t *v )}                  & Add 1 to \texttt{v}                                                    \\\hline
 
-\texttt{void atomic\_dec( atomic\_t *v )} & Subtract 1 from \texttt{v}\\\hline
+		\texttt{void atomic\_dec( atomic\_t *v )}                  & Subtract 1 from \texttt{v}                                             \\\hline
 
-\texttt{int atomic\_sub\_and\_test( int i, atomic\_t *v )} & Subtract \texttt{i} from \texttt{v}; return true if 0; otherwise false\\\hline
+		\texttt{int atomic\_sub\_and\_test( int i, atomic\_t *v )} & Subtract \texttt{i} from \texttt{v}; return true if 0; otherwise false \\\hline
 
-\texttt{int atomic\_add\_negative( int i, atomic\_t *v )} & Add \texttt{i} to \texttt{v}; return true if negative; otherwise false\\\hline
+		\texttt{int atomic\_add\_negative( int i, atomic\_t *v )}  & Add \texttt{i} to \texttt{v}; return true if negative; otherwise false \\\hline
 
-\texttt{int atomic\_dec\_and\_test( atomic\_t *v )} & Decrement \texttt{v} by 1; return true if 0; otherwise false\\\hline
+		\texttt{int atomic\_dec\_and\_test( atomic\_t *v )}        & Decrement \texttt{v} by 1; return true if 0; otherwise false           \\\hline
 
-\texttt{int atomic\_inc\_and\_test( atomic\_t *v )} & Increment \texttt{v} by 1; return true if 0; otherwise false\\ \hline\hline
+		\texttt{int atomic\_inc\_and\_test( atomic\_t *v )}        & Increment \texttt{v} by 1; return true if 0; otherwise false           \\ \hline\hline
 
-\texttt{void set\_bit( int n, void *addr )} &  Set the $n^{th}$ bit starting from \texttt{addr}\\\hline
+		\texttt{void set\_bit( int n, void *addr )}                & Set the $n^{th}$ bit starting from \texttt{addr}                       \\\hline
 
-\texttt{void clear\_bit( int n, void *addr )} &  Clear the $n^{th}$ bit starting from \texttt{addr}\\\hline
+		\texttt{void clear\_bit( int n, void *addr )}              & Clear the $n^{th}$ bit starting from \texttt{addr}                     \\\hline
 
-\texttt{void change\_bit( int n, void *addr )} &  Flip the value of the $n^{th}$ bit starting from \texttt{addr}\\\hline
+		\texttt{void change\_bit( int n, void *addr )}             & Flip the value of the $n^{th}$ bit starting from \texttt{addr}         \\\hline
 
-\texttt{int test\_and\_set\_bit( int n, void *addr )} &  Set $n^{th}$ bit starting from \texttt{addr}; return previous value\\\hline
+		\texttt{int test\_and\_set\_bit( int n, void *addr )}      & Set $n^{th}$ bit starting from \texttt{addr}; return previous value    \\\hline
 
-\texttt{int test\_and\_clear\_bit( int n, void *addr )} &  Clear $n^{th}$ bit starting from \texttt{addr}; return previous value\\\hline
+		\texttt{int test\_and\_clear\_bit( int n, void *addr )}    & Clear $n^{th}$ bit starting from \texttt{addr}; return previous value  \\\hline
 
-\texttt{int test\_and\_change\_bit( int n, void *addr )} &  Flip $n^{th}$ bit starting from \texttt{addr}; return previous value\\\hline
+		\texttt{int test\_and\_change\_bit( int n, void *addr )}   & Flip $n^{th}$ bit starting from \texttt{addr}; return previous value   \\\hline
 
-\texttt{int test\_bit( int n, void *addr )} &  Return value of $n^{th}$ bit starting from \texttt{addr}\\\hline
-
-\end{tabular}
+		\texttt{int test\_bit( int n, void *addr )}                & Return value of $n^{th}$ bit starting from \texttt{addr}               \\\hline
+	\end{tabular}
 \end{center}
 
 Atomic operations are helpful for scenarios like a single variable being modified and read. But atomic operations are not always ideal. Consider this:
@@ -256,9 +255,9 @@ atomic_set( p1->x, 25 );
 atomic_set( p1->y, 30 );
 \end{lstlisting}
 
-Although the set of each of \texttt{x} and \texttt{y} is atomic, the operation as a whole is not. The write of \texttt{x} could succeed and then a read of both in a different thread could take place before the write of \texttt{y}, meaning that a reader would see (25, 0) when that's probably not valid. Similarly, the state could be totally corrupted if another thread did atomic writes of (10, 15) in between the two, leading to a final state of (10, 30). 
+Although the set of each of \texttt{x} and \texttt{y} is atomic, the operation as a whole is not. The write of \texttt{x} could succeed and then a read of both in a different thread could take place before the write of \texttt{y}, meaning that a reader would see (25, 0) when that's probably not valid. Similarly, the state could be totally corrupted if another thread did atomic writes of (10, 15) in between the two, leading to a final state of (10, 30).
 
-When a number of writes need to take place as a ``package'', then a mutex type is the appropriate choice. 
+When a number of writes need to take place as a ``package'', then a mutex type is the appropriate choice.
 
 \paragraph{Spinlocks.}
 Another common technique for protecting a critical section in Linux is the \textit{spinlock}. This is a handy way to implement constant checking to acquire a lock. Unlike semaphores where the process is blocked if it fails to acquire the lock, a thread will constantly try to acquire the lock. The implementation is an integer that is checked by a thread; if the value is 0, the thread can lock it (set the value to 1) and continue; if it is nonzero, it constantly checks the value until the value becomes 0. As you know, this is very inefficient; it would be better to let another thread execute, except in the circumstances where the amount of time waiting on the lock might be less than it would take to block the process, switch to another, and unblock it when the value changes~\cite{osi}.
@@ -272,13 +271,13 @@ spin_unlock( &lock )
 In addition to the regular spinlock, there are \textit{reader-writer-spinlocks}. Like the readers-writers problem discussed earlier, the goal is to allow multiple readers but give exclusive access to a writer. This is implemented as a 24-bit reader counter and an unlock flag, with the meaning defined as follows~\cite{osi}.
 
 \begin{center}
-\begin{tabular}{l|l|l}
-	\textbf{Counter} & \textbf{Flag} & \textbf{Interpretation}\\\hline
-	0 & 1 & The spinlock is released and available. \\
-	0 & 0 & The spinlock has been acquired for writing.\\
-	$n$ ($n > 0$) & 0 & The spin lock has been acquired for reading by $n$ threads.\\
-	$n$ ($n > 0$) & 1 & Invalid state.\\
-\end{tabular}
+	\begin{tabular}{l|l|l}
+		\textbf{Counter} & \textbf{Flag} & \textbf{Interpretation}                                     \\\hline
+		0                & 1             & The spinlock is released and available.                     \\
+		0                & 0             & The spinlock has been acquired for writing.                 \\
+		$n$ ($n > 0$)    & 0             & The spin lock has been acquired for reading by $n$ threads. \\
+		$n$ ($n > 0$)    & 1             & Invalid state.                                              \\
+	\end{tabular}
 \end{center}
 
 There are further additional details related to use of spinlocks, which can of course be explored by reading the Linux kernel documentation.

@@ -15,9 +15,9 @@ close( fd );
 
 As we discussed much earlier, the \texttt{read} call is blocking, as expected. So, your program waits for the I/O operation to be complete before continuing on to the next statements (whatever they are). This is sometimes, but not always, sensible. If you need the data in the next statement, you can't go on until the data is present.
 
-If you are waiting for the bus, do you stare off blankly into space while waiting for it to arrive? Probably not. More likely you pull out your phone and start to use it for something. Whether that is productive or not (e.g., answering a project e-mail or liking posts on Facebook) is up to you, but you are doing something and making use of the time. 
+If you are waiting for the bus, do you stare off blankly into space while waiting for it to arrive? Probably not. More likely you pull out your phone and start to use it for something. Whether that is productive or not (e.g., answering a project e-mail or liking posts on Facebook) is up to you, but you are doing something and making use of the time.
 
-Our main solution until now is threads: if one thread gets blocked on the I/O the other ones can continue and is fine. But maybe you don't want to use threads, or maybe you can't due to: race conditions, thread stack size overhead, or limitations on the maximum number of threads. The last one might seem ridiculous, but in some embedded system you may not have the option to make new threads (or at least not as many as you want). 
+Our main solution until now is threads: if one thread gets blocked on the I/O the other ones can continue and is fine. But maybe you don't want to use threads, or maybe you can't due to: race conditions, thread stack size overhead, or limitations on the maximum number of threads. The last one might seem ridiculous, but in some embedded system you may not have the option to make new threads (or at least not as many as you want).
 
 Sometimes, also, your programming language (e.g., Javascript) doesn't allow you to make multiple threads and you really have no choice but to use asynchronous I/O. It's a useful tool to have in the toolbox so let's get into it.
 
@@ -40,7 +40,7 @@ fcntl( sockfd, F_SETFL, O_NONBLOCK );
 
 This means that calls to \texttt{accept()}, \texttt{recv()}, or \texttt{recvfrom()} would not block. If you call those and there's no data to receive, you get back a return value of \texttt{-1} and \texttt{errno} is going to be either \texttt{EAGAIN} or \texttt{EWOULDBLOCK}. Sadly, the specification does not say which it would be, so the fully correct approach is to check for both. Not great, but it's how we are sure.
 
-Suppose that you are writing a server application that's going to listen on several sockets. This is a common enough scenario. You could have different threads listening on their individual sockets but -- see the reasoning above as to why we might not have that option. And we no longer have to! 
+Suppose that you are writing a server application that's going to listen on several sockets. This is a common enough scenario. You could have different threads listening on their individual sockets but -- see the reasoning above as to why we might not have that option. And we no longer have to!
 
 But if we are a server and there aren't any incoming requests, what exactly are we supposed to do with our time? If we just poll each socket using, for example, \texttt{accept()}, this amounts to tight polling and is CPU intensive and wastes the CPU's time. But we don't want to get blocked on a particular socket either, because what if it's not the one where the next packet arrives? What we need is a third option.
 
@@ -52,7 +52,7 @@ But if we are a server and there aren't any incoming requests, what exactly are 
 
 If we call this function, we'll get blocked until something happens on one of the sockets so that it becomes ``ready'' -- data is available to read, space is available to write, etc. or until we reach a timeout. While blocked, we could also get interrupted by something (e.g., a signal).
 
-The first parameter, \texttt{nfds}, is supposed to be the value of the highest number file descriptor in any of the three sets plus 1. So. It has come to this. One of the problems with \texttt{select()} is that it is pretty... arcane. According to the documentation, the reason why it is this, is because \texttt{select()} will scan through all the file descriptors from 0 up to \texttt{nfds-1} to figure out if we care about them. 
+The first parameter, \texttt{nfds}, is supposed to be the value of the highest number file descriptor in any of the three sets plus 1. So. It has come to this. One of the problems with \texttt{select()} is that it is pretty... arcane. According to the documentation, the reason why it is this, is because \texttt{select()} will scan through all the file descriptors from 0 up to \texttt{nfds-1} to figure out if we care about them.
 
 What's this about? Well, the \texttt{fd\_set} structure can have up to 1024 file descriptors, and is actually implemented as a bitfield; by specifying the highest file descriptor that we are interested in, the kernel can stop looking once we reached the last one (and the \texttt{fd\_set} structure doesn't have to be a linked list or array or anything large!)~\cite{apunix}.
 
@@ -65,7 +65,7 @@ void FD_CLR( int fd, fd_set *set ); /* Remove fd from the set */
 int  FD_ISSET( int fd, fd_set *set); /* Tests if fd is a part of the set */ 
 \end{lstlisting}
 
-When we create a new set, we should first initialize it with a \texttt{FD\_ZERO} call. That could also be used to reset it, if desired, at some later point. Then we can add file descriptors that we want to have. To add one, use \texttt{FD\_SET} with the file descriptor to add; to remove one that has been added, use \texttt{FD\_CLR} with the file descriptor to remove. 
+When we create a new set, we should first initialize it with a \texttt{FD\_ZERO} call. That could also be used to reset it, if desired, at some later point. Then we can add file descriptors that we want to have. To add one, use \texttt{FD\_SET} with the file descriptor to add; to remove one that has been added, use \texttt{FD\_CLR} with the file descriptor to remove.
 
 But that last one, \texttt{FD\_ISSET}, is a little different. It's not as if we would forget whether we put a file descriptor in the set. It's really for us to see what happens after \texttt{select()} is called -- we can find out whether a given file descriptor is in a particular set or not.
 
@@ -73,7 +73,7 @@ The \texttt{readfds} are obviously sockets we are interested in reading from and
 
 We don't have to use all three of \texttt{readfds}, \texttt{writefds}, and \texttt{exceptfds} in a call to \texttt{select()} if we do not need them all. If we have only read sockets, we put them all in the \texttt{readfds} set and can just give \texttt{NULL} or empty \texttt{fd\_set}s in for the other parameters~\cite{getaddrinfo}.
 
-Finally, there is a timeout parameter: we can specify a maximum amount of time we  are willing to wait. If nothing happens before the timeout amount of time occurs, then \texttt{select()} returns. The format of this is a fairly simple structure \texttt{struct timeval}: 
+Finally, there is a timeout parameter: we can specify a maximum amount of time we  are willing to wait. If nothing happens before the timeout amount of time occurs, then \texttt{select()} returns. The format of this is a fairly simple structure \texttt{struct timeval}:
 
 \begin{lstlisting}[language=C]
 struct timeval {
@@ -82,13 +82,13 @@ struct timeval {
 };
 \end{lstlisting}
 
-If both fields of the \texttt{struct timeval} are zero, then \texttt{select()} returns immediately; if the pointer to it is \texttt{NULL} then there is no timeout and we will wait as long as it takes for something -- anything -- to happen. 
+If both fields of the \texttt{struct timeval} are zero, then \texttt{select()} returns immediately; if the pointer to it is \texttt{NULL} then there is no timeout and we will wait as long as it takes for something -- anything -- to happen.
 
 When \texttt{select()} returns, however that happened, some if not all of the parameters other than \texttt{nfds} got updated (argh). The file descriptors passed in are modified in-place to see if they changed status.  And the \texttt{struct timeval} parameter may (but also may not) be updated to reflect how much time was left before the timeout. Because different systems may or may not change this value, it is not safe to re-use and should be overwritten if you plan to use that structure again.
 
 After select has returned, then we check the file descriptors in our sets. All of them. Yes, really. The function returns when there is something to do -- but we aren't told what socket is ready. So we would need to check each socket to see if, for example, it's ready for reading (if that's the plan). To do that we check \texttt{FD\_ISSET} with the socket and the set to see if it's in the desired state.
 
-Because the sets of file descriptors may have been modified, you probably need to rebuild them after each call, if you plan to use them again. If you were waiting, for example, three sockets, not all of them necessarily became ready at the same time. So if you want to go on waiting for those three, you will need to put them in a set again. 
+Because the sets of file descriptors may have been modified, you probably need to rebuild them after each call, if you plan to use them again. If you were waiting, for example, three sockets, not all of them necessarily became ready at the same time. So if you want to go on waiting for those three, you will need to put them in a set again.
 
 Let's imagine a brief example where we have a server that is going to listen on some different sockets for different services, imaginatively called service1, service2, and service3.
 
@@ -134,7 +134,7 @@ void listen_for_connections( int service1_sock, int service2_sock, int service3_
 
 You'll notice that we check each of the sockets individually -- more than one of them could become ready at once. Now, the \texttt{activate()} calls there could take some nontrivial time, and if sockets receive data in the meantime then on the next iteration of the loop then \texttt{select()} will return immediately because data is waiting.
 
-This represents a fairly simple scenario, though, where we are just waiting for \texttt{accept()} on the three services where we send back as simple response and that's the end of it. But if the connections we were looking at are supposed to stay open for some period of time, such as when there is occasional communication, then we would also have to add and remove sockets from the sets as connections were opened and closed. Managing the set of sockets in such a scenario is non-trivial, because each call to \texttt{select} can (and usually does) change the sets. 
+This represents a fairly simple scenario, though, where we are just waiting for \texttt{accept()} on the three services where we send back as simple response and that's the end of it. But if the connections we were looking at are supposed to stay open for some period of time, such as when there is occasional communication, then we would also have to add and remove sockets from the sets as connections were opened and closed. Managing the set of sockets in such a scenario is non-trivial, because each call to \texttt{select} can (and usually does) change the sets.
 
 \paragraph{Chat Server.} The more complicated example in~\cite{getaddrinfo} is about a chat program (if you ever used IRC you have a pretty good idea of how this would work). When people want to join the chat room they send a message to a server. The server accepts and opens the connection and adds the client to the chat room. But people don't always talk. So if nothing is happening right now there's nothing to send. So the server can use \texttt{select()} to keep an eye open for when someone has said something. Either way, we would wait for something to happen, either on one of the sockets from a current client, or the socket for accepting incoming connections.
 
@@ -205,7 +205,7 @@ Someone found a use for a \texttt{short} after all! Just kidding, hardware peopl
 
 The first parameter is obviously the file descriptor to watch. The second is where we specify what events we want to wait for on this file descriptor, and the third parameter is set by the kernel so we can find out what happened.
 
-What can we add? You can look for data that's ready to read with \texttt{POLLIN}, a socket where you can write without blocking with \texttt{POLLOUT}, and an exception (as above) with \texttt{POLLPRI}. These can be combined with the bitwise OR operator if you want more than one. 
+What can we add? You can look for data that's ready to read with \texttt{POLLIN}, a socket where you can write without blocking with \texttt{POLLOUT}, and an exception (as above) with \texttt{POLLPRI}. These can be combined with the bitwise OR operator if you want more than one.
 
 The return value will be constructed as a bitwise OR of the fields as well, with the possibility that you could have one of these other return values: \texttt{POLLERR} if an error occurred, \texttt{POLLHUP} if the other side ended the connection, or \texttt{POLLNVAL} if there's a problem with the socket (e.g., uninitialized)~\cite{getaddrinfo}.
 
@@ -250,7 +250,7 @@ void listen_for_connections( int service1_sock, int service2_sock, int service3_
 \paragraph{Comparing the two.}
 Ultimately both functions do the same job; it is only the specifics of the API call that make the difference. You might find one or the other to be better, and in particular it is nice that \texttt{poll} doesn't ask you to find the maximum file descriptor or manage three sets or have to rebuild the sets on each iteration of the loop.
 
-Both \texttt{select} and \texttt{poll} are slow, unfortunately. They have linear characteristics: the more file descriptors you give them the slower they get; if you get up to a hundred file descriptors, roughly, then you end up actually spending significant CPU time trying to figure out which of the sockets changed~\cite{pollvselect}. 
+Both \texttt{select} and \texttt{poll} are slow, unfortunately. They have linear characteristics: the more file descriptors you give them the slower they get; if you get up to a hundred file descriptors, roughly, then you end up actually spending significant CPU time trying to figure out which of the sockets changed~\cite{pollvselect}.
 
 If we want to do things more efficiently we will want to use a different tool, specifically \texttt{libevent}, but we aren't quite done with network communication. After sockets, we learned about cURL, and it turns out we can use nonblocking I/O there as well!
 
