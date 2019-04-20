@@ -6,7 +6,7 @@
 
 \section*{Concurrency in File Systems}
 
-To understand the idea of concurrency in file systems, we need to peel back the interface a bit and have at least a high-level understanding of their implementation. File can be of arbitrary size (although in a particular file system there may be a limit), so they have to be allocated on disk in some way.
+To understand the idea of concurrency in file systems, we need to peel back the interface a bit and have at least a high-level understanding of their implementation. File can be of arbitrary size (although in a particular file system there may be a limit), so they have to be allocated on disk according to some strategy.
 
 The contiguous allocation strategy means that a file occupies a set of contiguous blocks on disk. So a file is allocated, starting at block $b$ and is $n$ blocks in size, the file takes up blocks $b, b+1, b+2, ..., b+(n-1)$. But for a sufficiently large file, it might be difficult to find a place to put it. And we also don't know how to predict the size of a file, so how much space do we leave for where to put it?
 
@@ -113,7 +113,7 @@ if ( lock.l_type == F_UNLCK ) {
 
 Checking on things with \texttt{F\_GETLK} is really for information purposes only: you should not make decisions about whether to proceed based on this, because of course the sequence of ``read of the value and then whatever operation you'd like to do next'' is not atomic. Instead, use the command \texttt{F\_SETLK} and actually try to set the lock. If \texttt{-1} is returned then locking was not successful. Or, if the plan is to wait, use \texttt{F\_SETLKW} as one would expect.
 
-It's important to remember that \texttt{fcntl} changes some values of the \texttt{struct lock} so if you wanted to re-use it you need to make sure to reset it as appropriate. So if you want to use the same \texttt{struct lock} to unlock the thing that you locked, you can, just do so carefully.
+It's important to remember that \texttt{fcntl} changes some values of the \texttt{struct lock} so if you wanted to re-use it you need to make sure to reset it as appropriate. You can use the same \texttt{struct lock} later to unlock the thing that you locked, just do so carefully.
 
 I'll also take a minute to mention \texttt{lockf}: it is a simplified way of locking a file. While \texttt{fcntl} is more flexible, sometimes all we need is the simple version. According to the documentation:
 
