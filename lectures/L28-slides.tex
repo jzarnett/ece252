@@ -17,188 +17,188 @@
 
 
 \begin{frame}
-\frametitle{Copy-Modify-Merge}
+	\frametitle{Copy-Modify-Merge}
 
-Thus far when we talk about modification of shared data we follow a model that could be described as ``Lock-Modify-Unlock''. 
+	Thus far when we talk about modification of shared data we follow a model that could be described as ``Lock-Modify-Unlock''.
 
-But you've also used \texttt{git} or some other version control system (\texttt{svn}) that uses a different model: Copy-Modify-Merge. 
+	But you've also used \texttt{git} or some other version control system (\texttt{svn}) that uses a different model: Copy-Modify-Merge.
 
-\begin{center}
-	\includegraphics[width=0.25\textwidth]{images/git.png}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.25\textwidth]{images/git.png}
+	\end{center}
 
-Example: you and your lab partner work on something together...
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Transaction}
-
-A \alert{transaction} is a grouping of operations that belong together and should be treated as an indivisible unit. 
-
-Bad things can happen when an intermediate state of a multiple-step operation becomes inadvertently visible.
-
-Most of the examples looked at things like \texttt{x++;}
-
-In the copy-modify-merge scenario, people can make their changes separately and then we try to put them all together. 
- 
-\end{frame}
-
-\begin{frame}
-\frametitle{Plan your Moves}
-
-A transaction has a begin transaction statement, then the operations to take place in the transaction, and finally an end transaction statement. 
-
-Execution looks something like writing down the transaction into a log, doing the operations in the transaction. 
-
-When the last one is complete, if all went well, marking the transaction as successful.
+	Example: you and your lab partner work on something together...
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{I have a cunning plan...}
+	\frametitle{Transaction}
 
-\begin{center}
-	\includegraphics[width=0.9\textwidth]{images/gru-plan.jpg}
-\end{center}
+	A \alert{transaction} is a grouping of operations that belong together and should be treated as an indivisible unit.
+
+	Bad things can happen when an intermediate state of a multiple-step operation becomes inadvertently visible.
+
+	Most of the examples looked at things like \texttt{x++;}
+
+	In the copy-modify-merge scenario, people can make their changes separately and then we try to put them all together.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Plan your Moves}
+
+	A transaction has a begin transaction statement, then the operations to take place in the transaction, and finally an end transaction statement.
+
+	Execution looks something like writing down the transaction into a log, doing the operations in the transaction.
+
+	When the last one is complete, if all went well, marking the transaction as successful.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{I have a cunning plan...}
+
+	\begin{center}
+		\includegraphics[width=0.9\textwidth]{images/gru-plan.jpg}
+	\end{center}
 
 \end{frame}
 
 
 
 \begin{frame}
-\frametitle{Copy-Modify-Merge}
+	\frametitle{Copy-Modify-Merge}
 
-In the case of version control, if there are merge conflicts then we are notified that the merge cannot take place until conflicts are resolved. 
+	In the case of version control, if there are merge conflicts then we are notified that the merge cannot take place until conflicts are resolved.
 
-But in file systems, the last write wins.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{You have \textit{N} unread notifications...}
-
-I'm an inbox-zero kind of person so this picture hurts:
-
-\begin{center}
-	\includegraphics[width=\textwidth]{images/inbox-nonzero.jpg}
-\end{center}
-\hfill Image credit: Dhvanesh Adhiya
+	But in file systems, the last write wins.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Notify Me}
+	\frametitle{You have \textit{N} unread notifications...}
 
-Another way that we can use the file system (in Linux only!) for synchronization or concurrency control is through the use of \texttt{inotify}.
+	I'm an inbox-zero kind of person so this picture hurts:
 
-Using this API, you can register your program as being interested in the events.
-
-You say you want to watch a file or directory, and when an event occurs, then your program is informed
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/inbox-nonzero.jpg}
+	\end{center}
+	\hfill Image credit: Dhvanesh Adhiya
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{OVERWATCH!}
+	\frametitle{Notify Me}
 
-The steps are:
+	Another way that we can use the file system (in Linux only!) for synchronization or concurrency control is through the use of \texttt{inotify}.
 
-\begin{enumerate}
-	\item Use an initialization function to create the management structure (and get a file descriptor back to refer to it).
-	\item Then you tell the kernel what files you are interested in by adding them to the structure (you can also remove them).
-	\item To collect an event, use \texttt{read} on the file descriptor. Each call returns one or more event structures.
-	\item If you're done, close the file descriptor representing the management structure, which conveniently cleans everything up for you.
-\end{enumerate}
+	Using this API, you can register your program as being interested in the events.
 
-The mechanism is not recursive.
+	You say you want to watch a file or directory, and when an event occurs, then your program is informed
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{OVERWATCH!}
+
+	The steps are:
+
+	\begin{enumerate}
+		\item Use an initialization function to create the management structure (and get a file descriptor back to refer to it).
+		\item Then you tell the kernel what files you are interested in by adding them to the structure (you can also remove them).
+		\item To collect an event, use \texttt{read} on the file descriptor. Each call returns one or more event structures.
+		\item If you're done, close the file descriptor representing the management structure, which conveniently cleans everything up for you.
+	\end{enumerate}
+
+	The mechanism is not recursive.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Notification API: Initialization}
+	\frametitle{Notification API: Initialization}
 
-The API calls:
-\begin{lstlisting}[language=C]
+	The API calls:
+	\begin{lstlisting}[language=C]
 int inotify_init( ); /* Returns file descriptor referring to the struct */
 \end{lstlisting}
 
-Initialization doesn't require any arguments, so that's quite convenient.
+	Initialization doesn't require any arguments, so that's quite convenient.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Notification API: Add}
+	\frametitle{Notification API: Add}
 
-The API calls:
-\begin{lstlisting}[language=C]
+	The API calls:
+	\begin{lstlisting}[language=C]
 int inotify_add_watch( int fd, const char* pathname, uint32_t mask );
 \end{lstlisting}
 
 
-Adding an item to the watch takes as an argument the inotify structure to add it to, the name of the file to add, and a mask. 
+	Adding an item to the watch takes as an argument the inotify structure to add it to, the name of the file to add, and a mask.
 
-You must have at least read permission on the file to be able to watch it. 
+	You must have at least read permission on the file to be able to watch it.
 
-The mask is how we specify details about the events that we are interested in.
+	The mask is how we specify details about the events that we are interested in.
 
-We have to save the return value of the add function if we want to use the remove function.
+	We have to save the return value of the add function if we want to use the remove function.
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Notification API: Remove}
+	\frametitle{Notification API: Remove}
 
-The API calls:
-\begin{lstlisting}[language=C]
+	The API calls:
+	\begin{lstlisting}[language=C]
 int inotify_rm_watch( int fd, uint32_t wd );
 \end{lstlisting}
 
-Remove takes as an argument what was returned from add.
+	Remove takes as an argument what was returned from add.
 
-When we're completely done, just call close on the file descriptor representing the inotify.
+	When we're completely done, just call close on the file descriptor representing the inotify.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{TV has so many channels...}
+	\frametitle{TV has so many channels...}
 
-There are about 23 different events that you can watch for using the bit mask.
+	There are about 23 different events that you can watch for using the bit mask.
 
-\begin{center}
-	\begin{tabular}{l|l}
-		\textbf{Bit Value}          & \textbf{Description}                             \\ \hline
-		\texttt{IN\_ACCESS}         & File accessed (read/execute)                     \\
-		\texttt{IN\_ATTRIB}         & Metadata changed, such as permissions            \\
-		\texttt{IN\_CLOSE\_WRITE}   & File opened for writing was closed               \\
-		\texttt{IN\_CLOSE\_NOWRITE} & File not opened for writing was closed           \\
-		\texttt{IN\_CREATE}         & File or directory created in watched directory   \\
-		\texttt{IN\_DELETE}         & File or directory deleted from watched directory \\
-		\texttt{IN\_DELETE\_SELF}   & Watched file or directory deleted                \\
-		\texttt{IN\_MODIFY}         & File modified (write, for example)               \\
-		\texttt{IN\_OPEN}           & File opened                                      \\
-		\texttt{IN\_ALL\_EVENTS}    & Watch for all of the above (and a few more)
-	\end{tabular}
-\end{center}
+	\begin{center}
+		\begin{tabular}{l|l}
+			\textbf{Bit Value}          & \textbf{Description}                             \\ \hline
+			\texttt{IN\_ACCESS}         & File accessed (read/execute)                     \\
+			\texttt{IN\_ATTRIB}         & Metadata changed, such as permissions            \\
+			\texttt{IN\_CLOSE\_WRITE}   & File opened for writing was closed               \\
+			\texttt{IN\_CLOSE\_NOWRITE} & File not opened for writing was closed           \\
+			\texttt{IN\_CREATE}         & File or directory created in watched directory   \\
+			\texttt{IN\_DELETE}         & File or directory deleted from watched directory \\
+			\texttt{IN\_DELETE\_SELF}   & Watched file or directory deleted                \\
+			\texttt{IN\_MODIFY}         & File modified (write, for example)               \\
+			\texttt{IN\_OPEN}           & File opened                                      \\
+			\texttt{IN\_ALL\_EVENTS}    & Watch for all of the above (and a few more)
+		\end{tabular}
+	\end{center}
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-\frametitle{Well, Now What?}
+	\frametitle{Well, Now What?}
 
-Imagine we have set up some files that we would like to watch. 
+	Imagine we have set up some files that we would like to watch.
 
-When ready for such an event, use \texttt{read} on the file descriptor for the inotify. 
+	When ready for such an event, use \texttt{read} on the file descriptor for the inotify.
 
-If an event occurred, you get back a structure \texttt{inotify\_event}.
+	If an event occurred, you get back a structure \texttt{inotify\_event}.
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 struct inotify_event {
   int      wd;       /* Watch descriptor */
   uint32_t mask;     /* Mask describing event */
@@ -208,52 +208,52 @@ struct inotify_event {
 };
 \end{lstlisting}
 
-Weird: the size of an inotify event is thus the structure size plus the length of the array, i.e.: \texttt{sizeof( struct inotify\_event) + len}.
+	Weird: the size of an inotify event is thus the structure size plus the length of the array, i.e.: \texttt{sizeof( struct inotify\_event) + len}.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Das ist Nicht Gut}
+	\frametitle{Das ist Nicht Gut}
 
-Usually when we do a read we need to know how many bytes we'd like to read. 
+	Usually when we do a read we need to know how many bytes we'd like to read.
 
-If we're reading a struct, we know the size of the struct, but now it depends on the length of the data you get back. 
+	If we're reading a struct, we know the size of the struct, but now it depends on the length of the data you get back.
 
-Your standard clairvoyance problem. 
+	Your standard clairvoyance problem.
 
-One approach is to just make the buffer really big...
+	One approach is to just make the buffer really big...
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Consult an Expert?}
+	\frametitle{Consult an Expert?}
 
-\begin{center}
-	\includegraphics[width=0.5\textwidth]{images/clairvoyance.jpg}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/clairvoyance.jpg}
+	\end{center}
 
 \end{frame}
 
 
 
 \begin{frame}
-\frametitle{If you don't know, ask!}
+	\frametitle{If you don't know, ask!}
 
-\texttt{ioctl} can tell you what you want to know! 
+	\texttt{ioctl} can tell you what you want to know!
 
-\texttt{ioctl( fd, FIONREAD, \&numbytes )} updates \texttt{numbytes} with the number of bytes currently available to read from the inotify instance.  
+	\texttt{ioctl( fd, FIONREAD, \&numbytes )} updates \texttt{numbytes} with the number of bytes currently available to read from the inotify instance.
 
-If multiple events occurred you can get multiple structures back (if your buffer is big enough).
+	If multiple events occurred you can get multiple structures back (if your buffer is big enough).
 
 
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Example of using inotify}
+	\frametitle{Example of using inotify}
 
-\begin{lstlisting}[language=C]
+	\begin{lstlisting}[language=C]
 const char filename[] = "file.lock";
 
 int main( int argc, char** argv ) {
@@ -279,10 +279,10 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 
- \begin{frame}[fragile]
-\frametitle{Example of using inotify}
+\begin{frame}[fragile]
+	\frametitle{Example of using inotify}
 
-\begin{lstlisting}[language=C]     
+	\begin{lstlisting}[language=C]     
       struct inotify_event* event = (struct inotify_event*) event_buffer;
       /* Here we can look and see what arrived and decide what to do.
          In this example, we're only watching one file and one type
@@ -314,232 +314,232 @@ int main( int argc, char** argv ) {
 \end{frame}
 
 \begin{frame}
-\frametitle{Consistency Checking and Journalling}
+	\frametitle{Consistency Checking and Journalling}
 
-Unfortunately, an error, crash, or power failure or something similar may result in a loss of data or inconsistent data in the file system. 
+	Unfortunately, an error, crash, or power failure or something similar may result in a loss of data or inconsistent data in the file system.
 
-The directory structures, pointers, inodes, et cetera are all data structures and if they become corrupted it may lead to serious problems.
+	The directory structures, pointers, inodes, et cetera are all data structures and if they become corrupted it may lead to serious problems.
 
-We may need to check for consistency:
+	We may need to check for consistency:
 
-\begin{center}
-	\includegraphics[width=0.4\textwidth]{images/lab-testing.jpeg}
-\end{center}
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{images/lab-testing.jpeg}
+	\end{center}
 
 \end{frame}
 
 \begin{frame}
-\frametitle{Consistency Checking}
+	\frametitle{Consistency Checking}
 
-We could check for inconsistent data periodically (e.g., on system boot up) and many operating systems do so. 
+	We could check for inconsistent data periodically (e.g., on system boot up) and many operating systems do so.
 
-This is, of course, an operation that will consume a very large amount of time while the whole disk is scanned. 
+	This is, of course, an operation that will consume a very large amount of time while the whole disk is scanned.
 
-UNIX: \texttt{fsck}. Windows: \texttt{chkdsk}/\texttt{scandisk}.
+	UNIX: \texttt{fsck}. Windows: \texttt{chkdsk}/\texttt{scandisk}.
 
-These tools will look for inconsistent states (e.g., a file that claims to be 12 blocks but the linked list contains only 5) and will attempt to repair it.
+	These tools will look for inconsistent states (e.g., a file that claims to be 12 blocks but the linked list contains only 5) and will attempt to repair it.
 
-Its level of success depends on the nature of the problem and the implementation of the file system.
+	Its level of success depends on the nature of the problem and the implementation of the file system.
 
 \end{frame}
 
 
 
 \begin{frame}
-\frametitle{Preventing the Problem}
+	\frametitle{Preventing the Problem}
 
-Obviously we would like to prevent the problem, if we can. 
+	Obviously we would like to prevent the problem, if we can.
 
-All modern OS file systems use transactions to ensure consistency.
+	All modern OS file systems use transactions to ensure consistency.
 
-We'll talk about ZFS, APFS, and NTFS...
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{ZFS}
-
-ZFS uses the idea of transactions, making sure that the state is always consistent on disk. 
-
-Much like the copy-modify-merge model, data is copied, then changed, then rewritten. 
-
-Blocks are never overwritten with new data. 
-
-Instead, a transaction writes all data and metadata to new blocks.
+	We'll talk about ZFS, APFS, and NTFS...
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{ZFS}
+	\frametitle{ZFS}
 
- Only when the transaction is complete, any references to the old blocks are replaced with the location of the new blocks.
+	ZFS uses the idea of transactions, making sure that the state is always consistent on disk.
 
-Then the old pointers and blocks can be cleaned up (reused or disposed of).
+	Much like the copy-modify-merge model, data is copied, then changed, then rewritten.
 
-Interesting weakness: what if the disk is totally full?!
+	Blocks are never overwritten with new data.
 
-\end{frame}
-
-\begin{frame}
-\frametitle{APFS}
-
-Like some version control systems, APFS brings the ability to take snapshots of the file system.
-
-Freeze the state of the file system and from there any additional changes are ``diffs'' against that base state, meaning only new things take up space.
-
-This is potentially quite helpful for taking backups!
-
-
-... You do take backups, right?
+	Instead, a transaction writes all data and metadata to new blocks.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Time Machine, Whyyyyy}
+	\frametitle{ZFS}
 
-The performance of your system can be degraded while traditional backups are being taken.
+	Only when the transaction is complete, any references to the old blocks are replaced with the location of the new blocks.
 
-Time-consuming: computing a diff between the last backup copy and the current. 
+	Then the old pointers and blocks can be cleaned up (reused or disposed of).
 
-APFS approach is faster, but also a way to avoid corruption. 
+	Interesting weakness: what if the disk is totally full?!
 
-You can replay changes as needed to get the file back to \textit{a} consistent.
+\end{frame}
+
+\begin{frame}
+	\frametitle{APFS}
+
+	Like some version control systems, APFS brings the ability to take snapshots of the file system.
+
+	Freeze the state of the file system and from there any additional changes are ``diffs'' against that base state, meaning only new things take up space.
+
+	This is potentially quite helpful for taking backups!
+
+
+	... You do take backups, right?
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{More Copies, More Good?}
+	\frametitle{Time Machine, Whyyyyy}
 
-The APFS does potentially harm the most common ``backup'' system of non-technical users: take a copy of the file and put it in a different folder.
+	The performance of your system can be degraded while traditional backups are being taken.
 
-APFS will not actually duplicate the data on the same volume.
+	Time-consuming: computing a diff between the last backup copy and the current.
 
-It sounds like they're doing you a favour if you think of this as just reducing wasted space.
+	APFS approach is faster, but also a way to avoid corruption.
 
-But from the perspective of redundancy: if that part of the disk is damaged then all copies are lost.
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Marketing-Speak, Engage}
-
-Somewhat like ZFS, the APFS approach to avoiding inconsistent data amidst a crash is something like copy-on-write. 
-
-In typical Apple fashion they were pretty vague about what this means...
-
-The APFS lead developer Dominic Giampaolo just says it's a ``novel copy-on-write metadata scheme'' but also somehow not exactly the same as ZFS's single-atomic-update approach.
+	You can replay changes as needed to get the file back to \textit{a} consistent.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Example: NTFS (Windows File System)}
+	\frametitle{More Copies, More Good?}
 
-NTFS uses several different storage levels:
+	The APFS does potentially harm the most common ``backup'' system of non-technical users: take a copy of the file and put it in a different folder.
 
-\begin{enumerate}
-	\item \textbf{Sector}
-	\item \textbf{Cluster}
-	\item \textbf{Volume}
-\end{enumerate}
+	APFS will not actually duplicate the data on the same volume.
 
+	It sounds like they're doing you a favour if you think of this as just reducing wasted space.
 
-\end{frame}
-
-\begin{frame}
-\frametitle{NTFS}
-
-The cluster is the fundamental unit of allocation of NTFS.
-
-This allows the file system to be independent of the size of physical sectors on the disk. 
-
-A volume contains file system information, a collection of files, and free space. 
-
-The logical volume may be some of a physical disk, all of one, or spread across multiple physical disks.
+	But from the perspective of redundancy: if that part of the disk is damaged then all copies are lost.
 
 \end{frame}
 
 \begin{frame}
-\frametitle{NTFS Volume Layout}
+	\frametitle{Marketing-Speak, Engage}
 
-\begin{center}
-	\includegraphics[width=0.9\textwidth]{images/ntfs-volume.png}
-\end{center}
+	Somewhat like ZFS, the APFS approach to avoiding inconsistent data amidst a crash is something like copy-on-write.
 
-\end{frame}
+	In typical Apple fashion they were pretty vague about what this means...
 
-\begin{frame}
-\frametitle{NTFS System Files}
-
-The Master File Table (MFT) contains information about all the files and folders. 
-
-A block is allocated to system files that contain important system information:
-
-\begin{enumerate}
-	\item \textbf{MFT2}
-	\item \textbf{Log File}
-	\item \textbf{Cluster Bitmap}
-	\item \textbf{Attribute Definition Table}
-\end{enumerate}
-\end{frame}
-
-
-\begin{frame}
-\frametitle{NTFS Journalling}
-
-NTFS uses journalling to ensure that the file system will be in a consistent state at all times, even after a crash or restart. 
-
-There is a service responsible for maintaining a log file that will be used to recover in the event that things go wrong.  
-
-Note that the goal of recovery is to make sure the system-maintained metadata is in a consistent state; user data can still get lost. 
-
-This was a Microsoft design decision.
+	The APFS lead developer Dominic Giampaolo just says it's a ``novel copy-on-write metadata scheme'' but also somehow not exactly the same as ZFS's single-atomic-update approach.
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Sorry, You Lose}
+	\frametitle{Example: NTFS (Windows File System)}
 
-A particular write may not have taken place because of a crash, resulting in some data loss for you, the user. 
+	NTFS uses several different storage levels:
 
-But at least the system will always remain in a consistent state. 
+	\begin{enumerate}
+		\item \textbf{Sector}
+		\item \textbf{Cluster}
+		\item \textbf{Volume}
+	\end{enumerate}
 
-As a side benefit, we can sometimes re-order the writes to get better performance. 
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{NTFS}
+
+	The cluster is the fundamental unit of allocation of NTFS.
+
+	This allows the file system to be independent of the size of physical sectors on the disk.
+
+	A volume contains file system information, a collection of files, and free space.
+
+	The logical volume may be some of a physical disk, all of one, or spread across multiple physical disks.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{NTFS Volume Layout}
+
+	\begin{center}
+		\includegraphics[width=0.9\textwidth]{images/ntfs-volume.png}
+	\end{center}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{NTFS System Files}
+
+	The Master File Table (MFT) contains information about all the files and folders.
+
+	A block is allocated to system files that contain important system information:
+
+	\begin{enumerate}
+		\item \textbf{MFT2}
+		\item \textbf{Log File}
+		\item \textbf{Cluster Bitmap}
+		\item \textbf{Attribute Definition Table}
+	\end{enumerate}
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{NTFS Journalling}
+
+	NTFS uses journalling to ensure that the file system will be in a consistent state at all times, even after a crash or restart.
+
+	There is a service responsible for maintaining a log file that will be used to recover in the event that things go wrong.
+
+	Note that the goal of recovery is to make sure the system-maintained metadata is in a consistent state; user data can still get lost.
+
+	This was a Microsoft design decision.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Sorry, You Lose}
+
+	A particular write may not have taken place because of a crash, resulting in some data loss for you, the user.
+
+	But at least the system will always remain in a consistent state.
+
+	As a side benefit, we can sometimes re-order the writes to get better performance.
 
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{NTFS Journalling Implementation}
+	\frametitle{NTFS Journalling Implementation}
 
-The actual implementation of journalling:
+	The actual implementation of journalling:
 
-\begin{enumerate}
-	\item Record the change(s) in the log file in the cache.
-	\item Modify the volume in the cache.
-	\item The cache manager flushes the log file to disk.
-	\item Only after the log file is flushed to disk, the cache manager flushes the volume changes.
-\end{enumerate}
+	\begin{enumerate}
+		\item Record the change(s) in the log file in the cache.
+		\item Modify the volume in the cache.
+		\item The cache manager flushes the log file to disk.
+		\item Only after the log file is flushed to disk, the cache manager flushes the volume changes.
+	\end{enumerate}
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Just Deal with This}
+	\frametitle{Just Deal with This}
 
-What's really interesting about this is that the changes are carried out in the background, that is to say, asynchronously. 
+	What's really interesting about this is that the changes are carried out in the background, that is to say, asynchronously.
 
-A program can say that it wants to write some data, and not have to wait for the data to be written before going on to the next thing. 
+	A program can say that it wants to write some data, and not have to wait for the data to be written before going on to the next thing.
 
-How interesting!
+	How interesting!
 
-Can we get that behaviour in our (regular) program? Yes we can...
+	Can we get that behaviour in our (regular) program? Yes we can...
 
 
 \end{frame}
