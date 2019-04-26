@@ -14,7 +14,7 @@ But there's another way. Through hundreds and hundreds of years' worth of calcul
 This won't be easy -- the timing has to be just right and the Doctors have to coordinate their actions and timing and work together to save Gallifrey. If their timing is wrong or if things are out of sync or important steps are skipped, the Doctors will fail and Gallifrey falls. If you can find and correct the problems in the program, then Gallifrey stands!
 
 
-\paragraph{Primary Objective.} The primary objective of this exercise is to identify and solve concurrency problems in the given program.
+\paragraph{Primary Objective.} The primary objective of this exercise is to identify and solve memory management and concurrency problems in the provided code.
 
 \paragraph{Secondary Objective(s).} This is an additional opportunity to practice concurrency and synchronization techniques. You may also improve your ability to work with version control (git) and gitlab.
 
@@ -26,13 +26,9 @@ This won't be easy -- the timing has to be just right and the Doctors have to co
 
 \paragraph{Description of Behaviour.} The goal is to analyze and correct the program so that there are no longer any errors (that you can fix in your program) reported by Helgrind, and also no memory leaks/issues (that you can fix in your program) reported by Valgrind.
 
-\begin{itemize}
+When you start, the program most likely crashes when executed. That is just one of the many problems present. There are a total of ten (10) different problems in the code to be resolved. Some will be found by the memcheck tool of Valgrind; others will be found by the Helgrind tool. If you read the error messages carefully, you will be able to identify the causes of the problems and fix it.
 
-	\item Your program should not leak memory; be sure to destroy/deallocate anything initialized/allocated.
-
-	\item There should not be any race conditions in your program either.
-\end{itemize}
-
+There will be some things reported by both tools that are beyond your ability to fix (because they are in libraries) or otherwise misreported. You'll need to examine the messages carefully and decide if it is something you can fix or not. If not, just leave it be.
 
 \paragraph{Hints \& Debugging Guidance.}
 
