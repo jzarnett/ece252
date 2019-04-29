@@ -26,9 +26,11 @@ This won't be easy -- the timing has to be just right and the Doctors have to co
 
 \paragraph{Description of Behaviour.} The goal is to analyze and correct the program so that there are no longer any errors (that you can fix in your program) reported by Helgrind, and also no memory leaks/issues (that you can fix in your program) reported by Valgrind.
 
-When you start, the program most likely crashes when executed. That is just one of the many problems present. There are a total of ten (10) different problems in the code to be resolved. Some will be found by the memcheck tool of Valgrind; others will be found by the Helgrind tool. If you read the error messages carefully, you will be able to identify the causes of the problems and fix it.
+When you compile and run the starter code, the program may crash or hang when executed. Those are just two of the symptoms of problems present. There are a total of nine (9) different problems in the code to be resolved. Some will be found by the memcheck tool of Valgrind; others will be found by the Helgrind tool. If you read the error messages carefully, you will be able to identify the causes of the problems and fix it.
 
-There will be some things reported by both tools that are beyond your ability to fix (because they are in libraries) or otherwise misreported. You'll need to examine the messages carefully and decide if it is something you can fix or not. If not, just leave it be.
+There will be some things reported by both tools that are beyond your ability to fix (because they are in libraries) or otherwise misreported. You'll need to examine the messages carefully and decide if it is something you can fix or not. If not, just leave it be. Generally speaking, errors reported by memcheck need to be fixed; those reported by Helgrind need to be examined more carefully.
+
+If something is wrong, you may see "Gallifrey falls" as an output message at the end of your program. If everything goes well you will see the message "Gallifrey Stands!" at the end of the program, but just seeing that that is not enough. You also need a clean bill of health from Valgrind and Helgrind.
 
 \paragraph{Hints \& Debugging Guidance.}
 
@@ -36,9 +38,7 @@ Some general guidance is below. If you're having trouble, try running through th
 \begin{itemize}
 	\item Check the documentation for how functions work if you are unfamiliar with them (google is your friend!)
 	\item See the docs for Valgrind~\cite{valgrind:tools}.
-	\item Have you initialized all variables? It is easy to forget; \texttt{malloc} does not initialize the value...
-	\item Is there a missing or extra \texttt{*} (dereference) on a pointer somewhere?
-	\item Does every memory allocation have a matching deallocation?
+	\item Read the valgrind error messages carefully: they usually tell you which function (i.e., which doctor) the problem occurs in. This helps you narrow it down 
 	\item It may be helpful to put \texttt{printf()} statements to follow along what the program is doing and it may help you narrow down where the issue is.
 	\item Don't be shy about asking for help; the TAs and instructor are here to help you get it done and will help you as much as is reasonable.
 \end{itemize}
