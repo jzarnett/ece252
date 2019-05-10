@@ -471,7 +471,7 @@ void readfile( int fd ) {
     char* buffer = malloc( buf_size );
     while ( 1 ) {
         memset( buffer, 0, buf_size );
-        int bytes_read = read( fd, buffer, buf_size );  
+        int bytes_read = read( fd, buffer, buf_size - 1 );  
         if ( bytes_read == 0 ) {
             break; 
         }     
