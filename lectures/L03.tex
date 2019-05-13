@@ -104,12 +104,12 @@ Some operating systems support file locks. Locks may be exclusive, or non-exclus
 
 Windows, for example, uses locking and any file that is open in some program cannot be deleted. UNIX, however, does not, so UNIX-compatible programs can, if they need, lock a file, but by default this does not happen. In UNIX if a file is open in a program, another user can still delete the file and it will be removed from the directory. As long as that program remains open and retains that reference to the file, it can still operate on that file. However, once the file is no longer open in a program, its storage space will be marked as free.
 
-To lock a file in Linux, the call for this is \texttt{flock()}. Think ``File-Lock'', not ``flock of seagulls''. It takes two parameters, the file number and the type of lock we wish to have. But we have opened a file with \texttt{fopen()} and it returns a \texttt{FILE} pointer. To convert that to a number, there is a function \texttt{fileno()}.
+To lock a file in Linux, the call for this is \texttt{flock()}. Think ``File-Lock'', not ``flock of seagulls''. It takes two parameters, the file descriptor and the type of lock we wish to have. But we have opened a file with \texttt{fopen()} and it returns a \texttt{FILE} pointer. To convert that to a file descriptor, there is a function \texttt{fileno()}.
 
 \begin{lstlisting}[language=C]
 FILE* f = fopen("myfile.txt", "r");
-int file_number = fileno( f );
-int result = flock(file_number, LOCK_EX);
+int file_desc = fileno( f );
+int result = flock( file_desc, LOCK_EX );
 \end{lstlisting}
 
 This example locks the file exclusively. A shared lock would be \texttt{LOCK\_SH}, and to unlock the parameter is \texttt{LOCK\_UN}.
