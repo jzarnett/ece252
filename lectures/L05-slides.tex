@@ -163,34 +163,6 @@
 \end{frame}
 
 \begin{frame}
-	\frametitle{Spawning Child Processes}
-
-	In general, when a process spawns a child, the child will need resources.
-
-	The child may request them from the OS directly.
-
-	Or the parent can give some of its resources to the child.
-
-	The parent may partition resources amongst the children or allow its children to share.
-
-	Restrict a child process to only some subset of its parent's resources?
-
-	If so, cannot overload the system by spawning too many children.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Spawning Child Processes}
-
-	At the time of initialization, the parent may pass the child some data.
-
-	Example: link from e-mail to browser.
-
-	Interesting note: child may be a duplicate or totally new.
-
-\end{frame}
-
-\begin{frame}
 	\frametitle{UNIX Workflow}
 
 	Parent spawns the child process with the \texttt{fork} system call.

@@ -37,14 +37,6 @@ The other alternative to get something to run in the background is with the \tex
 
 Thus instead of just opening \texttt{vi fork.c} I can issue the command \texttt{screen vi fork.c} and this spawns \texttt{screen} and takes me right to editing the file. The key difference is that I can ``detach'' from this screen and go back to the command line that spawned it. And if I log out, \texttt{screen} keeps running with the \texttt{vi} inside it. If I have multiple screens running, I can just ``reattach'' to the one I want to use next. To get a full understanding of \texttt{screen}, try the command \texttt{man screen} and the user manual will appear to give you some information and instructions about how to use this. Or you can use Google.
 
-\subsection*{Spawning Child Processes}
-
-In general, when a process spawns a child, the child will need resources (memory, files etc.). The child may request them from the OS directly or the parent can give some of its resources to the child. The parent may partition resources amongst the children or allow its children to share them instead. Restricting a child process to only being able to use some subset of its parent's resources means that a process cannot overload the system by spawning too many children~\cite{osc}.
-
-At the time of initialization, the parent may pass the child some data. When the user clicks on a link in an e-mail\footnote{Remember when I said don't do this? I meant it.} and the e-mail client spawns the web browser, the browser doesn't just open a blank page or the user's normal home page; instead it starts up with the address the user just clicked on.
-
-When a new process is created, the child process may be a duplicate of the parent process, or it may have a new program loaded into it.
-
 
 \subsection*{Show Me The Code!}
 
