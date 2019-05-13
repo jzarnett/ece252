@@ -289,8 +289,8 @@ int main( int argc, char** argv ) {
 
 	\begin{lstlisting}[language=C]
 FILE* f = fopen("myfile.txt", "r");
-int file_number = fileno( f );
-int result = flock(file_number, LOCK_EX);
+int file_desc = fileno( f );
+int result = flock( file_desc, LOCK_EX );
 \end{lstlisting}
 
 	This example locks the file exclusively.
