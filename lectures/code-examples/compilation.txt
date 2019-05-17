@@ -1,0 +1,13 @@
+Compiling the Code Examples
+
+- They are all intended to be compiled under Linux (generally Ubuntu)
+- Use gcc, always with -std=c99 (or higher)
+- Use the -g flag for debugging symbols if desired
+- Use -o outputfilename to change the output filename from the default "a.out"
+- Additional libraries are sometimes needed to be linked, such as -pthread 
+- Execute by running ./a.out (or whatever other executable name you've chosen)
+
+Example:
+gcc -std=c99 -pthread -g -o thread1 thread-example1.c
+./thread1
+
