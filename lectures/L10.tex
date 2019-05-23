@@ -125,7 +125,7 @@ The functions are:
 int shmget( key_t key, size_t size, int shmflg );
 void* shmat( int shmid, const void* shmaddr, int shmflg );
 int shmdt( const void* shmaddr );
-int shmctl( int schmidt, int cmd, struct shmid_ds *buf )
+int shmctl( int shmid, int cmd, struct shmid_ds *buf )
 \end{lstlisting}
 
 To create a shared memory segment, or get a reference to an existing one, we use \texttt{shmget}. The first argument is the key, which can be either the result of a \texttt{ftok()} call or the constant \texttt{IPC\_PRIVATE}. The second argument is obviously the number of bytes the shared memory should be. The third argument is the access permissions that follow the UNIX permission standards, e.g. \texttt{0600}.

@@ -370,7 +370,7 @@ int shmdt( const void* shmaddr );
 \begin{frame}[fragile]
 	\frametitle{Delete Shared Memory}
 	\begin{lstlisting}[language=C]
-int shmctl( int schmidt, int cmd, struct shmid_ds *buf )
+int shmctl( int shmid, int cmd, struct shmid_ds *buf )
 \end{lstlisting}
 
 	This function can do a lot more than delete it, such as modify properties of the data structure that is used to control shared memory.
