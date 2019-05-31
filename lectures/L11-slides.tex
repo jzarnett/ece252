@@ -238,7 +238,10 @@
 	\frametitle{Let's Make a New Thread}
 
 	\begin{lstlisting}[language=C]
-pthread_create( pthread_t *thread, const pthread_attr_t * attr, void *(*start_routine)( void * ), void *arg );
+pthread_create( pthread_t *thread, 
+		const pthread_attr_t * attr, 
+		void *(*start_routine)( void * ), 
+		void *arg);
 \end{lstlisting}
 
 	\texttt{thread}: a pointer to a \texttt{pthread} identifier and will be assigned a value when the thread is created.
