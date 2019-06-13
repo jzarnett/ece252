@@ -47,6 +47,62 @@ Dobby, who is a free elf. At the beginning of the day, the headmaster, Dumbledor
 	\item There should not be any race conditions in your program either.
 \end{itemize}
 
+\paragraph{Sample Output.} Below is some sample output. The actual order of task completion will vary.
+{\small
+\begin{verbatim}
+jzarnett@ecetesla0:~/ece252$ ./hogwarts 5
+There are 5 tasks to do today.
+Adding 5 tasks to the list of active tasks.
+Task 5 was completed!
+Task 3 was completed!
+Task 4 was completed!
+Task 2 was completed!
+Task 1 was completed!
+jzarnett@ecetesla0:~/ece252$ ./hogwarts 0
+There are 0 tasks to do today.
+jzarnett@ecetesla0:~/ece252$ ./hogwarts 20
+There are 20 tasks to do today.
+Adding 10 tasks to the list of active tasks.
+Task 10 was completed!
+Task 9 was completed!
+Task 8 was completed!
+Task 7 was completed!
+Task 6 was completed!
+Task 4 was completed!
+Task 5 was completed!
+Task 1 was completed!
+Task 3 was completed!
+Adding 10 tasks to the list of active tasks.
+Task 2 was completed!
+Task 20 was completed!
+Task 19 was completed!
+Task 17 was completed!
+Task 15 was completed!
+Task 13 was completed!
+Task 11 was completed!
+Task 16 was completed!
+Task 12 was completed!
+Task 18 was completed!
+Task 14 was completed!
+jzarnett@ecetesla0:~/ece252$ ./hogwarts 12
+There are 12 tasks to do today.
+Adding 10 tasks to the list of active tasks.
+Task 10 was completed!
+Task 9 was completed!
+Task 8 was completed!
+Task 7 was completed!
+Task 6 was completed!
+Task 2 was completed!
+Task 1 was completed!
+Task 4 was completed!
+Adding 2 tasks to the list of active tasks.
+Task 5 was completed!
+Task 3 was completed!
+Task 11 was completed!
+Task 12 was completed!
+\end{verbatim}
+}
+
 
 \paragraph{Hints \& Debugging Guidance.}
 This problem is very similar to what is called the ``Dining Savages Problem''~\cite{lbs}, but is probably less offensive. Because who does not like Harry Potter themed material? Also, I really hope J. K. Rowling does not sue me. I don't have time for that...
