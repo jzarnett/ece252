@@ -606,7 +606,7 @@ void* reader( void* read ) {
 
 	Inserter threads call \texttt{node* find\_insert\_loc()} to find where to do the insertion.
 
-	Then \texttt{void insert( void* to\_insert )} where the arguments are the location and the element to be inserted.
+	Then \texttt{void insert( void* to\_insert, node* after )} where the arguments are the location and the element to be inserted.
 
 	Inserters resemble readers, with restrictions.
 
@@ -712,9 +712,10 @@ void* inserter_thread( void *to_insert ) {
   }
   pthread_mutex_unlock( &inserter_mutex );
   
-  node * insert_after = find_insert_location( );
+
   pthread_mutex_lock( &perform_insert );
-  insert( to_insert, to_insert );
+  node * insert_after = find_insert_location( );
+  insert( to_insert, insert_after );
   pthread_mutex_unlock( &perform_insert );
   
   pthread_mutex_lock( &inserter_mutex );
