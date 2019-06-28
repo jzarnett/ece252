@@ -476,66 +476,6 @@
 
 \end{frame}
 
-\begin{frame}
-	\frametitle{Other Recommendations}
-
-	The avoidance techniques discussed previously require perfect information (or accurate worst-case guesses) about all the resources a process will ever need.
-
-	In a world where this information is not known, thus far, all we have managed is to make deadlock less likely.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Deadlock Avoidance Recommendations: 1}
-	Minimize the number of critical sections and their length.
-
-	Mutual exclusion should be applied only where it is needed and to the minimal number of program statements.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Deadlock Avoidance Recommendations: 2}
-
-	All tasks must release semaphores and resources as soon as possible.
-
-	This is not just polite, but also makes it less likely that processes are stuck waiting for one another.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Deadlock Avoidance Recommendations: 3}
-
-	Do not suspend tasks when in the critical region. Avoid calling yield or some other call known to block.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Deadlock Avoidance Recommendations: 4}
-
-	All critical regions must be error-free.
-
-	This is obviously a desirable property for the whole program, but in critical region we must be especially careful.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Deadlock Avoidance Recommendations: 5}
-
-	Do not allocate resources in interrupt handlers.
-
-	Any resource allocation might block, and if an interrupt handler gets blocked, the whole system can be stuck.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Deadlock Avoidance Recommendations: 6}
-
-	Always perform validity checks on pointers (or null checks) in critical regions.
-
-	A segmentation fault or exception in the critical region can also mean never releasing the lock.
-
-\end{frame}
-
 
 \end{document}
 
