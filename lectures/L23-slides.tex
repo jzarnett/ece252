@@ -397,78 +397,94 @@ pthread_mutex_unlock( lock );
 \end{frame}
 
 \begin{frame}
-	\frametitle{Hey Kernel, Could You Please...}
+	\frametitle{Hey glibc, Could You Please...}
 
-	The Linux kernel provides operations that are guaranteed to execute atomically, to avoid simple race conditions.
+The GNU (Linux) standard C library (\texttt{glibc}) provides operations that are guaranteed to execute atomically, to avoid simple race conditions
 
-	In a uniprocessor system, the CPU cannot be interrupted until the operation is finished.
-
-	In a multiprocessor system, the variable is locked until the operation is finished.
-
-	There are two types of atomic operations: those that operate on integers and those that operate on a single bit in a bitmap.
-
+	Where possible, the compiler will try to turn these into uninterruptible hardware instructions.
+	
+	Otherwise a function that has locking will be used to implement the atomic nature.
 \end{frame}
 
 \begin{frame}
-	\frametitle{Prevent Confusion}
+	\frametitle{You Can't Take It With You}
+	
+	These are, however, glib specific, and not necessarily available or portable.
+	
+	In the C11 (2011) standard, atomic types were finally introduced as part of the language specification. 
+	
+	In the specification, we see \texttt{type} as the type.
+	
+	In its place you would use an \texttt{int} for an integer. 
+	
+	A valid type is one that 1, 2, 4, or 8 bytes in length (integral or pointer).
 
-	Rather than just using an integer for atomic integer operations, there is a defined type \texttt{atomic\_t}.
+\end{frame}
 
-	This prevents programming errors and hides architecture-specific implementation details.
+
+\begin{frame}[fragile]
+	\frametitle{Atomic Operations}
+
+To set a value:
+\begin{lstlisting}[language=C]
+type __sync_lock_test_and_set( type *ptr, type value );
+\end{lstlisting}
+
+
+The following functions are used to swap two values, only if the old value matches the expected (i.e., what was provided as the second argument):
+
+\begin{lstlisting}[language=C]
+bool __sync_bool_compare_and_swap( type *ptr, type oldval, type newval );
+type __sync_val_compare_and_swap( type *ptr, type oldval, type newval );
+\end{lstlisting}
+
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Change and Return}
+
+The following functions perform the operation and return the \textit{old} value:
+\begin{lstlisting}[language=C]
+type __sync_fetch_and_add( type *ptr, type value );
+type __sync_fetch_and_sub( type *ptr, type value );
+type __sync_fetch_and_or( type *ptr, type value );
+type __sync_fetch_and_and( type *ptr, type value );
+type __sync_fetch_and_xor( type *ptr, type value );
+type __sync_fetch_and_nand( type *ptr, type value );
+\end{lstlisting}
+
+The following functions perform the operation and return the \textit{new} value:
+\begin{lstlisting}[language=C]
+type __sync_add_and_fetch( type *ptr, type value );
+type __sync_sub_and_fetch( type *ptr, type value );
+type __sync_or_and_fetch( type *ptr, type value );
+type __sync_and_and_fetch( type *ptr, type value );
+type __sync_xor_and_fetch( type *ptr, type value );
+type __sync_nand_and_fetch( type *ptr, type value );
+\end{lstlisting}
+
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Operation Table}
+\frametitle{Reading is... Fun?}
 
-	{\scriptsize
-		\begin{center}
-			\begin{tabular}{l|l}
-				\textbf{Function}                                          & \textbf{Description}                                                   \\\hline
+Interestingly, for x86 there is no atomic read operation. 
 
-				\texttt{atomic\_t ATOMIC\_INIT( int i )}                   & At declaration, initialize an \texttt{atomic\_t} to \texttt{i}         \\\hline
+The (normal) read itself is atomic for 32-bit-aligned data. 
 
-				\texttt{int atomic\_read( atomic\_t *v )}                  & Read the integer value of \texttt{v}                                   \\\hline
+This behaviour is specific to x86 and we try to avoid that.
 
-				\texttt{void atomic\_set( atomic\_t *v, int i )}           & Set \texttt{v} equal to \texttt{i}                                     \\\hline
+If we do rely on this, however, we could get an out-of-date value. 
 
-				\texttt{void atomic\_add( int i, atomic\_t *v )}           & Add \texttt{i} to \texttt{v}                                           \\\hline
+If you want to really be sure you did get the latest, you can use one of the above functions and add or subtract 0.
 
-				\texttt{void atomic\_sub( int i, atomic\_t *v )}           & Subtract \texttt{i} from \texttt{v}                                    \\\hline
-
-				\texttt{void atomic\_inc( atomic\_t *v )}                  & Add 1 to \texttt{v}                                                    \\\hline
-
-				\texttt{void atomic\_dec( atomic\_t *v )}                  & Subtract 1 from \texttt{v}                                             \\\hline
-
-				\texttt{int atomic\_sub\_and\_test( int i, atomic\_t *v )} & Subtract \texttt{i} from \texttt{v}; return true if 0; otherwise false \\\hline
-
-				\texttt{int atomic\_add\_negative( int i, atomic\_t *v )}  & Add \texttt{i} to \texttt{v}; return true if negative; otherwise false \\\hline
-
-				\texttt{int atomic\_dec\_and\_test( atomic\_t *v )}        & Decrement \texttt{v} by 1; return true if 0; otherwise false           \\\hline
-
-				\texttt{int atomic\_inc\_and\_test( atomic\_t *v )}        & Increment \texttt{v} by 1; return true if 0; otherwise false           \\ \hline\hline
-
-				\texttt{void set\_bit( int n, void *addr )}                & Set the $n^{th}$ bit starting from \texttt{addr}                       \\\hline
-
-				\texttt{void clear\_bit( int n, void *addr )}              & Clear the $n^{th}$ bit starting from \texttt{addr}                     \\\hline
-
-				\texttt{void change\_bit( int n, void *addr )}             & Flip the value of the $n^{th}$ bit starting from \texttt{addr}         \\\hline
-
-				\texttt{int test\_and\_set\_bit( int n, void *addr )}      & Set $n^{th}$ bit starting from \texttt{addr}; return previous value    \\\hline
-
-				\texttt{int test\_and\_clear\_bit( int n, void *addr )}    & Clear $n^{th}$ bit starting from \texttt{addr}; return previous value  \\\hline
-
-				\texttt{int test\_and\_change\_bit( int n, void *addr )}   & Flip $n^{th}$ bit starting from \texttt{addr}; return previous value   \\\hline
-
-				\texttt{int test\_bit( int n, void *addr )}                & Return value of $n^{th}$ bit starting from \texttt{addr}               \\\hline
-			\end{tabular}
-		\end{center}
-	}
-
-	These are Linux-specific and not portable (necessarily).
 
 \end{frame}
+
 
 
 \begin{frame}[fragile]
@@ -476,15 +492,15 @@ pthread_mutex_unlock( lock );
 
 	\begin{lstlisting}[language=C]
 struct point {
-  atomic_t x;
-  atomic_t y;
+  volatile int x;
+  volatile int y;
 };
-atomic_set( p1->x, 0 );
-atomic_set( p1->y, 0 );
+__sync_lock_test_and_set( p1->x, 0 );
+__sync_lock_test_and_set( p1->y, 0 );
 
 /* Somewhere else in the program */
-atomic_set( p1->x, 25 );
-atomic_set( p1->y, 30 );
+__sync_lock_test_and_set( p1->x, 25 );
+__sync_lock_test_and_set( p1->y, 30 );
 \end{lstlisting}
 
 	Does this work?
@@ -497,8 +513,8 @@ atomic_set( p1->y, 30 );
 
 	Although the set of each of \texttt{x} and \texttt{y} is atomic, the operation as a whole is not.
 
-	Although the set of each of \texttt{x} and \texttt{y} is atomic, the operation as a whole is not.
-
+	We could see invalid states, like (25, 0) or (10, 30).
+	
 \end{frame}
 
 

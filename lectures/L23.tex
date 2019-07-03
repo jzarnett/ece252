@@ -192,67 +192,64 @@ pthread_mutex_unlock( lock );
 
 While is is fully correct, if this happens frequently there is a lot of locking and unlocking on the same mutex, just to do the increment. So there's a fair amount of overhead on this. Thinking back to the ``test and set'' type of instruction from earlier, wouldn't it be nice if we could do that sort of thing for something like incrementing a variable? We can!
 
-The Linux kernel provides operations that are guaranteed to execute atomically, to avoid simple race conditions. In a uniprocessor system, the CPU cannot be interrupted until the operation is finished; in a multiprocessor system, the variable is locked until the operation is finished. There are two types of atomic operations: those that operate on integers and those that operate on a single bit in a bitmap. On some architectures, the atomic operations are translated into uninterruptible assembly instructions; on others, the memory bus is locked to ensure the operation is atomic~\cite{osi}.
+The GNU (Linux) standard C library (\texttt{glibc}) provides operations that are guaranteed to execute atomically, to avoid simple race conditions. Where possible, the compiler will try to turn these into uninterruptible hardware instructions; otherwise a function that has locking will be used to implement the atomic nature.
 
-Rather than just using an integer for atomic integer operations, there is a defined type \texttt{atomic\_t}, ensuring that only atomic operations can be used on this data type and that atomic operations can only be used on that data type. This prevents programming errors and hides architecture-specific implementation details.
+The kernel itself contains an atomic type, \texttt{atomic\_t}, but this is not intended for use outside of the kernel.
 
-The following table gives an overview of the atomic integer and bitmap operations, from~\cite{lkd}. These are, however, linux specific, and not necessarily available in a general system. In the C11 (2011) standard, atomic types were finally introduced as part of the language specification itself. But before this we just had implementation-specific options:
+The following function listings are an overview of the atomic operations, from~\cite{gccatomic}. These are, however, \texttt{glibc} specific, and not necessarily available in a general system. In the C11 (2011) standard, atomic types were finally introduced as part of the language specification itself. But before this we just had implementation-specific options. In the specification, we see \texttt{type} as the type, but that's of course not a real type. In its place you would use an \texttt{int} for an integer. A valid type is one that 1, 2, 4, or 8 bytes in length, if it's an integral type or a pointer.
 
-\begin{center}
-	\begin{tabular}{l|l}
-		\textbf{Function}                                          & \textbf{Description}                                                   \\\hline
+The following function is used to assign a new value, and returns the old value. However, the name is unfortunate, because it conflicts with the hardware instruction test-and-set which we discussed earlier. But this atomically sets the value of the variable as expected:
 
-		\texttt{atomic\_t ATOMIC\_INIT( int i )}                   & At declaration, initialize an \texttt{atomic\_t} to \texttt{i}         \\\hline
+\begin{lstlisting}[language=C]
+type __sync_lock_test_and_set( type *ptr, type value );
+\end{lstlisting}
 
-		\texttt{int atomic\_read( atomic\_t *v )}                  & Read the integer value of \texttt{v}                                   \\\hline
 
-		\texttt{void atomic\_set( atomic\_t *v, int i )}           & Set \texttt{v} equal to \texttt{i}                                     \\\hline
+The following functions are used to swap two values, only if the old value matches the expected (i.e., what was provided as the second argument):
 
-		\texttt{void atomic\_add( int i, atomic\_t *v )}           & Add \texttt{i} to \texttt{v}                                           \\\hline
+\begin{lstlisting}[language=C]
+bool __sync_bool_compare_and_swap( type *ptr, type oldval, type newval );
+type __sync_val_compare_and_swap( type *ptr, type oldval, type newval );
+\end{lstlisting}
 
-		\texttt{void atomic\_sub( int i, atomic\_t *v )}           & Subtract \texttt{i} from \texttt{v}                                    \\\hline
 
-		\texttt{void atomic\_inc( atomic\_t *v )}                  & Add 1 to \texttt{v}                                                    \\\hline
+The following functions perform the operation and return the \textit{old} value:
+\begin{lstlisting}[language=C]
+type __sync_fetch_and_add( type *ptr, type value );
+type __sync_fetch_and_sub( type *ptr, type value );
+type __sync_fetch_and_or( type *ptr, type value );
+type __sync_fetch_and_and( type *ptr, type value );
+type __sync_fetch_and_xor( type *ptr, type value );
+type __sync_fetch_and_nand( type *ptr, type value );
+\end{lstlisting}
 
-		\texttt{void atomic\_dec( atomic\_t *v )}                  & Subtract 1 from \texttt{v}                                             \\\hline
+The following functions perform the operation and return the \textit{new} value:
+\begin{lstlisting}[language=C]
+type __sync_add_and_fetch( type *ptr, type value );
+type __sync_sub_and_fetch( type *ptr, type value );
+type __sync_or_and_fetch( type *ptr, type value );
+type __sync_and_and_fetch( type *ptr, type value );
+type __sync_xor_and_fetch( type *ptr, type value );
+type __sync_nand_and_fetch( type *ptr, type value );
+\end{lstlisting}
 
-		\texttt{int atomic\_sub\_and\_test( int i, atomic\_t *v )} & Subtract \texttt{i} from \texttt{v}; return true if 0; otherwise false \\\hline
 
-		\texttt{int atomic\_add\_negative( int i, atomic\_t *v )}  & Add \texttt{i} to \texttt{v}; return true if negative; otherwise false \\\hline
 
-		\texttt{int atomic\_dec\_and\_test( atomic\_t *v )}        & Decrement \texttt{v} by 1; return true if 0; otherwise false           \\\hline
-
-		\texttt{int atomic\_inc\_and\_test( atomic\_t *v )}        & Increment \texttt{v} by 1; return true if 0; otherwise false           \\ \hline\hline
-
-		\texttt{void set\_bit( int n, void *addr )}                & Set the $n^{th}$ bit starting from \texttt{addr}                       \\\hline
-
-		\texttt{void clear\_bit( int n, void *addr )}              & Clear the $n^{th}$ bit starting from \texttt{addr}                     \\\hline
-
-		\texttt{void change\_bit( int n, void *addr )}             & Flip the value of the $n^{th}$ bit starting from \texttt{addr}         \\\hline
-
-		\texttt{int test\_and\_set\_bit( int n, void *addr )}      & Set $n^{th}$ bit starting from \texttt{addr}; return previous value    \\\hline
-
-		\texttt{int test\_and\_clear\_bit( int n, void *addr )}    & Clear $n^{th}$ bit starting from \texttt{addr}; return previous value  \\\hline
-
-		\texttt{int test\_and\_change\_bit( int n, void *addr )}   & Flip $n^{th}$ bit starting from \texttt{addr}; return previous value   \\\hline
-
-		\texttt{int test\_bit( int n, void *addr )}                & Return value of $n^{th}$ bit starting from \texttt{addr}               \\\hline
-	\end{tabular}
-\end{center}
+Interestingly, for x86 there is no atomic read operation. The (normal) read itself is atomic for 32-bit-aligned data. This behaviour is specific to x86 and we have mostly tried to avoid relying on anything that is implementation-specific behaviour... If we do rely on this, however, we could get an out-of-date value. If you want to really be sure you did get the latest, you can use one of the above functions and add or subtract 0. And that would be a bit more portable as well. But for true portability you will need to use C11 or a semaphore/mutex.
 
 Atomic operations are helpful for scenarios like a single variable being modified and read. But atomic operations are not always ideal. Consider this:
 
 \begin{lstlisting}[language=C]
 struct point {
-  atomic_t x;
-  atomic_t y;
+  volatile int x;
+  volatile int y;
 };
-atomic_set( p1->x, 0 );
-atomic_set( p1->y, 0 );
+__sync_lock_test_and_set( p1->x, 0 );
+__sync_lock_test_and_set( p1->y, 0 );
 
 /* Somewhere else in the program */
-atomic_set( p1->x, 25 );
-atomic_set( p1->y, 30 );
+__sync_lock_test_and_set( p1->x, 25 );
+__sync_lock_test_and_set( p1->y, 30 );
 \end{lstlisting}
 
 Although the set of each of \texttt{x} and \texttt{y} is atomic, the operation as a whole is not. The write of \texttt{x} could succeed and then a read of both in a different thread could take place before the write of \texttt{y}, meaning that a reader would see (25, 0) when that's probably not valid. Similarly, the state could be totally corrupted if another thread did atomic writes of (10, 15) in between the two, leading to a final state of (10, 30).
