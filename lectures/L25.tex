@@ -18,15 +18,15 @@ This won't be easy -- the timing has to be just right and the Doctors have to co
 
 \paragraph{Secondary Objective(s).} This is an additional opportunity to practice concurrency and synchronization techniques. You may also improve your ability to work with version control (git) and gitlab.
 
-\paragraph{Starter Code.} The starter code can be found at \url{https://git.uwaterloo.ca/jzarnett/ece252-\termnumeric/ece252-e3} -- fork this repository to your own space. Set permissions for this repository to be private, but add the group for the course staff with read access so your code can be evaluated.
+\paragraph{Starter Code.} The starter code can be found at \url{https://git.uwaterloo.ca/jzarnett/ece252-\termnumeric/ece252-e3} -- fork this repository to your own space. Set permissions for this repository to be private, but add the course instructor with developer access so your code can be evaluated.
 
-\paragraph{Submitting Your Code.} When you're done, use the command \texttt{git commit -a} to add all files to your commit and enter a commit message. Then \texttt{git push} to upload your changes to your repository. You can commit and push as many times as you like; we'll look at whatever was last pushed. And check that you gave the course staff permissions!
+\paragraph{Submitting Your Code.} When you're done, use the command \texttt{git commit -a} to add all files to your commit and enter a commit message. Then \texttt{git push} to upload your changes to your repository. You can commit and push as many times as you like; we'll look at whatever was last pushed. And check that you gave the course instructor permissions!
 
 \paragraph{Grading.} Binary grading: 1 if you have made a meaningful attempt at implementing the code; 0 otherwise.
 
 \paragraph{Description of Behaviour.} The goal is to analyze and correct the program so that there are no longer any errors (that you can fix in your program) reported by Helgrind, and also no memory leaks/issues (that you can fix in your program) reported by Valgrind.
 
-When you compile and run the starter code, the program may crash or hang when executed. Those are just two of the symptoms of problems present. There are a total of nine (9) different problems in the code to be resolved. Some will be found by the memcheck tool of Valgrind; others will be found by the Helgrind tool. If you read the error messages carefully, you will be able to identify the causes of the problems and fix it.
+When you compile and run the starter code, the program may crash or hang when executed. Those are just two of the symptoms of problems present. There are a total of nine (9) different problems in the code to be resolved. Some will be found by the memcheck tool of Valgrind; others will be found by the Helgrind tool. If you read the error messages carefully, you will be able to identify the causes of the problems and fix them.
 
 There will be some things reported by both tools that are beyond your ability to fix (because they are in libraries) or otherwise misreported. You'll need to examine the messages carefully and decide if it is something you can fix or not. If not, just leave it be. Generally speaking, errors reported by memcheck need to be fixed; those reported by Helgrind need to be examined more carefully.
 
@@ -34,7 +34,7 @@ If something is wrong, you may see "Gallifrey falls" as an output message at the
 
 \paragraph{Hints \& Debugging Guidance.}
 
-Some general guidance is below. If you're having trouble, try running through these steps and it may resolve your problem. If you're still stuck you can ask a neighbour or the course staff.
+Some general guidance is below. If you're having trouble, try running through these steps and it may resolve your problem. If you're still stuck you can ask a neighbour or the course instructor.
 \begin{itemize}
 	\item Check the documentation for how functions work if you are unfamiliar with them (google is your friend!)
 	\item See the docs for Valgrind~\cite{valgrind:tools}.
