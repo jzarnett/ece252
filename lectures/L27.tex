@@ -67,7 +67,7 @@ When unlocking a region, just as for locking, you can specify what part of the f
 Let's do some examples on how to use this structure and system call. The first example is how to lock a file and then how to unlock it:
 
 \begin{lstlisting}[language=C]
-int write_lock_file( int file_descriptor ) {
+int write_lock_file( int fd ) {
 
   struct flock fl;
   fl.l_type = F_WRLOCK;
@@ -78,7 +78,7 @@ int write_lock_file( int file_descriptor ) {
   return fcntl( fd, F_SETLK, &fl );
 }
 
-int unlock_file( int file_descriptor ) {
+int unlock_file( int fd ) {
 
   struct flock fl;
   fl.l_type = F_UNLCK;
