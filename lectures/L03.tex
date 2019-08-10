@@ -53,6 +53,8 @@ We already saw in an earlier example how to open and close a file:
     fclose( f );
 \end{lstlisting}
 
+Repeatedly opening and closing the same file is unnecessary and inefficient. If we plan to write some data into the file, then do more work, then write more data, it is probably wasted effort to close and reopen the file in between. It is okay to keep a file open when the file isn't being actively worked on, if you expect you will use that file again in the near future.
+
 \paragraph{Creating a File.} Like allocating memory, creating a new file has multiple essential steps: first, find a place to put the file, allocate that space and mark that file as being allocated, and finally put the file in its appropriate directory.
 
 \paragraph{Writing a File.} Writing a file requires the name or identifier of the file and the data to be written to the file. Using the name or identifier, the system finds that file and can then start putting data in the file. A write operation may replace the existing contents or append (write at the end) to the existing contents. A pointer will be needed to keep track of where the next write will take place, and will be updated after each write (but we don't have to manage this ourselves if we don't want to).
@@ -78,6 +80,8 @@ If we combine this with a \texttt{b}, such as \texttt{rb} then we are opening th
 \paragraph{Repositioning within a File.} Since a file may be read or written, but usually only one at a time, the pointer for the write location may in fact be the same pointer for the memory location. If so, we might call it a current position pointer, and this operation is just repositioning it within the file. Repositioning is also sometimes called a seek operation.
 
 In C this is done with the \texttt{fseek()} call. This adjusts the pointer for reading or writing. This should be done with caution though, because you can go to an arbitrary location, even the middle of a two (or more) byte character. And we can't seek when a file is opened for append.
+
+Generally -- seeking in the file is only necessary if you want to ``skip ahead`` or go back in the file; if you read $n$ bytes of the file, that advances the read pointer for you automatically; if you read 48 bytes and then seek 48 bytes forward, at the end of both operations your pointer is 96 bytes away from where it started.
 
 \paragraph{Deleting a File.} Deletion works pretty much as we would expect: find the file, mark its space as free, and remove it from the directory listing. This is a ``simple'' deletion and it does not actually get rid of any of the data, it just makes the file system forget the existence of the file. However, it might be possible to recover the data if the space it previously occupied has not been overwritten. This is a bit like a freed pointer in C possibly still being accessible. Some systems offer a more secure deletion routine that overwrites the space the file used to occupy with zeros.
 

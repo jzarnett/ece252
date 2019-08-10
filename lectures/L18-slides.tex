@@ -78,7 +78,7 @@
 		\begin{verbatim}
 	 1. wait( roomEmpty )
 	 2. [write data]
-	 3. signal( roomEmpty )
+	 3. post( roomEmpty )
 	 
 	 
 	 
@@ -98,14 +98,14 @@
 	 3. if readers == 1
 	 4.     wait( roomEmpty )
 	 5. end if
-	 6. signal( mutex )
+	 6. post( mutex )
 	 7. [read data]
 	 8. wait( mutex )
 	 9. readers--
 	10. if readers == 0
-	11.     signal( roomEmpty )
+	11.     post( roomEmpty )
 	12. end if
-	13. signal( mutex )
+	13. post( mutex )
   \end{verbatim}
 	\end{multicols}
 	\vspace{-2em}
@@ -121,7 +121,7 @@
 
 	Additional readers do not check if the room is empty; they just proceed to enter.
 
-	When the last reader leaves the room, it signals that the room is empty (``unlocking it'' to allow a writer in).
+	When the last reader leaves the room, it indicates that the room is empty (``unlocking it'' to allow a writer in).
 
 \end{frame}
 
@@ -147,7 +147,7 @@
 
 	A reader waits on \texttt{roomEmpty} only if a writer is currently in its critical section.
 
-	As long as the write operation takes finite time, eventually the writer will signal the \texttt{roomEmpty} semaphore and the threads can continue.
+	As long as the write operation takes finite time, eventually the writer will post the \texttt{roomEmpty} semaphore and the threads can continue.
 
 	Deadlock is not a problem.
 
@@ -220,8 +220,8 @@
 	 1. wait( turnstile )
 	 2. wait( roomEmpty )
 	 3. [write data]
-	 4. signal( turnstile )
-	 5. signal( roomEmpty )
+	 4. post( turnstile )
+	 5. post( roomEmpty )
 	 
 	 
 	 
@@ -237,20 +237,20 @@
 		\textbf{Reader}
 		\begin{verbatim}
 	 1. wait( turnstile )
-	 2. signal( turnstile )
+	 2. post( turnstile )
 	 3. wait( mutex )
 	 4. readers++
 	 5. if readers == 1
 	 6.     wait( roomEmpty )
 	 7. end if
-	 8. signal( mutex )
+	 8. post( mutex )
 	 9. [read data]
 	10. wait( mutex )
 	11. readers--
 	12. if readers == 0
-	13.     signal( roomEmpty )
+	13.     post( roomEmpty )
 	14. end if
-	15. signal( mutex )
+	15. post( mutex )
   \end{verbatim}
 	\end{multicols}
 
@@ -291,7 +291,7 @@
 \begin{frame}
 	\frametitle{Readers-Writers Solution 2 Analysis}
 
-	Note that this solution does not give writers any particular priority: when a writer exits it signals \texttt{turnstile} and that may unblock a reader or a writer.
+	Note that this solution does not give writers any particular priority: when a writer exits it posts on \texttt{turnstile} and that may unblock a reader or a writer.
 
 	If it unblocks a reader, a whole bunch of readers may enter before the next writer is unblocked and locks the turnstile again.
 

@@ -565,6 +565,19 @@ pthread_mutex_unlock( chopstick2 );
 
 \end{frame}
 
+\begin{frame}[fragile]
+\frametitle{Try, Try Again}
+
+There does exist a ``try'' function for the semaphore as well:
+
+\begin{lstlisting}
+int sem_trywait( sem_t * sem );
+\end{lstlisting}
+
+If we would have been blocked at the call to \texttt{sem\_trywait}, it returns -1 and \texttt{errno} is set to \texttt{EAGAIN}.
+
+\end{frame}
+
 
 
 \begin{frame}

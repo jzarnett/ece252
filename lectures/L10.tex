@@ -179,6 +179,9 @@ int main( int argc, char** argv ) {
 }
 \end{lstlisting}
 
+Perhaps you have a small security concern: can anyone who knows the key or shared memory ID attach to my shared memory? No -- it's only possible to attach to memory segments of your own processes. A process run by user j999doe can only attach to memory shared by another process run by that user. The owner can reassign ownership with the \texttt{shmctl()} call, but this is beyond the scope of the course.
+
+
 \paragraph{Alternatively: \texttt{mmap}.} An alternative approach for shared memory involves the use of \texttt{mmap()}, a function nominally used to map a file into memory. This is neat -- it would allow us to map some disk file to a buffer, so when we fetch data from that buffer, the data is read and when we write into the buffer the data is written to the file. It allows us to read and write files as if they were memory accesses. Very convenient. But we can also use this for IPC, hence its introduction here. But first, the functions need to be introduced. As in~\cite{apunix}:
 
 \begin{lstlisting}[language=C]
