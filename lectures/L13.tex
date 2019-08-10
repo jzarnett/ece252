@@ -89,6 +89,9 @@ So we have identified shared data as a potential source of error. A section of c
 
 It is the responsibility of the programmer to identify what critical sections, if any, exist in the program, and to protect them with mutexes. Some analysis tools may exist to identify shared data, but ultimately the best analysis tool is taking a careful look. Critical sections should be as short as possible (but enclose all shared data accesses). The critical section is something that cannot be run in parallel, so it increases the magnitude of the $S$ term in Amdahl's Law, limiting the speed increase we can get from multiple threads and cores. Besides, it would be impolite to make other threads and processes wait unnecessarily.
 
+
+Although we frequently say ``the'' critical section, there are likely to be multiple critical sections in the program, that are protected separately. A thread can be in critical section $X$ while a different thread is in critical section $Y$ and that's fine. For now, we'll consider just one critical section because that is the simplest case, but just remember in the back of your mind that there could be more in the program.
+
 Our first approach then, is to have a variable to indicate if the critical section is currently in use. Suppose we have two threads:
 
 \begin{multicols}{2}
@@ -181,6 +184,8 @@ boolean test_and_set( int* i ) {
   }
 }
 \end{lstlisting}
+
+Why is it described like this? The problem is that English is both verbose and imprecise. If you wanted me to explain what test-and-set does using just English words, it would be a full paragraph and there might be some questions about the meaning of a particular word or phrase. This is why legalese is so dense: because it's an attempt to make English more rigorous.
 
 Now, to make use of the \texttt{test\_and\_set} routine. Let us assume we have an integer variable called \texttt{busy} that is initialized at program startup to 0. The implementation is the same for both threads so there is no need to show them side by side.
 
