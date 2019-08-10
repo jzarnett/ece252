@@ -508,6 +508,66 @@
 
 
 \begin{frame}
+	\frametitle{We Are Not Amused}
+
+	Remember: we aren't actually interested in determining who the traitors are.
+
+
+	The goal is just to reach a decision as a group and carry it out.
+
+
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/hrhqe2.jpg}
+	\end{center}
+
+
+	(In a real-life scenario, of course, things would be different!)
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{So, Question Marks}
+	
+		Back to the example of having eight participants.
+
+
+
+	\begin{center}
+		\begin{tikzpicture}
+			\node[circle,draw,fill=red, minimum size=0.5] (G) at (0, 0) {G};
+			\node[circle,draw,fill=gray!20, minimum size=0.5] (L1) at (-3, -2) {L};
+			\node[circle,draw,fill=gray!20, minimum size=0.5] (L2) at (-2, -2) {L};
+			\node[circle,draw,fill=gray!20, minimum size=0.5] (L3) at (-1, -2) {L};
+			\node[circle,draw,fill=red, minimum size=0.5] (L4) at (0, -2) {L};
+			\node[circle,draw,fill=gray!20, minimum size=0.5] (L5) at (1, -2) {L};
+			\node[circle,draw,fill=gray!20, minimum size=0.5] (L6) at (2, -2) {L};
+			\node[circle,draw,fill=gray!20, minimum size=0.5] (L7) at (3, -2) {L};
+
+			\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack~~~};
+			\draw[-latex', thick] (G) -- (L2);
+			\draw[-latex', thick] (G) -- (L3);
+			\draw[-latex', thick] (G) -- (L4);
+			\draw[-latex', thick] (G) -- (L5);
+			\draw[-latex', thick] (G) -- (L6);
+			\draw[-latex', thick] (G) -- (L7) node[midway, right]{~~Retreat};
+			\draw[-latex', thick] (L4.south) to [bend right] (L7.south);
+			\draw[-latex', thick] (L4.south) to [bend right] (L6.south);
+			\draw[-latex', thick] (L4.south) to [bend right] (L5.south);
+			\draw[-latex', thick] (L4.south) to [bend left] (L3.south);
+			\draw[-latex', thick] (L4.south) to [bend left] (L2.south);
+			\draw[-latex', thick] (L4.south) to [bend left] (L1.south);
+
+			\node at(-1.5, -3) {Attack};
+			\node at(1.5, -3) {Retreat};
+		\end{tikzpicture}
+
+	\end{center}
+
+\end{frame}
+
+
+\begin{frame}
 	\frametitle{So, Question Marks}
 
 	Back to the example of having eight participants.

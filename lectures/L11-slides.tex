@@ -113,10 +113,12 @@
 	Consider a file-transfer program.
 
 	If the user interface and upload method share a thread, once a file upload has started, the user will not be able to use the UI anymore.
+	
+	\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/notresponding.png}
+	\end{center}
 
 	Not even to click the button that cancels the upload!
-
-	For some reason, users hate that.
 
 \end{frame}
 
@@ -309,6 +311,22 @@ void* function( void * void_arg ) {
 
 \end{frame}
 
+
+\begin{frame}
+\frametitle{Threadception}
+
+There is no mandatory hierarchy of threads.
+
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/peerThreads.png}\\
+	\hfill Image Credit: Blaise Barney
+\end{center}
+
+New threads can create other threads.
+
+\end{frame}
+
+
 \begin{frame}
 	\frametitle{Off We Go}
 
@@ -343,6 +361,16 @@ void* function( void * void_arg ) {
 	A thread may also be terminated indirectly: if the entire process is terminated or if \texttt{main} finishes first (without calling \texttt{pthread\_exit} itself).
 
 	End \texttt{main} with \texttt{pthread\_exit} to automatically wait for all spawned threads.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Report, Number One!}
+
+\begin{center}
+	\includegraphics[width=\textwidth]{images/pike-numberone.jpg}
+\end{center}
 
 \end{frame}
 
