@@ -339,7 +339,6 @@ void* shmat( int shmid, const void* shmaddr, int shmflg );
 
 	Or, if a parent attaches a shared memory segment and then calls \texttt{fork()}, the child inherits the shared memory segments, so it's is already set up.
 
-
 \end{frame}
 
 
@@ -415,9 +414,21 @@ int main( int argc, char** argv ) {
 }
 \end{lstlisting}
 
-
 \end{frame}
 
+\begin{frame}
+	\frametitle{Please Do Not Leave Your Memory Unattended}
+	
+	Concern: can anyone who knows the key/ID attach to my shared memory?
+	
+    No - it's only possible to attach to memory segments of your own processes. 
+	
+    A process run by user j999doe can only attach to memory shared by another process run by that user.
+
+	
+    The owner can reassign ownership with the \texttt{shmctl()} call, but this is beyond the scope of the course.
+	
+\end{frame}
 
 \begin{frame}
 	\frametitle{Consult the Map}

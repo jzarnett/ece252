@@ -167,6 +167,14 @@ pthread_mutex_unlock( chopstick1 );
 pthread_mutex_unlock( chopstick2 );
 \end{lstlisting}
 
+There does exist a ``try'' function for the semaphore as well:
+
+\begin{lstlisting}
+int sem_trywait( sem_t * sem );
+\end{lstlisting}
+
+If we would have been blocked at the call to \texttt{sem\_trywait}, it returns -1 and \texttt{errno} is set to \texttt{EAGAIN}.
+
 The idea of a process releasing resources that it is holding is the basis for the next solution: knocking down the ``no preemption'' pillar.
 
 

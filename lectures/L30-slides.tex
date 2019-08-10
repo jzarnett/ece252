@@ -241,7 +241,7 @@ curl_multi_wait( CURLM *multi_handle, struct curl_waitfd extra_fds[],
 
 	A pointer to it is inside the \texttt{CURLMsg} under \texttt{m->easy\_handle}.
 
-	It is removed with \texttt{curl\_multi\_remove\_handle( CURLM* cm, CURL eh )}.
+	Removed with \texttt{curl\_multi\_remove\_handle( CURLM* cm, CURL* eh )}.
 
 	Once removed, clean it up with: \texttt{curl\_easy\_cleanup( CURL* eh )}.
 
@@ -350,9 +350,10 @@ int main( int argc, char** argv ) {
             return_code = msg->data.result;
             if ( return_code != CURLE_OK ) {
                 fprintf( stderr, "CURL error code: %d\n", msg->data.result );
+                curl_multi_remove_handle( cm, eh );
+                curl_easy_cleanup( eh );
                 continue;
             }
-
             http_status_code = 0;
             szUrl = NULL;
             curl_easy_getinfo( eh, CURLINFO_RESPONSE_CODE, &http_status_code );
@@ -371,8 +372,6 @@ int main( int argc, char** argv ) {
                  msg->msg );
         }
     }
-
-}
 \end{lstlisting}
 
 \end{frame}
