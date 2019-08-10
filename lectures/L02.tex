@@ -95,7 +95,13 @@ This doesn't come for free, of course: there is a definite performance trade-off
 \subsection*{Example: Reading from Disk}
 Let us examine in some more detail what is actually happening in a
 system call. This example is from~\cite{mos} and will use C code to
-perform a read on a UNIX system. The specification says the function
+perform a read on a UNIX system. The definition of the function we want to use is:
+
+\begin{lstlisting}[language=C]
+ssize_t read( int file_descriptor, void *buffer, size_t count );
+\end{lstlisting}
+
+The specification says the function
 \texttt{read} takes three parameters: (1) the file (a file
 descriptor, from a previous call to \texttt{open}); (2) where to read
 the data to; and (3) how many bytes to read. Here is an example:
@@ -106,7 +112,11 @@ int bytesRead = read( file, buffer, numBytes );
 
 (The \texttt{read} function returns the number of bytes successfully read; it is normally equal to \texttt{numBytes} but might be smaller if the end of the file is reached. Here we are storing it in a variable \texttt{bytesRead}.)
 
-In preparation for invocation of \texttt{read} the parameters are pushed on the stack. This is the normal way in which a procedure is called in C(++). Then the \texttt{read} procedure is called and this is just the normal instruction to enter another function. The \texttt{read} function will put its identifier (the system call number) in a predefined location (typically a register). Then it executes the \texttt{trap} instruction, activating the OS.
+This is a system call, and system calls have documentation. Finding and reading this information is a key skill for systems programming. If you want to know what the parameters to a function are, what the return value means, any assumptions made in the implementation -- read these. Google (or other search engine of your choice) is your friend: usually searching for the name of the function you want to use (along with C, as in, the programming language) gives you everything you need.  Good sources include: man7.org, linux.die.net, or the website of the code library.
+
+
+
+In preparation for invocation of \texttt{read} the parameters are pushed on the stack. This is the normal way in which a procedure is called in \Cpp. Then the \texttt{read} procedure is called and this is just the normal instruction to enter another function. The \texttt{read} function will put its identifier (the system call number) in a predefined location (typically a register). Then it executes the \texttt{trap} instruction, activating the OS.
 
 When the \texttt{trap} occurs, the OS takes over and control switches from user mode to kernel mode. Control transfers to a predefined memory location within the kernel (the trap handler). The trap handler then runs and examines the request: it checks the identifier that was put in the register earlier. Based on that, it knows what system call request handler should execute: the one to read from a file. That routine executes. When it is finished, control will be returned to the \texttt{read} function; we exit the kernel and return to user mode.
 

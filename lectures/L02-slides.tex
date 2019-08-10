@@ -377,7 +377,13 @@
 
 \begin{frame}[fragile]
 	\frametitle{Example: Reading from Disk}
-	C code to perform a read on a UNIX system.
+	
+Here's the function we use for reading data from a file:
+	
+		\begin{lstlisting}[language=C]
+ssize_t read( int file_descriptor, void *buffer, size_t count );
+		\end{lstlisting}
+
 
 	\texttt{read} takes three parameters:
 	\begin{enumerate}
@@ -386,12 +392,28 @@
 		\item where to read the data to; and
 		\item how many bytes to read.
 	\end{enumerate}
+	
+	Example:
 
-	\begin{lstlisting}[language=C]
+		\begin{lstlisting}[language=C]
 int bytesRead = read( file, buffer, numBytes );
-\end{lstlisting}
+		\end{lstlisting}
+
 
 	Note that \texttt{read} returns the number of bytes successfully read.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{They Elected Me To Lead, Not To Read}
+
+This is a system call, and system calls have documentation.\\
+\quad Finding and reading this information is a key skill for systems programming.
+
+Google (or other search engine of your choice) is your friend.
+
+Good sources: man7.org, linux.die.net, or the website of the code library!
 
 \end{frame}
 
