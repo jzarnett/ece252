@@ -228,6 +228,23 @@
 
 \end{frame}
 
+
+\begin{frame}
+\frametitle{I'll Take Your Word For It}
+
+If we have started some operation and it is taking too long, we can assume that a deadlock occurred and decide to take action.
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/zoidberg.jpg}
+\end{center}
+
+This does mean we might declare a deadlock when there really is none.
+
+One way to implement this is via a watchdog timer.
+
+\end{frame}
+
+
 \begin{frame}
 	\frametitle{When to Detect Deadlock}
 
@@ -597,8 +614,72 @@
 
 	If killed and started again, it takes slightly longer for the compile to finish, but there is no impact on the correctness of the binary.
 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Lifelock}
+
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/lifelock.jpg}
+\end{center}
+
+No, wait, that's not quite correct.
 
 \end{frame}
+
+
+\begin{frame}
+\frametitle{Lifelock}
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/zoidberg2.jpg}
+\end{center}
+
+Better.
+
+But we actually wanted to talk about Livelock.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Livelock}
+
+	Ideally, our recovery strategy is effective: some threads continue.
+	
+	Unfortunately, sometimes we just end up at the same impasse again.
+	
+	Deadlock recovery strategies are not the only way to end up in livelock.
+	
+	Imagine the dining philosophers, perfectly synchronized.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Full of Sound and Fury, Signifying Nothing}
+
+	In real life, it is unlikely that $n$ threads executing on a general purpose operating system would achieve this sort of perfect lock-step.
+	
+	Even so, livelock can occur in long-running tasks.
+
+	Problem: this is harder to detect than deadlock. Why?
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Full of Sound and Fury, Signifying Nothing}
+
+	In deadlock, threads are known to be blocked and analysis tools (e.g., a debugger) can tell you at what statement those threads are blocked.
+	
+	With livelock, it seems like the threads are running and working, but somehow no work is getting done. 
+
+	For this reason, a well-designed recovery strategies may have some sort of limit on the number of retries...
+
+\end{frame}
+
+
 
 \end{document}
 
