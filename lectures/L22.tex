@@ -212,7 +212,7 @@ As for the solution:
 	\textbf{Customer}
 	\begin{lstlisting}
 wait( mutex )
-if customers == n
+if customers == n+1
     signal( mutex )
     return
 end if
