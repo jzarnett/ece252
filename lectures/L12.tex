@@ -36,8 +36,8 @@ It is noteworthy that a large number of functions are \textit{cancellation point
 \paragraph{Now's not a good time!} With the presence of cancellation points or asynchronous cancellation, sometimes a thread can be terminated before it has cleaned up some resources. This is undesirable. One way that we can guard against this is to register cleanup handlers for that thread. If, say, our thread allocated some memory, it would be wise to register a cleanup handler that deallocates that memory in case the thread should die unceremoniously. The function signatures are:
 
 \begin{lstlisting}[language=C]
-pthread_cleanup_push( void (*routine)(void*), void *argument ); /* Register cleanup handler, with argument */ 
-pthread_cleanup_pop( int execute ); /* Run if execute is non-zero */ 
+pthread_cleanup_push( void (*routine)(void*), void *argument ); /* Register cleanup handler, with argument */
+pthread_cleanup_pop( int execute ); /* Run if execute is non-zero */
 \end{lstlisting}
 
 To add a cleanup handler, the push function is used. Its two arguments are the function that is supposed to run, and a pointer to the argument that cleanup function will need.
@@ -91,11 +91,11 @@ int main( int argc, char **argv ) {
   pthread_attr_t attr; /* set of thread attributes */
 
   if ( argc != 2 ) {
-    fprintf(stderr,"usage: %s <integer value>\n", argv[0]); 
+    fprintf(stderr,"usage: %s <integer value>\n", argv[0]);
     return -1;
   }
   if ( atoi( argv[1] ) < 0 ) {
-    fprintf(stderr, "%d must be >= 0\n", atoi(argv[1])); 
+    fprintf(stderr, "%d must be >= 0\n", atoi(argv[1]));
     return -1;
   }
 
@@ -103,8 +103,9 @@ int main( int argc, char **argv ) {
   pthread_attr_init( &attr );
   /* create the thread */
   pthread_create( &tid, &attr, runner, argv[1] );
-  pthread_join( tid, NULL ); 
+  pthread_join( tid, NULL );
   printf( "sum = %d\n", sum );
+	pthread_attr_destroy( &attr );
   pthread_exit( NULL );
 }
 
@@ -141,26 +142,26 @@ void* runner( void *param ) {
     pthread_exit( 0 );
 }
 
-int main( int argc, char** argv ) { 
+int main( int argc, char** argv ) {
 
     pthread_t tid[3];
 
     if ( argc != 2 ) {
         printf("An integer value is required as an argument.\n");
-        return -1; 
-    }   
+        return -1;
+    }
     if ( atoi( argv[1]) < 0 ) {
         printf( "%d must be >= 0.\n", atoi(argv[1]) );
-    }   
+    }
 
-    for ( int i = 0; i < 3; ++i ) { 
+    for ( int i = 0; i < 3; ++i ) {
         pthread_create( &tid[i], NULL, runner, argv[1] );
-    }   
-    for ( int j = 0; j < 3; ++j ) { 
+    }
+    for ( int j = 0; j < 3; ++j ) {
         pthread_join( tid[j], NULL );
-    }   
+    }
     printf( "sum = %d.\n", sum );
-    
+
     pthread_exit( 0 );
 }
 \end{lstlisting}
