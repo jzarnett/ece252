@@ -251,30 +251,12 @@
 
 	Suppose we want to share a section of memory.
 
-	We need to obtain a \alert{key} that identifies a specific memory segment.
+	We need to obtain a key that identifies a specific memory segment.
 
-	Keys are just integer values, so we would like them to be unique.
-
-	One method is to generate the key with the ``file to key'' function found in \texttt{sys/ipc.h}:
-	\begin{lstlisting}[language=C]
-key_t ftok( char *pathname, int proj )
-\end{lstlisting}
-
-	The key is generated from the given file name (\texttt{pathname}) and the value \texttt{proj}.
+Either use \texttt{IPC\_PRIVATE} or generate it with \texttt{ftok()} as before.
 
 \end{frame}
 
-
-\begin{frame}
-	\frametitle{Not Private Key Encryption}
-
-	There is a very small risk of duplicate numbers.
-
-	Another way we can get a key is using the constant \texttt{IPC\_PRIVATE}.
-
-	If we give the constant in where a \texttt{key\_t} is expected then a guaranteed unique key is returned.
-
-\end{frame}
 
 
 \begin{frame}

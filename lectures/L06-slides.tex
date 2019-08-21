@@ -288,135 +288,8 @@
 
 	Under \textit{direct communication}, each process that wants to communicate needs to explicitly name the recipient or sender of the communication.
 
-
-	\texttt{send(A, message)} -- Send a message to process $A$.\\
-	\texttt{receive(B, message)} -- Receive a message from process $B$.
-
-	Symmetric addressing.
-
+	We have to know some identifier for the other processes; not very flexible.
 \end{frame}
-
-\begin{frame}
-	\frametitle{Message Passing}
-
-	This does not fit our experience with postal mail.\\
-	\quad Receiving an item does not require foreknowledge of the sender.
-
-	More common: asymmetric addressing.\\
-	\quad Sender names the recipient; recipient can receive from anyone.
-
-	\texttt{send($A$, message)} -- Send a message to Process $A$ (unchanged).\\
-	\texttt{receive(id, message)} -- Receive a message from any process; the variable \texttt{id} is set to the sender.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Message Passing}
-
-	In either case, we have to know some identifier for the other processes.
-
-	This is not very flexible.
-
-	If we want to replace process $B$ with some alternative software...\\
-	\quad Change $A$, recompile it, and reinstall it?\\
-	\quad ``Fake'' the identifier of the new software?
-
-	What if the sender will produce the data but is not interested in who receives it?
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Message Passing}
-
-	What we would like is \textit{indirect communication} where the messages are sent to mailboxes.
-
-	That makes our send and receive functions:
-
-	\texttt{send(M, message)} -- Send a message to mailbox $M$.\\
-	\texttt{receive(M, message)} -- Receive a message from mailbox $M$.
-
-	A mailbox may belong to a process or be set up by the OS.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Message Passing}
-	If the mailbox belongs to the process:
-
-	Anyone can send to this mailbox.
-
-	Only the owning process may receive messages from that mailbox.
-
-	If the owner process has not started or has terminated, attempting to send to that mailbox will be an error for the sender.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Message Passing}
-
-	If the mailbox is owned by the operating system, it is persistent and independent of any particular process.
-
-	There is no conceptual reason preventing an operating system mailbox from belonging to more than one process.
-
-	If mailbox $M$ belongs to the operating system and processes $P_{1}$ and $P_{2}$ have access to it, which process will receive a message sent to $M$?
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Message Passing}
-
-	Two potential solutions:
-
-	1. Only one process may be the receiver at a time.
-
-	2. A system for determining whose turn it is.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Message Queue}
-	A message queue for communication between processes $A$ and $B$:
-	\begin{center}
-		\includegraphics[width=0.5\textwidth]{images/message-passing.png}
-	\end{center}
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Message Queues}
-
-	Thus far we have dealt with messages one at a time.
-
-	The sender wants to send one message and the receiver wants to receive one message.
-
-	If the sender wants to send a second message before the first message is received, the sender will have three choices:
-
-	\begin{enumerate}
-		\item Wait for the last message to be picked up (block).
-		\item Overwrite the last message (sometimes this is what you want).
-		\item Discard the current message (let the old one remain).
-	\end{enumerate}
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Message Queue}
-
-	A queue may alleviate the problem or just ``kick the can down the road''.
-
-	If a queue exists, when sending a message, that message is placed in the queue and when receiving a message, the first message is taken.
-
-	If the queue is of (effectively) unlimited size, no problem!
-
-	If the queue has a fixed size then the problem is put off but not solved.
-
-	The sender can keep adding messages until the queue is full.
-
-	If the queue is full, the sender has to face the same choices.
-
-\end{frame}
-
 
 \begin{frame}
 	\frametitle{Signals}
@@ -712,6 +585,232 @@ sigprocmask( SIG_SETMASK, &previous, NULL ); /* Restore previous mask */
 	This can be useful if we really do need to wait for something...
 
 \end{frame}
+
+
+\begin{frame}
+\frametitle{Pass Your Message.}
+
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/pass-message.png}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{That... Did Not Help}
+
+To deal with the process ID problem, what we would like is \alert{indirect communication} where the messages are sent to mailboxes (queues).
+
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/message-passing.png}
+\end{center}
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{UNIX Message Passing}
+
+UNIX gives us this: message queues.
+
+The max sizes and numbers of queues are implementation-specific.
+
+In a real implementation, limits are something you need to consider:
+\begin{enumerate}
+       \item Wait for the space to be available (block).
+       \item Overwrite older messaged (sometimes this is what you want).
+       \item Discard the current message (leave the old ones as they are).
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{This is Key}
+
+The first step in message-passing is to get a \alert{key} that identifies a specific queue. 
+
+Keys are just integer values, so we would like them to be unique (or close to it).
+
+One method is to generate the key with the ``file to key'' function found in \texttt{sys/ipc.h}:
+
+
+\begin{lstlisting}[language=C]
+key_t ftok( char *pathname, int proj );
+\end{lstlisting}
+
+The file does have to exist.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Keep it Secret, Keep it Safe}
+
+Another way we can get a key is using the constant \texttt{IPC\_PRIVATE}. 
+
+If we give the constant in where a \texttt{key\_t} is expected then a guaranteed unique key is returned. 
+
+This method is used when there is a parent and child relationship between the processes that want to communicate.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Get the Queue}
+Regardless of how we generate the key, we use it to get the queue with the function:
+\begin{lstlisting}[language=C]
+int msgget( key_t key, int flag );
+\end{lstlisting}
+
+\texttt{key}: the key we have generated or \texttt{IPC\_PRIVATE}.
+
+\texttt{flag}: UNIX permissions, optionally \texttt{IPC\_CREAT} with \texttt{IPC\_EXCL}. 
+
+The  permissions follow the UNIX permission standards, e.g. \texttt{0600}.
+
+\texttt{IPC\_CREAT}: create queue (if does not exist).
+
+\texttt{IPC\_EXCL}: fail if trying to create and queue already exists.
+
+Returns: the queue ID.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{What does a message look like?}
+
+Unlike in a lot of other contexts, here, the message has a defined structure: 
+
+\begin{lstlisting}[language=C]
+struct msgbuf {
+    long mtype;
+    char mtext[1];
+};
+\end{lstlisting}
+
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/zoolander.jpg}
+\end{center}
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Not Quite...}
+
+Whatever message type you want to send has to have the first part be a long value; anything is fine after that.
+
+\begin{lstlisting}[language=C]
+struct pirate_msgbuf {
+    long mtype;  /* must be positive */
+    struct pirate_info {
+        char name[30];
+        char ship_type;
+        int notoriety;
+        int cruelty;
+        int booty_value;
+    } info;
+};
+\end{lstlisting}
+
+Are pirates good?!
+\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/yesbutno.jpg}
+\end{center}
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Sending Data}
+\begin{lstlisting}[language=C]
+int msgsnd( int msqid, const void *ptr, size_t nbytes, int flag );
+\end{lstlisting}
+
+\texttt{msgid}: queue ID.
+
+\texttt{ptr}: message to send.
+
+\texttt{nbytes}: size of the message.
+
+\texttt{flag}: 0 for blocking, \texttt{IPC\_NOWAIT} for return with error if queue full.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Receiving Data}
+\begin{lstlisting}[language=C]
+ssize_t msgrcv( int msqid, void *ptr, size_t nbytes, long type, int flag );
+\end{lstlisting}
+
+\texttt{msgid}: queue ID.
+
+\texttt{ptr}: where the message will go.
+
+\texttt{nbytes}: size of the message.
+
+\texttt{type}: kind of message you want.
+
+\texttt{flag}: 0 for blocking, \texttt{IPC\_NOWAIT} for return with error if queue empty.
+
+\begin{itemize}
+	\item \texttt{type == 0} -- Return the first message on the queue (any type)
+	\item \texttt{type > 0} -- Return the first message on the queue with the specified type
+	\item \texttt{type < 0} -- Return the first message on the queue whose type is the smallest value less than or equal to the absolute value of \texttt{type}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Destroy!}
+\begin{lstlisting}[language=C]
+int msgctl( int msqid, int command, struct msqid_ds * buf );
+\end{lstlisting}
+
+\texttt{msgid}: queue ID.
+
+\texttt{command}:  \texttt{IPC\_RMID} to delete the queue.
+
+\texttt{but}: use NULL.
+
+This immediately deletes the queue and all messages inside!
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Example of Message Passing}
+
+\begin{lstlisting}[language=C]
+struct msg {
+  long mtype;
+  int data;
+};
+  
+int main( int argc, char** argv ) {
+    int msgqid = msgget( key, 0666 | IPC_CREAT );
+
+    int pid = fork();
+    if ( pid > 0 ) { /* Parent */
+        struct msg m;
+        m.mtype = 42;
+        m.mtype = 252;
+        msgsnd( msgqid, &m, sizeof( struct msg ), 0 ); 
+    } else if ( pid == 0 ) { /* Child */
+       struct msg m2;
+       msgrcv( msgqid, &m2, sizeof( struct msg ), 42, 0 );
+       printf("Received %d!\n", m2.data );
+       msgctl( msgqid, IPC_RMID, NULL );
+    }   
+    return 0;
+}
+\end{lstlisting}
+
+
+\end{frame}
+
 
 
 
