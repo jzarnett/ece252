@@ -47,45 +47,7 @@ If one file is being used then we have the problem of co-ordination: making sure
 
 Message passing is a service provided by the operating system where the sender will give the message to the OS and ask that it be delivered to a recipient. There are two basic operations: sending and receiving. Messages can be of fixed or variable size.
 
-Our experience with postal mail, or e-mail, suggests that to send a message successfully, the sender needs to indicate where the message should go. Under \textit{direct communication}, each process that wants to communicate needs to explicitly name the recipient or sender of the communication, making the send and receive functions~\cite{osc}:\\
-\texttt{send(A, message)} -- Send a message to process $A$.\\
-\texttt{receive(B, message)} -- Receive a message from process $B$.
-
-This requires \textit{symmetric} addressing: the sender and receiver have to know one another to communicate. This deviates from our experience in sending postal mail: receiving an item does not require foreknowledge of the sender. We would more typically expect \textit{asymmetric} addressing: the sender names the recipient, but the receiver can pick up items from anyone. The system calls for that scheme are~\cite{osc}:\\
-\texttt{send($A$, message)} -- Send a message to Process $A$ (unchanged).\\
-\texttt{receive(id, message)} -- Receive a message from any process; the variable \texttt{id} is set to the sender.
-
-In either case, we have to know some identifier for the other processes. This is not very flexible; if we want to replace process $B$ with some alternative software, do we have to change the identifier in $A$, recompile it, and reinstall it? Do we ``fake'' the identifier of the new software so it calls itself $B$ even though it's not the same software? Furthermore, oftentimes  the sender will produce the data but is not interested in who receives it.
-
-What we would like is \textit{indirect communication} where the messages are sent to mailboxes. That makes our send and receive functions~\cite{osc}:\\
-\texttt{send(M, message)} -- Send a message to mailbox $M$.\\
-\texttt{receive(M, message)} -- Receive a message from mailbox $M$.
-
-A mailbox may belong specifically to one process or may be set up by the operating system. If the mailbox belongs to the process, then anyone can send to this mailbox, but only the owning process may receive messages from that mailbox. If the owner process has not started or has terminated, attempting to send to that mailbox will be an error for the sender.
-
-If the mailbox is owned by the operating system, it is persistent and independent of any particular process. When we used direct communication, e.g., sending to process $A$, the communication relationship is 1:1 - one sender and one receiver. When there was a mailbox owned by $A$, we could be certain that only process $A$ could retrieve items from that mailbox. There is no conceptual reason, however, preventing an operating system mailbox from belonging to more than one process. If mailbox $M$ belongs to the operating system and processes $P_{1}$ and $P_{2}$ have access to it, which process will receive a message sent to that mailbox?
-
-There are two ways we can deal with this problem. The first is that the OS should allow only one process at a time to pick up items from the mailbox, thus preventing the problem altogether. The other solution is that the OS may have some scheme: whichever process gets there first, alternation (taking turns), or any other system of deciding whose turn it is.
-
-The diagram below shows a message queue for communication between processes $A$ and $B$:
-\begin{center}
-	\includegraphics[width=0.2\textwidth]{images/message-passing.png}\\
-	A view of memory in a message-passing system~\cite{osc}.
-\end{center}
-
-In this diagram we see something new for the receiver process: a message queue.
-
-\subsection*{Message Queues}
-
-Thus far we have dealt with messages one at a time: the sender wants to send one message and the receiver wants to receive one message. If the sender wants to send a second message before the first message is received, the sender will have three choices, regardless of whether the communication is synchronous:
-
-\begin{enumerate}
-	\item Wait for the last message to be picked up (block).
-	\item Overwrite the last message (sometimes this is what you want).
-	\item Discard the current message (let the old one remain).
-\end{enumerate}
-
-A message queue may alleviate the problem or just ``kick the can down the road''. If a queue exists, when sending a message, that message is placed in the queue and when receiving a message, the first message is taken. If the queue is of (effectively) unlimited size, then the problem may generally be ignored. If the queue has a fixed size then the problem is put off but not solved: the sender can keep adding messages to the queue until the queue is full. If the queue is full, the sender has to face the same choices of what to do: block, overwrite, or discard.
+Our experience with postal mail, or e-mail, suggests that to send a message successfully, the sender needs to indicate where the message should go. And in the simplest case, we will send the message directly to the recipient process. This requires us to know the ID of that process, however, which may be considered a limitation. But let's get into it.
 
 \paragraph{Using Signals.} We got onto the topic of inter-process communication by talking about signals, so it makes sense to start with then. Signals are, as previously introduced, an interrupt with a specified ID. They don't contain any ``message'' within them, so they are somewhat limited. It's a little bit like how pagers work (strange as those are to think about, doctors still use them!). When someone is paged their pager vibrates and they can see only the number who paged them. So it's like a text message, but the body is blank. Nevertheless, the poor sleep-deprived overworked medical resident is alerted and will react appropriately, dealing with the situation before going back to whatever else they were doing before being paged.
 
@@ -190,6 +152,120 @@ sigprocmask( SIG_SETMASK, &previous, NULL ); /* Restore previous mask */
 \end{lstlisting}
 
 Finally, if you want to pause your program for a bit until the call is interrupted by a signal, there is the function \texttt{int pause( )}. This function always returns -1 and it suspends your program until the signal handler runs. This can be useful if we really do need to wait for something...
+
+
+\paragraph{Pass Your Message.} Earlier, it was mentioned that signals require you to know the recipient process ID, and also that they contain no message. We can now look at something that overcomes both of these limitations. 
+
+To deal with the process ID problem, what we would like is \textit{indirect communication} where the messages are sent to mailboxes (queues). The queue is owned by the operating system, so it is persistent and independent of any particular process. The diagram below shows a message queue for communication between processes $A$ and $B$:
+\begin{center}
+	\includegraphics[width=0.2\textwidth]{images/message-passing.png}\\
+	A view of memory in a message-passing system~\cite{osc}.
+\end{center}
+
+UNIX is kind enough to provide us with some message queues that sort of resemble this. The total number of queues, the maximum number of messages, and the maximum size of each message is dependant on the implementation of the operating system. It is unfortunately not possible to give you an exact answer to how many messages can fit. In a real implementation, limits are something you need to consider; you have three choices:
+
+\begin{enumerate}
+       \item Wait for the space to be available (block).
+       \item Overwrite older messaged (sometimes this is what you want).
+       \item Discard the current message (leave the old ones as they are).
+\end{enumerate}
+
+The first step in message-passing is to obtain a \textit{key} that identifies a specific IPC structure (the queue that we will use). Keys are just integer values, so we would like them to be unique (or at least close to it).
+
+One method is to generate the key with the ``file to key'' function found in \texttt{sys/ipc.h}~\cite{lpi}:
+\begin{lstlisting}[language=C]
+key_t ftok( char *pathname, int proj );
+\end{lstlisting}
+ 
+The key is generated from the given file name (\texttt{pathname}) and the value \texttt{proj}. The file does have to exist, because the function uses its inode (file structure on disk that contains the metadata). And the integer argument allows generating multiple IPC objects based off the same file. There is a very small risk of duplicate numbers if we are unlucky, but the risk is small enough that we consider it acceptable.
+
+Another way we can get a key is using the constant \texttt{IPC\_PRIVATE}. If we give the constant in where a \texttt{key\_t} is expected then a guaranteed unique key is returned. This method is used when there is a parent and child relationship between the processes that want to communicate.
+
+Regardless of how we generate the key, we use it to get the queue with the function:
+\begin{lstlisting}[language=C]
+int msgget( key_t key, int flag );
+\end{lstlisting}
+ 
+The first parameter is the key that we have previously generated and is straightforward. The \texttt{flag} parameter starts with the UNIX permissions and can be modified with additional creation options. The  permissions follow the UNIX permission standards, e.g. \texttt{0600}.If the queue is being created for the first time, use \texttt{IPC\_CREAT}. If you want also be sure that this is being created anew, use bitwise-OR to combine \texttt{IPC\_CREAT} with \texttt{IPC\_EXCL} so that the call will fail if the queue already exists.
+
+The return value is the queue ID of the queue we will use. Then we can send and receive messages. Alright, we're getting somewhere. But what does a message look like? Unlike in a lot of other contexts, here, the message has a defined structure: 
+
+\begin{lstlisting}[language=C]
+struct msgbuf {
+    long mtype;
+    char mtext[1];
+};
+\end{lstlisting}
+
+Wait... Does this mean a message can be only one character at a time? No, all it really means is that whatever message type you want to send has to have the first part be a long value; anything is fine after that. Such as~\cite{bmq}:
+
+\begin{lstlisting}[language=C]
+struct pirate_msgbuf {
+    long mtype;  /* must be positive */
+    struct pirate_info {
+        char name[30];
+        char ship_type;
+        int notoriety;
+        int cruelty;
+        int booty_value;
+    } info;
+};
+\end{lstlisting}
+
+Right, so let's say that we want to send some data then:
+
+\begin{lstlisting}[language=C]
+int msgsnd( int msqid, const void *ptr, size_t nbytes, int flag );
+\end{lstlisting}
+
+The first parameter is the queue we want to send it to; the second is the message; the third is the data that we want to send. The last parameter is for what happens if the queue is full: normally we just want to wait, so this would be a blocking send, and you can provide 0 as the argument. But if you would prefer, you can use \texttt{IPC\_NOWAIT}, in which case an attempt to add to the full queue will just return with an error instead of blocking.
+
+And to receive:
+\begin{lstlisting}[language=C]
+ssize_t msgrcv( int msqid, void *ptr, size_t nbytes, long type, int flag );
+\end{lstlisting}
+
+The first argument is the queue to receive from as per usual; the second argument is the destination where the message will be copied to; the third argument is the number of bytes. The last parameter, again, can be used to specify that you don't want to wait if there is no message. The fourth parameter, \texttt{type}, is used to specify what kind of message you want. It corresponds to the \texttt{mtype} field in the message~\cite{apunix}:
+
+\begin{itemize}
+	\item \texttt{type == 0} -- Return the first message on the queue (any type)
+	\item \texttt{type > 0} -- Return the first message on the queue with the specified type
+	\item \texttt{type < 0} -- Return the first message on the queue whose type is the smallest value less than or equal to the absolute value of \texttt{type}.
+\end{itemize}
+
+When we are finished, we clean up the queue using~\cite{apunix}:
+\begin{lstlisting}[language=C]
+int msgctl( int msqid, int command, struct msqid_ds * buf );
+\end{lstlisting}
+
+To clean it up, the first argument is the queue ID we got back from \texttt{msgget} and the command we provide is \texttt{IPC\_RMID} and we can give \texttt{NULL} as the last parameter. This deletes the queue as well as any data in the queue immediately. This function can do a number of other things, but we will consider the advanced configuration beyond the scope of this course.
+
+Let's put it together in a simple example where the parent process sends a message to the child process:
+\begin{lstlisting}[language=C]
+struct msg {
+  long mtype;
+  int data;
+};
+  
+int main( int argc, char** argv ) {
+    int msgqid = msgget( key, 0666 | IPC_CREAT );
+
+    int pid = fork();
+    if ( pid > 0 ) { /* Parent */
+        struct msg m;
+        m.mtype = 42;
+        m.mtype = 252;
+        msgsnd( msgqid, &m, sizeof( struct msg ), 0 ); 
+    } else if ( pid == 0 ) { /* Child */
+       struct msg m2;
+       msgrcv( msgqid, &m2, sizeof( struct msg ), 42, 0 );
+       printf("Received %d!\n", m2.data );
+       msgctl( msgqid, IPC_RMID, NULL );
+    }   
+    return 0;
+}
+\end{lstlisting}
+
 
 \input{bibliography.tex}
 

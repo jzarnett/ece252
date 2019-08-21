@@ -99,16 +99,10 @@ Note that in the diagram the shared memory area appears in between the memory fo
 
 When a section of memory is shared, there exists the possibility that one process will overwrite another's changes. To prevent this sort of problem, we will need a mechanism for co-ordination... a subject we will return to later.
 
-Suppose we want to share a section of memory. We need to obtain a \textit{key} that identifies a specific memory segment. Keys are just integer values, so we would like them to be unique (or at least close to it).
-
-One method is to generate the key with the ``file to key'' function found in \texttt{sys/ipc.h}~\cite{lpi}:
+Suppose we want to share a section of memory. We need to obtain a \textit{key} that identifies a specific memory segment. The way to obtain the key is the same as we previously discussed for message-passing: Either using the constant \texttt{IPC\_PRIVATE}, or creating the key with the ``file to key'' function found in \texttt{sys/ipc.h}~\cite{lpi}:
 \begin{lstlisting}[language=C]
 key_t ftok( char *pathname, int proj )
 \end{lstlisting}
-
-The key is generated from the given file name (\texttt{pathname}) and the value \texttt{proj}. The file does have to exist, because the function uses a given inode. And the integer argument allows generating multiple IPC objects based off the same file. There is a very small risk of duplicate numbers if we are unlucky, but the risk is small enough that we consider it acceptable.
-
-Another way we can get a key is using the constant \texttt{IPC\_PRIVATE}. If we give the constant in where a \texttt{key\_t} is expected then a guaranteed unique key is returned.
 
 The functions we need are in \texttt{sys/shm.h}. The workflow for using shared memory is as follows (with details obviously after) ~\cite{lpi}:
 \begin{itemize}
