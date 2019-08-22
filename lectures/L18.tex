@@ -346,9 +346,9 @@ void* inserter_thread( void *to_insert ) {
   }
   pthread_mutex_unlock( &inserter_mutex );
   
-  pthread_mutex_lock( &perform_insert );
   node * insert_after = find_insert_location( );
-  insert( to_insert, insert_after );
+  pthread_mutex_lock( &perform_insert );
+  insert( to_insert, insert_after ); /* Can update its position if needed */
   pthread_mutex_unlock( &perform_insert );
   
   pthread_mutex_lock( &inserter_mutex );
@@ -362,7 +362,7 @@ void* inserter_thread( void *to_insert ) {
 		\end{multicols}
 	}
 
-
+Question: could you implement this with a \texttt{pthread\_rwlock\_t} despite there being three kinds of thread?
 
 
 \input{bibliography.tex}
