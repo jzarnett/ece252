@@ -4,7 +4,7 @@
 
 \section*{ECE 252 In-Class Exercises Guide}
 
-The exercises are designed and tested using the \texttt{eceubuntu} servers (connection and setup guide below). Although you can develop and test the code on your own laptop, course staff will only support running on \texttt{eceubuntu}, so if you're having problems on your laptop we'll say try it there.
+The exercises are designed and tested using the \texttt{eceubuntu} servers (connection and setup guide below). Although you can develop and test the code on your own laptop, course staff will only support running on \texttt{eceubuntu}, so if you're having problems on your laptop we'll say try it using the ECE servers.
 
 Preferably in advance of the actual first exercise for the term, you should do the following things:
 \begin{itemize}
@@ -16,18 +16,30 @@ Preferably in advance of the actual first exercise for the term, you should do t
 Gitlab is a web-based software product for managing source control repositories. The University of Waterloo runs this as a service at \url{git.uwaterloo.ca}. If you navigate there, you'll be presented with this login screen, where you can log in with your Central Authentication Service credentials (same ones for Quest, etc.).
 
 \begin{center}
-	\includegraphics[width=0.6\textwidth]{images/gitlab-login.png}
+	\includegraphics[width=0.8\textwidth]{images/gitlab-login.png}
 \end{center}
 
 If you haven't logged in before and haven't set up your account before, then you need to do some one-time setup. If you've done that already, you can skip to the next section.
 
-When logged in, you can set up your profile (to whatever detail you wish). But most importantly you will need to generate an secure shell key. Under ``profile settings'', click on SSH Keys, as shown below. In the image, a red box surrounds the the link you can click on for instructions about how to generate a new SSH Key, or find yours if you already have one. If you have an SSH Key already, you should also put it on \texttt{eceubuntu} as well; if you don't then you can generate yours on the server so you don't have to copy it.
+
+When logged in, you can set up your profile (to whatever detail you wish). Open the settings page:
 
 \begin{center}
-	\includegraphics[width=0.9\textwidth]{images/gitlab-sshkey.png}
+	\includegraphics[width=\textwidth]{images/gitlab-profile.png}
 \end{center}
 
-You need to add this key to your gitlab account so that when you want to interact with the git repository, the key is used to identify you.
+
+Most importantly, you will need to add a secure shell key (SSH Key). Under ``profile settings'', click on SSH Keys, as shown below. In the image, a red box surrounds the the link you can click on for instructions about how to generate a new SSH Key, or find yours if you already have one. 
+ 
+If you have an SSH Key already, you should also put it on \texttt{eceubuntu}. This is optional, as you can generate a new one on the server and add both to your account.
+ 
+If you do not have an SSH Key, you should generate one using the instructions provided. We recommend doing all the work on \texttt{eceubuntu}, so you should generate the key there using the command line, and put that key into gitlab. If you want to be able to develop locally, however, you will also need to copy the same key to your local machine (if you are a Mac or Linux user) or create a new key locally and add it.
+
+\begin{center}
+	\includegraphics[width=0.85\textwidth]{images/gitlab-sshkey.png}
+\end{center}
+
+You need to add this key (or these keys) to your gitlab account so that when you want to interact with the git repository, the key is used to identify you. If you do not add them (correctly) then you will see ``access denied''-type errors when trying to do git operations. If you see those, check that you have an SSH Key on the machine you are using and that it is also in gitlab.
 
 \subsection*{Connecting to \texttt{eceubuntu}}
 
@@ -37,7 +49,7 @@ Your login credentials (i.e., username and password) are the same as your WatIAM
 
 If you're using Linux or macOS, open a terminal and connect by typing \texttt{ssh USERID@eceubuntu.uwaterloo.ca}, obviously replacing USERID with your actual userid. To connect to \texttt{eceubuntu} you need to be inside the campus firewall, except \texttt{ecelinux4.uwaterloo.ca} (and from there you should follow the message and connect to another server). And then you are connected.
 
-If you're using Windows 10, you can set up Powershell to be able to use \texttt{ssh} directly. Instructions are at \url{https://www.howtogeek.com/336775/how-to-enable-and-use-windows-10s-built-in-ssh-commands/} . If that's all set up and working then you just connect using the same command as in Linux/macOS.
+If you're using Windows 10, we recommend installing the Windows Subsystem for Linux (WSL). See the instructions at \url{https://docs.microsoft.com/en-us/windows/wsl/install-win10}. Alternatively, you can set up Powershell to be able to use \texttt{ssh} directly, but WSL is the preferred way. If that's all set up and working then you launch a Linux terminal and just connect using the commands in the previous paragraph.
 
 You can also use a third party client to connect such as PuTTY or MobaXterm or anything else that you like. For space reasons I won't repeat exactly how to configure them, but they are relatively self-explanatory. You can use any client you want to connect.
 
@@ -49,15 +61,21 @@ If you have everything set up correctly, when you log in you will be presented w
 In the in-class exercise you'll be provided the URL of that exercise. Navigate to that page and look for the ``Fork'' button. Click it.
 
 \begin{center}
-	\includegraphics[width=0.3\textwidth]{images/gitlab-fork.png}
+	\includegraphics[width=0.7\textwidth]{images/gitlab-fork.png}
 \end{center}
 
 As the gitlab description says: a fork is a copy of a project; forking a repository allows you to make changes without affecting the original project. Fork it into your personal space. This takes a moment, but you should quickly get the message ``The project was successfully forked.'' Then you have your own copy of the project and this is the one that you interact with.
 
-Now you need to update the security settings so nobody else can see your repository, outside of the course staff. Go to your project settings (top right menu, gear icon) and click edit project:
+Now you need to update the security settings so nobody else can see your repository, and add the instructor who will evaluate your work. Go to your project settings and click general:
 
 \begin{center}
 	\includegraphics[width=0.25\textwidth]{images/gitlab-settings.png}
+\end{center}
+
+Next to ``permissions'', click on expand:
+
+\begin{center}
+	\includegraphics[width=0.8\textwidth]{images/gitlab-settings2.png}
 \end{center}
 
 Choose the private setting ``Private'' as below:
@@ -66,16 +84,16 @@ Choose the private setting ``Private'' as below:
 	\includegraphics[width=0.8\textwidth]{images/gitlab-private.png}
 \end{center}
 
-Then you need to add the course account to the repository so that course staff can review your code after you're finished. So once again open settings (gear icon) menu and this time choose Members:
+Then you need to add the course account to the repository so that course staff can review your code after you're finished. So once again under the project settings, choose Members:
 
 \begin{center}
 	\includegraphics[width=0.25\textwidth]{images/gitlab-members.png}
 \end{center}
 
-And add the course instructor (jzarnett) in the area labelled 1, then choose role ``Developer'' (box labelled 2), then click ``Add To Project'':
+And add the course instructor (jzarnett) in the area labelled 1, then choose role ``Master'' (box labelled 2), then click ``Add To Project'':
 
 \begin{center}
-	\includegraphics[width=\textwidth]{images/gitlab-member-add.png}
+	\includegraphics[width=0.7\textwidth]{images/gitlab-member-add.png}
 \end{center}
 
 After that you are ready to check the code out and begin working on it.
@@ -98,7 +116,7 @@ When checking out a repository for the first time, use \texttt{git clone}, which
 
 Make sure you choose the one from YOUR repository and not the one from the course instructor, otherwise you won't be able to submit!
 
-Copy the value from the highlighted box. It takes a moment to clone the repository. If it's not going well, make sure you have your ssh key set up.
+Copy the value from the highlighted box. It takes a moment to clone the repository. If it's not going well, make sure you have your SSH Key set up.
 
 Then you're ready to start working on the code. When you have made some changes you can add those changes to a ``commit'' using the command \texttt{git add}, such as \texttt{git add example.c}. To actually save those changes to your local repository, use the command \texttt{git commit}. This will tell you which files are being committed, and ask you for a commit message. You should write some meaningful message describing the work done.
 
