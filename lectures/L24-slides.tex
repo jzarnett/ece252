@@ -127,78 +127,12 @@
 	\frametitle{Valgrind Output}
 	{\scriptsize
 		\begin{verbatim}
-jz@Loki:~/ece254$ valgrind ./search
-==8476== Memcheck, a memory error detector
-==8476== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
-==8476== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
-==8476== Command: /usr/local/bin/search
-==8476== 
-usage: search [arguments] [options]
-arguments:
-         for text
-         in directory
-options:
-         -c | --case-sensitive
-         -s | --show-filenames-only
-==8476== 
-==8476== HEAP SUMMARY:
-==8476==     in use at exit: 0 bytes in 0 blocks
-==8476==   total heap usage: 0 allocs, 0 frees, 0 bytes allocated
-==8476== 
 ==8476== All heap blocks were freed -- no leaks are possible
-==8476== 
-==8476== For counts of detected and suppressed errors, rerun with: -v
-==8476== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
 \end{verbatim}
 	}
 
+That's the ideal. But is this realistic?
 \end{frame}
-
-\begin{frame}
-	\frametitle{No, It's Because I'm Awesome}
-
-	Okay, everything going perfectly is unlikely in anything other than a small program.
-
-	The exam question I used this on is something like 62 lines (including blanks).
-
-	So it's a trivial program. But I'll sabotage it a bit so we get a more interesting result.
-
-	Suppose I delete from the code two of the \texttt{free()} calls.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Hence the word... Sabotage}
-	{\scriptsize
-		\begin{verbatim}
-jz@Loki:~/ece254$ valgrind ./search 
-==8678== Memcheck, a memory error detector
-==8678== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
-==8678== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
-==8678== Command: ./search
-==8678== 
-Found at 11 by thread 1 
-Found at 22 by thread 3 
-==8678== 
-==8678== HEAP SUMMARY:
-==8678==     in use at exit: 1,614 bytes in 4 blocks
-==8678==   total heap usage: 17 allocs, 13 frees, 2,822 bytes allocated
-==8678== 
-==8678== LEAK SUMMARY:
-==8678==    definitely lost: 0 bytes in 0 blocks
-==8678==    indirectly lost: 0 bytes in 0 blocks
-==8678==      possibly lost: 0 bytes in 0 blocks
-==8678==    still reachable: 1,614 bytes in 4 blocks
-==8678==         suppressed: 0 bytes in 0 blocks
-==8678== Rerun with --leak-check=full to see details of leaked memory
-==8678== 
-==8678== For counts of detected and suppressed errors, rerun with: -v
-==8678== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
-\end{verbatim}
-	}
-
-\end{frame}
-
 
 \begin{frame}
 	\frametitle{Send the Plumbers to the Watergate}
@@ -214,57 +148,6 @@ Found at 22 by thread 3
 
 \end{frame}
 
-\begin{frame}[fragile]
-	\frametitle{Fixing the Leaks}
-
-	{\scriptsize
-		\begin{verbatim}
-==8553== 16 bytes in 4 blocks are definitely lost in loss record 1 of 2
-==8553==    at 0x4C2AB80: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
-==8553==    by 0x40084D: search (search.c:49)
-==8553==    by 0x4E3F181: start_thread (pthread_create.c:312)
-==8553==    by 0x514F47C: clone (clone.S:111)
-==8553== 
-==8553== 48 bytes in 4 blocks are definitely lost in loss record 2 of 2
-==8553==    at 0x4C2AB80: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
-==8553==    by 0x40074E: main (search.c:24)
-\end{verbatim}
-	}
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Not My Problem!}
-
-	But it's also important to learn what to ignore.
-
-	I decided to deploy Valgrind on the solution to the producer-consumer problem from ECE~254 and I ended up with a result that says:
-
-	\begin{verbatim}
-==8734==      possibly lost: 544 bytes in 2 blocks
-\end{verbatim}
-
-	Hmm. Let's dig into that with the \texttt{--leak-check=full} option:
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Ignore and Continue}
-	{\scriptsize
-		\begin{verbatim}
-==8734== 272 bytes in 1 blocks are possibly lost in loss record 1 of 2
-==8734==    at 0x4C2CC70: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
-==8734==    by 0x4012E54: _dl_allocate_tls (dl-tls.c:296)
-==8734==    by 0x4E3FDA0: pthread_create@@GLIBC_2.2.5 (allocatestack.c:589)
-==8734==    by 0x400A57: main (mutex.c:64)
-\end{verbatim}
-	}
-
-	Looking in the file, at that line, we see a call to \texttt{pthread\_create} and this is therefore probably nothing we need to do anything about.
-
-
-\end{frame}
-
 \begin{frame}
 	\frametitle{Reading the Output}
 
@@ -276,9 +159,22 @@ Found at 22 by thread 3
 		\item \textbf{Suppressed}
 	\end{itemize}
 
+\end{frame}
 
+
+\begin{frame}
+\frametitle{Not My Problem?}
+
+It's also important to learn what to ignore (or what's out of our hands). 
+
+Example: it's thread creation or a library or similar. What do we do?
+
+Consider carefully if we can do something about it!
+
+Let's do some examples.
 
 \end{frame}
+
 
 
 \begin{frame}
@@ -350,23 +246,6 @@ Found at 22 by thread 3
 \end{frame}
 
 \begin{frame}[fragile]
-	\frametitle{API Misuse Error Output}
-
-
-	\begin{verbatim}
-Thread #1 unlocked a not-locked lock at 0x7FEFFFA90
-   at 0x4C2408D: pthread_mutex_unlock (hg_intercepts.c:492)
-   by 0x40073A: nearly_main (tc09_bad_unlock.c:27)
-   by 0x40079B: main (tc09_bad_unlock.c:50)
-  Lock at 0x7FEFFFA90 was first observed
-   at 0x4C25D01: pthread_mutex_init (hg_intercepts.c:326)
-   by 0x40071F: nearly_main (tc09_bad_unlock.c:23)
-   by 0x40079B: main (tc09_bad_unlock.c:50)
-\end{verbatim}
-
-\end{frame}
-
-\begin{frame}[fragile]
 	\frametitle{Type Two Errors}
 
 	The second category of errors should be familiar to you:
@@ -421,31 +300,6 @@ Thread #1 unlocked a not-locked lock at 0x7FEFFFA90
 
 \end{frame}
 
-\begin{frame}[fragile]
-	\frametitle{Order of a Mutex Lock}
-	{\scriptsize
-		\begin{verbatim}
-Thread #1: lock order "0x7FF0006D0 before 0x7FF0006A0" violated
-
-Observed (incorrect) order is: acquisition of lock at 0x7FF0006A0
-   at 0x4C2BC62: pthread_mutex_lock (hg_intercepts.c:494)
-   by 0x400825: main (tc13_laog1.c:23)
-
- followed by a later acquisition of lock at 0x7FF0006D0
-   at 0x4C2BC62: pthread_mutex_lock (hg_intercepts.c:494)
-   by 0x400853: main (tc13_laog1.c:24)
-
-Required order was established by acquisition of lock at 0x7FF0006D0
-   at 0x4C2BC62: pthread_mutex_lock (hg_intercepts.c:494)
-   by 0x40076D: main (tc13_laog1.c:17)
-
- followed by a later acquisition of lock at 0x7FF0006A0
-   at 0x4C2BC62: pthread_mutex_lock (hg_intercepts.c:494)
-   by 0x40079B: main (tc13_laog1.c:18)
-\end{verbatim}
-	}
-
-\end{frame}
 
 \begin{frame}
 	\frametitle{Category 3}
@@ -455,78 +309,6 @@ Required order was established by acquisition of lock at 0x7FF0006D0
 	Recall the earlier definition of a race condition.
 
 	Helgrind looks for when two threads access the same memory location without using locks.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{It's a Race!}
-	{\scriptsize
-		\begin{verbatim}
-jz@Loki:~/ece459$ valgrind --tool=helgrind ./datarace
-==10389== Helgrind, a thread error detector
-==10389== Copyright (C) 2007-2013, and GNU GPL'd, by OpenWorks LLP et al.
-==10389== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
-==10389== Command: ./datarace
-==10389== 
-==10389== ---Thread-Announcement------------------------------------------
-==10389== 
-==10389== Thread #1 is the program's root thread
-==10389== 
-==10389== ---Thread-Announcement------------------------------------------
-==10389== 
-==10389== Thread #2 was created
-==10389==    at 0x515543E: clone (clone.S:74)
-==10389==    by 0x4E44199: do_clone.constprop.3 (createthread.c:75)
-==10389==    by 0x4E458BA: pthread_create@@GLIBC_2.2.5 (createthread.c:245)
-==10389==    by 0x4C30C90: ??? (in /usr/lib/valgrind/vgpreload_helgrind-amd64-linux.so)
-==10389==    by 0x40068D: main (datarace.c:12)
-==10389== 
-==10389== ----------------------------------------------------------------
-\end{verbatim}
-	}
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{It's a Race}
-	{\scriptsize
-		\begin{verbatim}
-==10389== Possible data race during read of size 4 at 0x60104C by thread #1
-==10389== Locks held: none
-==10389==    at 0x40068E: main (datarace.c:13)
-==10389== 
-==10389== This conflicts with a previous write of size 4 by thread #2
-==10389== Locks held: none
-==10389==    at 0x40065E: child_fn (datarace.c:6)
-==10389==    by 0x4C30E26: ??? (in /usr/lib/valgrind/vgpreload_helgrind-amd64-linux.so)
-==10389==    by 0x4E45181: start_thread (pthread_create.c:312)
-==10389==    by 0x515547C: clone (clone.S:111)
-==10389== 
-==10389== ----------------------------------------------------------------
-==10389== 
-==10389== Possible data race during write of size 4 at 0x60104C by thread #1
-==10389== Locks held: none
-==10389==    at 0x400697: main (datarace.c:13)
-==10389== 
-==10389== This conflicts with a previous write of size 4 by thread #2
-==10389== Locks held: none
-==10389==    at 0x40065E: child_fn (datarace.c:6)
-==10389==    by 0x4C30E26: ??? (in /usr/lib/valgrind/vgpreload_helgrind-amd64-linux.so)
-==10389==    by 0x4E45181: start_thread (pthread_create.c:312)
-==10389==    by 0x515547C: clone (clone.S:111)
-\end{verbatim}
-	}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Always Two, There Are}
-
-
-	Note that we get two stack traces here: we have a read after write, and a write after write.
-
-	Why?
-
-	Because the operation in question is \texttt{var++} which necessitates fetching the current value of \texttt{var} (reading it) and incrementing it (then writing it back).
 
 \end{frame}
 
@@ -567,7 +349,7 @@ jz@Loki:~/ece459$ valgrind --tool=helgrind ./datarace
 
 	You might find this frustrating.
 
-
+	Let's do some more examples.
 
 \end{frame}
 
