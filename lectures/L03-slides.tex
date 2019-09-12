@@ -124,7 +124,10 @@
 
 \begin{frame}[fragile]
 	\frametitle{Opening and Closing Files}
-	We already saw in an earlier example how to open and close a file:
+	We already saw in an earlier example, one way to open and close a file.
+	
+	Here is a slight variant that uses \texttt{FILE*}:
+	
 	\begin{lstlisting}[language=C]
     FILE* f = fopen( argv[1], "r");
     if ( f == NULL ) {
@@ -141,7 +144,7 @@
 \begin{frame}[fragile]
 	\frametitle{Using the Open Call}
 
-	It turns out that creating, reading, writing, and truncating are all done with the open call.
+	It turns out that creating, reading, writing, and truncating involve the open call.
 
 	\begin{lstlisting}[language=C]
 FILE * fopen( const char* filename, const char* mode )

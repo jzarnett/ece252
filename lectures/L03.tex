@@ -64,7 +64,7 @@ Repeatedly opening and closing the same file is unnecessary and inefficient. If 
 \paragraph{Truncating a File.} If a file should be erased but its attributes maintained (e.g., all the metadata), we can truncate it: cut off all the contents. The file length is reset to zero and its data area is marked as free, but the rest of the attributes remain the same.
 
 
-It turns out that creating, reading, writing, and truncating are all done with the open call. The call is \texttt{FILE * fopen( const char* filename, const char* mode )}. In addition to the filename as the first parameter, the function is called with the mode as the second parameter. In the last example, the mode we provided was a string literal of \texttt{r}. The modes are:
+It turns out that creating, reading, writing, and truncating all involve the open call. The call is \texttt{FILE * fopen( const char* filename, const char* mode )}. In addition to the filename as the first parameter, the function is called with the mode as the second parameter. In the last example, the mode we provided was a string literal of \texttt{r}. The modes are:
 
 \begin{itemize}
 	\item \texttt{r} -- Open the file for reading only.
