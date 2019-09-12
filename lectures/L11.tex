@@ -59,7 +59,7 @@ Also, if any thread encounters an error (such as a division by zero or Segmentat
 
 
 \subsection*{Thread States}
-Each individual thread will have its own state. We said earlier that a process may have seven states, but the model for thread state will be the somewhat simpler five-state model. If a process is swapped out of memory, all its threads will be swapped out; when that process is swapped in to memory, all the threads will be swapped in. Therefore we do not need to consider whether a thread is in memory or swapped; hence the five-state model, reproduced once again below:
+Each individual thread will have its own state. We said earlier that a process may have seven states, but the model for thread state will be the somewhat simpler five-state model. If a process is blocked, we don't really care why, even if the OS does. Hence the five-state model, reproduced once again below:
 
 \begin{center}
 	\includegraphics[width=0.85\textwidth]{images/5-state-model.png}\\
