@@ -184,12 +184,8 @@
 	Our process model has seven states.\\
 	\quad The thread state model is the simpler five-state model.
 
-	If a process is swapped out of memory, all its threads are swapped out.
-
-	When that process returns to memory, all the threads are swapped in.
-
-	Therefore we do not need to consider if a thread is in memory/swapped.
-
+	If a process is blocked, we don't really care why (even if the OS does).
+	
 \end{frame}
 
 \begin{frame}
