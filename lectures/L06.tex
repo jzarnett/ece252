@@ -82,7 +82,7 @@ Interestingly, for most (but not all) signals, your process can choose to refuse
 
 If the same signal is sent more than once when that signal is blocked by the recipient, it might be delivered only once, depending on your particular operating system implementation~\cite{apunix}.
 
-As introduced earlier, signals have a default action. The action that is taken when the signal is delivered is called the \textit{disposition} of the signal. If you don't explicitly change what happens when the signal arrives, the default (see the table) happens. But we can change it. There are three options (1) ignore it, (2) run a signal handler, and (3) run the default action. The third option is used to undo an earlier change (such as if we said we wanted to ignore the signal but now no longer do). We'll restrict our to the ``run a signal handler'' option in this lecture.
+As introduced earlier, signals have a default action. The action that is taken when the signal is delivered is called the \textit{disposition} of the signal. If you don't explicitly change what happens when the signal arrives, the default (see the table) happens. But we can change it. There are three options (1) ignore it, (2) run a signal handler, and (3) run the default action. The third option is used to undo an earlier change (such as if we said we wanted to ignore the signal but now no longer do). We'll restrict our examination to the ``run a signal handler'' option in this lecture.
 
 If we decide to register a signal handler, the function is:
 \begin{lstlisting}[language=C]
@@ -113,7 +113,7 @@ Alright, with your signal handler set up, then the workflow looks like the diagr
 
 The content of your signal handler, however, is restricted. Because the handler deals with an interrupt and runs between two instructions it is important to make sure that the signal handler doesn't mess anything up. If the signal handler runs in the middle of \texttt{malloc} and the signal handler itself calls \texttt{malloc} it could put the memory management in an invalid state~\cite{apunix}.
 
-We can only use functions that are \textit{reentrant}. That is to say, a function that can be interrupted during execution, have another complete to that same function execute, and then resume (and have everything be okay). In particular the big ones to avoid are: \texttt{printf}, \texttt{malloc}, \texttt{free}, and anything that could possibly block the process (e.g., a read of a file!). The subject of reentrancy is a little bit more complicated than can be covered in a few sentences, and future courses should cover reentrancy in much more detail.
+We can only use functions that are \textit{reentrant}. That is to say, a function that can be interrupted during execution, have another complete call to that same function execute, and then resume (and have everything be okay). In particular the big ones to avoid are: \texttt{printf}, \texttt{malloc}, \texttt{free}, and anything that could possibly block the process (e.g., a read of a file!). The subject of reentrancy is a little bit more complicated than can be covered in a few sentences, and future courses should cover reentrancy in much more detail.
 
 There are tables of what functions are safe to invoke from within a signal handler. In general what you are looking for is a designation of \textit{async-signal safe}.
 
@@ -166,7 +166,7 @@ UNIX is kind enough to provide us with some message queues that sort of resemble
 
 \begin{enumerate}
        \item Wait for the space to be available (block).
-       \item Overwrite older messaged (sometimes this is what you want).
+       \item Overwrite older messages (sometimes this is what you want).
        \item Discard the current message (leave the old ones as they are).
 \end{enumerate}
 
