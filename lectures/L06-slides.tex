@@ -620,7 +620,7 @@ The max sizes and numbers of queues are implementation-specific.
 In a real implementation, limits are something you need to consider:
 \begin{enumerate}
        \item Wait for the space to be available (block).
-       \item Overwrite older messaged (sometimes this is what you want).
+       \item Overwrite older messages (sometimes this is what you want).
        \item Discard the current message (leave the old ones as they are).
 \end{enumerate}
 
@@ -756,10 +756,14 @@ ssize_t msgrcv( int msqid, void *ptr, size_t nbytes, long type, int flag );
 
 \texttt{flag}: 0 for blocking, \texttt{IPC\_NOWAIT} for return with error if queue empty.
 
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Type Options}
 \begin{itemize}
-	\item \texttt{type == 0} -- Return the first message on the queue (any type)
-	\item \texttt{type > 0} -- Return the first message on the queue with the specified type
-	\item \texttt{type < 0} -- Return the first message on the queue whose type is the smallest value less than or equal to the absolute value of \texttt{type}.
+	\item \texttt{type == 0}
+	\item \texttt{type > 0}
+	\item \texttt{type < 0}
 \end{itemize}
 \end{frame}
 
@@ -773,7 +777,7 @@ int msgctl( int msqid, int command, struct msqid_ds * buf );
 
 \texttt{command}:  \texttt{IPC\_RMID} to delete the queue.
 
-\texttt{but}: use NULL.
+\texttt{buf}: use NULL.
 
 This immediately deletes the queue and all messages inside!
 
