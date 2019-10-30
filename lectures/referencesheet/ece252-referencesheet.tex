@@ -74,7 +74,7 @@
 \newcommand{\rectangle}[3]{\tikz \draw (0,0) rectangle (#1,#2) node[pos=.5]{#3};}
 \newcommand{\multiline}[2][c]{%
   \begin{tabular}[#1]{@{}c@{}}#2\end{tabular}}
-\input{header}
+
 \usepackage{tikz}
 \usepackage{enumitem}
 \usepackage{fancyhdr}
@@ -183,7 +183,7 @@ For \texttt{open()} the following flags may be used for the \texttt{flags} param
 \begin{lstlisting}[language=C]
 pid_t fork( );
 pid_t wait( int* status );
-pid_t waitpid( pid_t pid, int status, int options ); /* 0 for options fine */
+pid_t waitpid( pid_t pid, int *status, int options ); /* 0 for options fine */
 void exit( int status );
 \end{lstlisting}
 
@@ -195,11 +195,11 @@ int raise( int signal ); /* Send signal to the current process */
 void ( *signal(int signum, void (*handler)(int)) ) (int); /* handle signal */ 
 int pause( ) /* Suspend this program until a signal arrives */
 
-int sigemptyset( sigset_t set ); /* Initialize an empty sigset_t */
-int sigaddset( sigset_t set, int signal ); /* Add specified signal to set */
-int sigfillset( sigset_t set ); /* Add ALL signals to set */
-int sigdelset( sigset_t set, int signal ); /* Remove specified signal from set */ 
-int sigismember( sigset_t set, int signal ); /* Returns 1 if true, 0 if false */
+int sigemptyset( sigset_t* set ); /* Initialize an empty sigset_t */
+int sigaddset( sigset_t* set, int signal ); /* Add specified signal to set */
+int sigfillset( sigset_t* set ); /* Add ALL signals to set */
+int sigdelset( sigset_t* set, int signal ); /* Remove specified signal from set */ 
+int sigismember( sigset_t* set, int signal ); /* Returns 1 if true, 0 if false */
 int sigprocmask( int how, const sigset_t * set, sigset_t * old_set ); 
 \end{lstlisting}
 
