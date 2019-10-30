@@ -122,6 +122,25 @@
 \end{frame}
 
 \begin{frame}
+	\frametitle{The Proof is the Proof}
+
+	Assume a circular wait is present.
+
+	Let the set of processes in the circular wait be $\{P_{0}, P_{1}, ... P_{n}\}$ and the set of resources be $\{R_{0}, R_{1}, ... R_{n}\}$.
+
+	The cycle is formed as: $P_{i}$ waits for resource $R_{i}$ and that resource is held by $P_{i+1}$.
+
+	The exception is the case of $P_{n}$, which waits for resource $R_{n}$ that is held by $P_{0}$.
+
+	Since Process $P_{i+1}$ holds resource $R_{i}$ while requesting $R_{i+1}$, this means $f(R_{i}) < f(R_{i+1})$ for all $i$.
+
+	But this means that $f(R_{0}) < f(R_{1}) < ... < f(R_{n}) < f(R_{0})$.
+
+	It cannot be the case that $f(R_{0}) < f(R_{0})$: a contradiction.
+
+\end{frame}
+
+\begin{frame}
 	\frametitle{Ordering of Resources}
 
 	Back to the philosophers: we assign each chopstick a number from 0 to 4.
@@ -142,24 +161,7 @@
 
 \end{frame}
 
-\begin{frame}
-	\frametitle{The Proof is the Proof}
 
-	Assume a circular wait is present.
-
-	Let the set of processes in the circular wait be $\{P_{0}, P_{1}, ... P_{n}\}$ and the set of resources be $\{R_{0}, R_{1}, ... R_{n}\}$.
-
-	The cycle is formed as: $P_{i}$ waits for resource $R_{i}$ and that resource is held by $P_{i+1}$.
-
-	The exception is the case of $P_{n}$, which waits for resource $R_{n}$ that is held by $P_{0}$.
-
-	Since Process $P_{i+1}$ holds resource $R_{i}$ while requesting $R_{i+1}$, this means $f(R_{i}) < f(R_{i+1})$ for all $i$.
-
-	But this means that $f(R_{0}) < f(R_{1}) < ... < f(R_{n}) < f(R_{0})$.
-
-	It cannot be the case that $f(R_{0}) < f(R_{0})$: a contradiction.
-
-\end{frame}
 
 \begin{frame}
 	\frametitle{Ordering Resources}
@@ -296,6 +298,10 @@
 	\frametitle{Evaluating the New Initial State}
 
 	Trying to find a way for all processes to complete is not possible.
+	
+	\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/danger.jpg}
+	\end{center}
 
 	Thus, this state is unsafe.
 
