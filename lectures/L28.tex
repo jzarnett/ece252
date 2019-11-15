@@ -101,7 +101,7 @@ int main( int argc, char** argv ) {
     bool our_turn = false;
     
     while( !our_turn ) {
-        lockFD = open( filename, O_CREAT | O_EXCL | O_TRUNC );
+        lockFD = open( filename, O_CREAT | O_EXCL );
         if ( lockFD == -1 ) {
             printf( "The lock file exists and process %ld will wait its turn...\n", getpid() ); 
             int notifyFD = inotify_init( );
