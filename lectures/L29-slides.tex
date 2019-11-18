@@ -330,7 +330,9 @@ struct timeval {
 	\frametitle{Socket Server}
 
 	\begin{lstlisting}[language=C]
-void listen_for_connections( int service1_sock, int service2_sock, int service3_sock ) {
+void listen_for_connections( int service1_sock, 
+    int service2_sock, int service3_sock ) 
+{
   int nfds = 1 + (service1_sock > service2_sock
     ? service1_sock > service3_sock ? service1_sock : service3_sock
     : service2_sock > service3_sock ? service2_sock : service3_sock);
