@@ -599,7 +599,9 @@ struct pollfd {
 \begin{frame}[fragile]
 	\frametitle{3-Service Example with poll}
 	\begin{lstlisting}[language=C]
-void listen_for_connections( int service1_sock, int service2_sock, int service3_sock ) {
+void listen_for_connections( int service1_sock, int service2_sock,
+     int service3_sock ) 
+{
   struct pollfd pollfds[3];
   pollfds[0].fd = service1_sock;
   pollfds[0].events = POLLIN;
