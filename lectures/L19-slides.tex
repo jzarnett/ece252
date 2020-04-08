@@ -1,6 +1,6 @@
 \input{configuration}
 
-\title{Lecture 19 --- Deadlock }
+\title{Lecture 19 --- Deadlock Detection \& Recovery }
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
@@ -17,603 +17,668 @@
 
 
 \begin{frame}
-	\frametitle{Deadlock!}
+	\frametitle{Elementary...}
 
 	\begin{center}
-		\includegraphics[width=\textwidth]{images/deathstroke.jpg}
-	\end{center}
-
-	Hmm... no... not quite...
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Okay, This Time It's Deadlock!}
-
-	\begin{center}
-		\includegraphics[width=\textwidth]{images/deadpool.jpg}
-	\end{center}
-
-	No? Whoops.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{This One Really Is Deadlock!}
-
-	\begin{center}
-		\includegraphics[width=0.5\textwidth]{images/deadlock.jpg}
+		\includegraphics[width=0.7\textwidth]{images/jeremy-brett.jpg}
 	\end{center}
 
 \end{frame}
 
+
 \begin{frame}
-	\frametitle{Skeptical Dog Says:}
+	\frametitle{Detecting Deadlock}
 
-	\begin{center}
-		\includegraphics[width=0.4\textwidth]{images/skeptical-dog.jpg}
-	\end{center}
+	Thus far we have examined several ways to prevent or avoid deadlock, but all of those solutions have come with significant drawbacks or limitations.
 
-	Really. He's an Image Comics character. He first appeared in 1992.
+	Avoidance analyses are also conservative; they will prevent a request from taking place if there is even a small chance it could lead to a deadlock.
 
-	I think he's an off-brand Wolverine.
+	Perhaps we cannot stop deadlock from happening or cannot live with the performance reduction that avoidance mandates.
 
-	I don't know either.
-
+	Then the next best thing is to let all resource requests proceed and then determine later if a deadlock exists, and if so, do something about it.
 
 \end{frame}
 
 
-
 \begin{frame}
-	\frametitle{The Dining Philosophers Problem}
+	\frametitle{Detecting Deadlock}
 
-	The dining philosophers problem was also proposed by Dijkstra in 1965.
+	The basic strategy for deadlock detection is like the deadlock avoidance strategy in that it relies on a model of the resource allocation and requests.
 
-	The problem can have $n$ philosophers, but problem is typically described as 5.
+	If resources have only a single instance, we may reduce the graph to a simplified version called the \textit{wait-for} graph.
 
-	These five smart individuals spend their lives thinking, but every so often, they need to eat. They share a table, each having his or her own chair.
+	This removes the resource boxes from the diagram.
 
-	In the centre of the table is a bowl of rice, \& it is laid with 5 single chopsticks.
+	It indicates that a process $P_{i}$ is waiting for process $P_{j}$ rather than for a resource $R_{k}$ that happens to be held by $P_{j}$.
+
+	An edge $P_{i} \rightarrow P_{j}$ exists in the wait-for graph if and only if the resource allocation graph has a request $P_{i} \rightarrow R_{k}$ and an assignment edge $R_{k} \rightarrow P_{j}$
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{The Dining Philosophers Problem}
+	\frametitle{Wait-For Graph}
 
 	\begin{center}
-		\includegraphics[width=0.6\textwidth]{images/philosopher-table.png}
+		\includegraphics[width=0.75\textwidth]{images/rag-waitfor.png}
 	\end{center}
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Dinner Time}
+	\frametitle{Cycle Detection}
 
-	When a philosopher wishes to eat, she sits down at her designated chair, and attempts to pick up the two chopsticks that are nearest.
+	Given the wait-for graph, it is trivial for humans to look at this and determine if there is a cycle, but for the computer it takes slightly more work.
 
-	Philosophers are polite and therefore do not grab a chopstick out of the hands of a colleague.
+	A cycle exists in the wait for graph if and only if a deadlock exists in the system.
 
-	When a philosopher has both chopsticks, she may eat rice, and when she is finished, she puts down the chopsticks and goes back to thinking.
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Dining with Semaphores}
-
-	Suppose then that semaphores are the method for managing things.
-
-	Because only one person can be in possession of a chopstick at a time, each chopstick may be represented by a binary semaphore.
-
-	When the philosopher sits down he attempts to acquire the left chopstick, then the right, eats, and puts the chopsticks down.
-
-	This works fine, until all philosophers sit down at the same time. Each grabs the chopstick to his or her left.
-
-	None of them are able to acquire the chopstick to his or her right (because someone has already picked it up).
-
-	None of the philosophers can eat; they are all stuck. Deadlock.
+	Such cycle detection algorithms tend to have runtime characteristics of $\Theta(n^{2})$ where $n$ is the number of nodes in the graph.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Deadlock at the Dinner Table}
+	\frametitle{General Deadlock Detection Algorithm}
 
-	\begin{center}
-		\includegraphics[width=0.4\textwidth]{images/olivertwist.jpeg}
-	\end{center}
+	We will use the general deadlock detection algorithm that allows for multiple resources of each type.
 
-	This example makes it more clear why we call a situation where a thread never gets to run ``starvation''.
+	There are $n$ processes numbered $P_{1}$ through $P_{n}$ and $m$ resources.
 
-	If a philosopher is never able to get both chopsticks, they won't eat.
+	Resources are represented by two vectors:\\
+	\quad $E$ -- the existing resource vector.\\
+	\quad $A$ -- the available resource vector.
 
-	Though I am not an expert on biology, I have it on good authority that people who do not eat anything end up eventually starving to death.
-
-	Even philosophers.
+	If resource $i$ has two instances total and one is currently assigned to a process, $E_{i}$ is 2 and $A_{i}$ is 1.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Saving the Philosophers}
+	\frametitle{General Deadlock Detection Algorithm}
 
-	One thing that would guarantee that this problem does not occur is to protect the table with a binary semaphore.
+	We need two matrices to represent the current situation of the system.
 
-	This would allow exactly one philosopher at a time to eat, but at the very least, deadlock and starvation would be avoided.
+	The first is $C$, the current allocation.
 
-	Although this works, it is a suboptimal solution.
+	Row $i$ of $C$ shows how many of each resource $P_{i}$ has.
 
-	There are five seats and five chopsticks. Yet only one person is eating at a time.
+	The second matrix is $R$, the request matrix.
 
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{No, the Pigeons are not for Eating}
-
-	What if we limit the number of philosophers at the table concurrently to four?
-
-	The pigeonhole principle applies here: if there are $k$ pigeonholes and more than $k$ pigeons, at least one pigeonhole must have at least two pigeons.
-
-	Thus, at least one of the four philosophers can get two chopsticks.
-
-	Implementation is easy: a general semaphore with a max and initial value of 4.
+	$C_{ij}$ shows the number of instances of resource $j$ that $P_{i}$ has and $R_{ij}$ shows the number of instances of resource $j$ that $P_{i}$ wants.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Invite a Leftie}
-
-	\begin{center}
-		\includegraphics[width=0.4\textwidth]{images/leftorium.jpg}
-	\end{center}
-
-	The problem above occurs because every philosopher tries to pick up the left chopstick first.
-
-	If some of them try to pick up the left and some pick up the right first, then deadlock will not happen.
-
-	This problem is a great basis to launch into a discussion about deadlock...
-
-\end{frame}
-
-
-
-\begin{frame}
-	\frametitle{Deadlock}
-
-	An informal definition of deadlock: all processes being ``stuck''.
-
-	A more formal definition: ``the \textit{permanent} blocking of a set of processes that either compete for system resources or communicate with each other''.
-
-	It may be possible for all processes to be stuck temporarily, because one is waiting for some event (e.g., a read from disk).
-
-	This situation will resolve itself and is not deadlock.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Deadlock}
-	A set of processes is truly deadlocked when each process in the set is blocked on some event that can only be triggered by another blocked process in the set.
-
-	In this case it is permanent, because none of the events can take place.
-
-	A deadlock involves some conflicting needs for resources by two or more processes.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{A Traffic Deadlock}
-
-	\begin{center}
-		\includegraphics[width=\textwidth]{images/car-deadlock.png}
-	\end{center}
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{A Traffic Deadlock}
-
-	Whichever vehicle arrives at the stop sign first has the right of way.
-
-	If two vehicles arrive at the same time, a vehicle yields the right of way to the vehicle on its right.
-
-	Okay, as long as 3 or fewer vehicles come to the stop sign at the same time.
-
-	If all four vehicles arrive at the same time, we have the potential for a problem.
-\end{frame}
-
-\begin{frame}
-	\frametitle{A Traffic Deadlock}
-
-	It is not a deadlock yet, because none of the processes are stuck yet.
-
-	If all the drivers believe they should go first, we get the situation on the right, and we actually do have deadlock.
-
-	This is very much like the dining philosophers problem; deadlock occurs if everyone tries to do the same thing at the same time.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Deadlocks}
-
-	Of course, for deadlock to occur, we do not have to have symmetric processes trying to do the same thing at the same time.
-
-	Given two semaphores, \texttt{a} and \texttt{b}, and two processes, we can have the following code that will sometimes, but not always lead to deadlock.
-
-	If thread $P$ locks \texttt{a} and then there is a process switch, and \texttt{b} is locked by $Q$, both threads will be stuck.
-
-	Each has one resource the other needs, but they are both blocked.
-
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Deadlock of $P$ and $Q$}
-	It's not always this easy to see:
-
+	\frametitle{General Deadlock Detection Algorithm}
 
 	\begin{multicols}{2}
-		\textbf{Thread P}
-		\begin{verbatim}
-	 1. wait( a ) 
-	 2. wait( b )
-	 3. [critical section]
-	 4. signal( a )
-	 5. signal( b )
-  \end{verbatim}
+		\begin{center}
+			\textsf{Resources in Existence}\\
+			$[E_{1}, E_{2}, ..., E_{m}]$\vspace{5em}
+
+			\textsf{Current Allocations}
+			\[
+				\left[ {\begin{array}{cccc}
+								C_{11} & C_{12} & ... & C_{1m} \\
+								C_{21} & C_{22} & ... & C_{2m} \\
+								\vdots & \vdots &     & \vdots \\
+								C_{n1} & C_{n2} & ... & C_{nm}
+							\end{array} } \right]
+			\]
+		\end{center}
 		\columnbreak
-		\textbf{Thread Q}
-		\begin{verbatim}
-	 1. wait( b ) 
-	 2. wait( a )
-	 3. [critical section]
-	 4. signal( b )
-	 5. signal( a )
-  \end{verbatim}
+
+		\begin{center}
+			\textsf{Resources Available}\\
+			$[A_{1}, A_{2}, ..., A_{m}]$\vspace{3em}
+
+			\textsf{Requests}
+			\[
+				\left[ {\begin{array}{cccc}
+								R_{11} & R_{12} & ... & R_{1m} \\
+								R_{21} & R_{22} & ... & R_{2m} \\
+								\vdots & \vdots &     & \vdots \\
+								R_{n1} & R_{n2} & ... & R_{nm}
+							\end{array} } \right]
+			\]
+		\end{center}
+
 	\end{multicols}
 
-\end{frame}
+	\begin{center}
+		$\sum\limits_{i=1}^n C_{ij} + A_{j} = E_{j}$.
+	\end{center}
 
-
-\begin{frame}
-	\frametitle{Reusable and Consumable Resources}
-	We can generally classify a resource as either \alert{reusable} or \alert{consumable}.
-
-	A reusable resource can be used by one process at a time, and is not depleted.
-
-	A process may lock the resource, make use of it, then release it such that other processes may acquire it.
-
-	Processors, memory, files, semaphores are all examples of reusable resources.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Reusable and Consumable Resources}
+	\frametitle{Less Than? Says Who?}
 
-	A consumable resource is one that is created and destroyed upon consumption.
+	There is one more bit of setup before we are ready to run the algorithm.
 
-	If the user presses the ``Z'' key on the keyboard, this generates an interrupt and produces the ``Z'' character in a buffer.
+	The key idea is comparison of vectors, so let us define for notational convenience, the idea of ``less than'' for two vectors.
 
-	A process that takes input will then consume that character (e.g., it goes into the \texttt{vi} editor window) and it is unavailable to other processes.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Conditions for Deadlock}
-
-	When a disaster happens, it is typically a result of a chain of things going wrong.
-
-	If any one of those things did not happen, the disaster would be averted.
-
-	This is referred to as ``breaking the chain''.
+	We will say that for two vectors $A$ and $B$ of length $m$,  $A \leq B$ means that $A_{i} \leq B_{i}$ for all $i$ from 1 to $m$.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Conditions for Deadlock}
-	There are four conditions for deadlock:
+	\frametitle{Run, Algorithm, Run}
+
+	All processes are unmarked and the vectors and matrices are populated.
 
 	\begin{enumerate}
-		\item \textbf{Mutual Exclusion}
-		\item \textbf{Hold-and-Wait}
-		\item \textbf{No Preemption}
-		\item \textbf{Circular-Wait}
+		\item Search for an unmarked process whose requests can all be satisfied with the available resources in $A$. Mathematically: find a process $P_{i}$ such that row $R_{i} \leq A$.
+		\item If a process is found, add the allocated resources of that process to the available vector and mark the process. Mathematically: $A = A + C_{i}$. Go back to step 1.
+		\item If no process was found in the search of step 1, the algorithm terminates.
 	\end{enumerate}
 
+	At the end, any processes that are not marked are deadlocked.
 
-	If the first three conditions are true, deadlock is possible, but deadlock will only happen if the fourth condition is fulfilled.
+\end{frame}
+
+\begin{frame}
+	\frametitle{General Deadlock Detection Algorithm Analysis}
+
+	This approach is similar to the banker's algorithm.
+
+	Step 1: look for a process that can run to completion; it will be able to do so because the currently available resources equal or exceed its needs.
+
+	That process can finish, and when it does so, its currently-held resources are released and available for another process to acquire.
+
+	Step two reflects this by adding the resources it holds to the available set.
+
+	Then another process is selected.
+
+	At the end, either all processes can finish and there is no deadlock, or there is a set of processes (at least two) that are deadlocked.
+
+	This algorithm has a runtime performance characteristic of $\Theta(m \times n^{2})$.
 
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Resource Allocation Graph}
+	\frametitle{Detection of Deadlock Example}
+	System initial state (4 resources, 3 processes):
+
+	\begin{multicols}{2}
+		\begin{center}
+			$E = [4, 2, 3, 1]$
+			\[ C =
+				\left[ {\begin{array}{cccc}
+								0 & 0 & 1 & 0 \\
+								2 & 0 & 0 & 1 \\
+								0 & 1 & 2 & 0 \\
+							\end{array} } \right]
+			\]
+		\end{center}
+		\columnbreak
+
+		\begin{center}
+			$A = [2, 1, 0, 0]$
+			\[ R =
+				\left[ {\begin{array}{cccc}
+								2 & 0 & 0 & 1 \\
+								1 & 0 & 1 & 0 \\
+								2 & 1 & 0 & 0
+							\end{array} } \right]
+			\]
+		\end{center}
+
+	\end{multicols}
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{I'll Take Your Word For It}
+
+If we have started some operation and it is taking too long, we can assume that a deadlock occurred and decide to take action.
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/zoidberg.jpg}
+\end{center}
+
+This does mean we might declare a deadlock when there really is none.
+
+One way to implement this is via a watchdog timer.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{When to Detect Deadlock}
+
+	The runtime characteristic of the simple deadlock detection algorithm: $\Theta(n^{2})$.
+
+	The runtime characteristic of the general algorithm was shown as $\Theta(m \times n^{2})$.
+
+	($n$ is the number of processes and $m$ is the number of resources in the system)
+
+	This means that the deadlock detection routine is expensive to execute.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{When to Detect Deadlock}
+
+	This prompts a question: how often should the deadlock detection algorithm be run?
+
+	One strategy is to run it every time a resource is requested.
+
+	Optimization: it should run if a resource request cannot be granted.
+
+	Another idea: run it periodically instead.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{When to Detect Deadlock}
+
+	When to run the deadlock detection algorithm depends on how often we expect deadlock to occur, and how severe a problem it is when deadlock occurs.
+
+	If deadlock happens a lot, checking for deadlock often will make sense.
+
+	If the consequences of a deadlock are severe, it makes sense to check frequently to identify the problem as soon as possible.
+
+	Idea: run it when CPU utilization is low...?
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{We Can Fix This}
 
 	\begin{center}
-		\includegraphics[width=0.50\textwidth]{images/rag1.png}
+		\includegraphics[width=\textwidth]{images/recovery.png}
+	\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Deadlock Recovery}
+
+	Once a deadlock has been detected, a system can recover from that deadlock by ``breaking'' the deadlock.
+
+	These are called recovery strategies and they are ways the system may automatically deal with the problem.
+
+	It is possible to have a manual form of deadlock recovery, where an operator is notified and that person is responsible for sorting out the problem.
+
+	The manual method needs no further discussion.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Recovery Strategies}
+
+	There are several strategies that we could apply.
+
+	They can result in data loss, delays in completion, other problems...
+
+	Ideally we would like to break the deadlock with as little disruption as possible, so the strategies that rely on selection of victims should choose carefully.
+
+	These strategies are not mutually exclusive.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Here's One Idea}
+
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/oceans-eleven.jpeg}
+	\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Robbery}
+
+	The strategy of ``robbery'' is just a humorous way of saying preemption.
+
+	This is virtually identical to the discussion of deadlock prevention.\\
+	\quad But it happens  only when deadlock is detected.
+
+	The operating system needs to choose a victim to rob...
+
+	The resource should be an appropriate type to be preempted!
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Robbery}
+
+
+	Suppose $P_{1}$ has a resource $R_{1}$ and needs $R_{2}$, while $P_{2}$ has $R_{2}$ and needs $R_{1}$.
+
+	The OS may block $P_{2}$ and take away $R_{2}$ from $P_{2}$ and allow $P_{1}$ to have it.
+
+	After that resource becomes available again, it is returned to $P_{2}$.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Mass Murder}
+
+	\begin{center}
+		\includegraphics[width=0.65\textwidth]{images/killemall.jpg}
 	\end{center}
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Resource Allocation Graph}
+	\frametitle{Mass Murder}
 
-	If there are no cycles in the graph, no process in the system is deadlocked.
+	Terminate (kill) all the processes involved in the deadlock.
 
-	If a cycle exists, then some process \textit{may} be deadlocked:
+	This solution is surprisingly common.
 
-	\begin{center}
-		\includegraphics[width=0.40\textwidth]{images/rag2.png}
-	\end{center}
+	It is one way to be certain that the deadlock cycle is broken.
 
-\end{frame}
+	The resources that these processes were holding will become available.
 
-\begin{frame}
-	\frametitle{Resource Allocation Graph}
-
-	But the presence of a cycle is not necessarily certain that there is a deadlock.
-
-	\begin{center}
-		\includegraphics[width=0.40\textwidth]{images/rag3.png}
-	\end{center}
-
+	There is no need to determine a victim: kill 'em all and let root sort them out.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Dealing with Deadlock}
+	\frametitle{Mass Murder}
 
-	There are four basic approaches to dealing with deadlock.
+	This solution, while easy to implement, may not solve the problem.
+
+	The circumstances that caused the deadlock may occur again.
+
+	If the deadlock were an unlikely situation caused by ``unlucky'' timing then it will probably not recur, or at least, will not recur for some time.
+
+	If $P_{1}$ and $P_{2}$ are deadlocked, however, is it really necessary to kill both?
+
+	If we killed only one, the other could proceed...
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Hello, Clarice...}
+
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/mikkelsen.jpg}
+	\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Murder}
+
+	Perhaps instead of killing all processes involved in a deadlock, the operating system chooses to kill processes selectively.
+
+	Like preemption, selecting which process is the victim is important.
+
+	When the victim is killed, its resources are added to the available set and this will hopefully allow other processes to proceed.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Murder}
+	Run the deadlock detection algorithm again to determine if deadlock still exists.
+
+	If so, this strategy needs to be repeated.
+
+	Repeat until the logjam is broken.
+
+	Presumably kills fewer processes than the ``mass murder'' strategy.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Next Idea: Back we Go...}
+
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/bttf.jpg}
+	\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Time Travel}
+
+	\alert{Rollback}: returning the state of a process to a saved state from an earlier time.
+
+	There must be a saved state that was created in advance of a problem. \\
+	\quad Otherwise there is no state to roll back to!
+
+	The saved state is called a \alert{checkpoint} and the act of creating and saving a checkpoint is called \alert{checkpointing}.
+
+	Checkpoints may be created periodically or before beginning a particular operation that requires a lot of resources.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Time Travel}
+
+	A checkpoint contains the memory image, including the call stack, and resource state of a process.
+
+	It is written to disk and will usually persist as long as the process executes.
+
+	You might already be somewhat familiar with the concept of rollbacks if you have used version control software like Subversion (\texttt{svn}) or Git (\texttt{git}).
+
+	Rollbacks are also common in databases.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Time Travel}
+
+	Unfortunately, rollback does not always succeed.
+
+	Sometimes moving the process back to an earlier state just moves it a few steps back on the same road that leads to the deadlock.
+
+	Rollback may be attempted a few times before trying another strategy.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Armageddon}
+
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/defcon.jpg}
+	\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Armageddon}
+
+	Armageddon - the end of the world.
+
+	If a deadlock has occurred, sometimes the best thing to do is reboot the system.
+
+	This has a side effect of killing all processes, whether they are stuck or not, but is sometimes the best way to make sure that the system is in a valid state.
+
+	NASA's Spirit rover relies on this strategy if it detects a deadlock.
+
+	Like killing all affected processes, it is easy to implement, but is most disruptive.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Victim Selection}
+
+	If we have to choose a victim process for one of the strategies, e.g., termination, then we need a strategy for which process to choose.
+
+	We could choose randomly: kill a process and hope that that was enough.
+
+	Sometimes this will work, because it breaks the deadlock and the other processes can all proceed.
+
+	In general, however, making an informed decision is better.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{(Don't) Shoot Innocent Bystanders}
+
+	It is not necessary to choose one of the processes involved in the deadlock.
+
+	If $P_{1}$ and $P_{2}$ are deadlocked, $P_{3}$  may have an instance of a resource $P_{1}$ needs.
+
+	Killing $P_{3}$ will allow both $P_{1}$ and $P_{2}$ to proceed.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Victim Selection: An Optimization Problem}
+
+	Define a cost function for choosing each process, evaluate it, choose the lowest.
+
+	Some factors to consider:
 
 	\begin{enumerate}
-		\item Ignore it.
-		\item Deadlock prevention.
-		\item Deadlock avoidance.
-		\item Deadlock detection.
+		\item The priority of the process.
+		\item How long the process has been executing.
+		\item How long is remaining in execution, if known.
+		\item What resources the process has (number and type).
+		\item Future resource requests, if known.
+		\item Whether the process is user-interactive or in the background.
+		\item How many times, if any, the process has been selected as a victim.
 	\end{enumerate}
 
 \end{frame}
 
+\begin{frame}
+	\frametitle{Geri and the Atrics}
+
+	Selection routines tend to favour older processes rather than younger ones.
+
+	This is not because older processes vote in higher numbers, but because it tends to be more expensive to restart an older process.
+
+	A process that has been running for a long time, if it is restarted, has to do a lot more work to get to the point where it was terminated than a younger process.
+
+\end{frame}
 
 \begin{frame}
-	\frametitle{Also Called the Ostrich Algorithm}
+	\frametitle{Geri and the Atrics}
 
-	\begin{center}
-		\includegraphics[width=0.7\textwidth]{images/ostrich-head-sand.jpg}
-	\end{center}
+	If the oldest process were constantly the one selected, that process itself might never get to run to completion (starvation).
 
+	If the killing process is very aggressive then no tasks run to completion because each process, shortly after becoming the oldest, is killed.
+
+
+	Therefore, young processes tend to be the ones selected.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Keeping Track}
+
+	The final element in the list, keeping track of how many times a process has been victimized, is also there to prevent starvation.
+
+	The selection process very likely produces the same or similar results each time it is run, so it may happen that the same process is selected over and over again.
+
+	It may be advisable to take the number of rollbacks or terminations into account so that no process in particular is starved.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Miscarriages of Justice}
+
+	The deadlock detection algorithm we have chosen tends to be conservative.\\
+	\quad It will err on the side of saying that there is a deadlock.
+
+	The worst case is assumed: that processes take resources and keep them until the end of their execution.
+
+	We might detect a deadlock when there is none.
+
+	We may also, then, kill an innocent process in a system that is not actually deadlocked. Oops!
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{It's Okay to Make Mistakes}
+
+	It turns out that our deadlock detection algorithms do not have to be perfect if we have chosen an appropriate recovery strategy.
+
+	If killing the process and restarting it does not have unexpected side effects, then being selected does not have an impact on the correctness of the program.
+
+	... Only on how long it takes to execute.
+
+	For example, the victim process is a compiler.
+
+	If killed and started again, it takes slightly longer for the compile to finish, but there is no impact on the correctness of the binary.
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Ignoring Deadlock}
+\frametitle{Lifelock}
 
-	This option is certainly convenient for operating system designers!
+\begin{center}
+	\includegraphics[width=0.7\textwidth]{images/lifelock.jpg}
+\end{center}
 
-	They simply pretend that deadlock can never happen.
-
-	Or if it does happen, it is the application developers' fault.
-
-	It doesn't seem right, but... Microsoft Windows takes this approach.
+No, wait, that's not quite correct.
 
 \end{frame}
 
+
 \begin{frame}
-	\frametitle{Deadlock Prevention}
+\frametitle{Lifelock}
 
-	This approach is a way of preventing a deadlock from being possible.
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/zoidberg2.jpg}
+\end{center}
 
-	The first three conditions for deadlock (mutual exclusion, hold and wait, and no preemption) are all necessary for deadlock to be possible.
+Better.
 
-	If we eliminate one of these three pillars, deadlock is not possible and it is prevented from happening.
-
-	But can you remove the need for it in your program?
+But we actually wanted to talk about Livelock.
 
 \end{frame}
 
-\begin{frame}
-	\frametitle{Knocking Down: Mutual Exclusion}
-
-	Mutual Exclusion cannot, generally speaking, be disallowed.
-
-	The purpose of  mutual exclusion is: prevent errors like inconsistent state/crashes.
-
-	Getting rid of mutual exclusion to rule out the possibility of deadlock is a cure that is worse than the disease.
-
-	It is therefore not acceptable as a solution.
-
-
-\end{frame}
 
 \begin{frame}
-	\frametitle{Knocking Down Hold-and-Wait}
-	To prevent the hold-and-wait condition, we must guarantee that when a process requests a resource, it does not have any other resource.
+\frametitle{Livelock}
 
-	This does not mean that things can be requested only one at a time.
-
-	One plausible solution: request all resources at the beginning of the program.
-
-	If the program needs $R_{1}$, $R_{2}$, and $R_{3}$ at some point, all three must be requested right at the beginning and held throughout the program.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Knocking Down Hold-and-Wait}
-
-	A process has to know in advance all of the resources that it will need.
-
-	Remember that a file is a resource.
-
-	A simple text editor can be used by the user to open an arbitrary file.
-
-	How do we know in advance which will be requested?
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Knocking Down Hold-and-Wait}
-
-	This also has performance implications: a process cannot start until it has all the resources it will ever need, even if it will not need them until much later.
-
-	Thus, processes might spend a lot of time waiting before starting.
-
-	In theory, a process might never start if one or more of the resources it needs is always in use (so this is vulnerable to starvation).
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Knocking Down Hold-and-Wait}
-
-	What if a process must release all its currently-held resources before it can get any new ones?
-
-	The process has $R_{1}$ and $R_{2}$ and wants to get $R_{3}$.\\
-	\quad First release $R_{1}$ and $R_{2}$ before it can request all three.
-
-	A resource that cannot be easily released is memory.\\
-	\quad Released memory may be collected and reassigned by the operating system.
-
-	Therefore we cannot release all resources.
-
-	We cannot rule out deadlock; we can only make it less likely to occur.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Two-Phase Locking}
+	Ideally, our recovery strategy is effective: some threads continue.
 	
-	\begin{center}
-	\includegraphics[width=0.4\textwidth]{images/cookiedown.jpg}
-	\end{center}
-
-	Another idea that might work is \alert{two-phase locking}.
-
-	A process attempts to lock a group of resources at once.
-
-	If it does not get everything it needs, it releases the locks it got and tries again.
-
-	Thus a process does not wait while holding resources.
-
-	If a philosopher picks up a chopstick but is unable to acquire a second, she puts down the chopstick she has picked up and tries again.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Two-Phase Locking}
-
-	Two phase locking is not applicable to our current model for semaphores.
-
-	There is no way to know the value of the semaphore and the operating system will block a process on a \texttt{wait} if some other thread is in the critical region.
-
-	After the process is blocked on the semaphore, a second process will run, and the first process does not get the opportunity to release the resources it holds.
-
-	There are systems that have nonblocking requests \& mutual exclusion.
-
-	Then the program is responsible for checking if any of the requests returned \texttt{false} and releasing any resources where the request returned \texttt{true}.
-
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Try This}
-	Fortunately, we know of some routines that do just this: the \texttt{trylock} functions that were mentioned earlier but not expanded upon:
-	\begin{lstlisting}[language=C]
-int pthread_mutex_trylock( pthread_mutex_t * mutex )
-int pthread_rwlock_tryrdlock( pthread_rwlock_t * rwlock )
-int pthread_rwlock_trywrlock( pthread_rwlock_t  * rwlock )
-\end{lstlisting}
-
-	These functions return an integer and it's extremely important to check and see if the return code is 0.
-
-	That is the only way to know if the lock was acquired.
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Have You Tried Trying?}
-
-	It should be possible to reason about this solution and demonstrate that:\\
-	\quad (1) a philosopher can only eat if they have both chopsticks, and\\
-	\quad (2) deadlock does not occur.
-
-	\begin{lstlisting}[language=C]
-int locked_both = 0;
-while( locked_both == 0 ) {
-  int locked1 = pthread_mutex_trylock( chopstick1 );
-  int locked2 = pthread_mutex_trylock( chopstick2 );
-  if (locked1 != 0 && locked2 == 0) {
-    pthread_mutex_unlock( chopstick2 );
-  } else if (locked1 == 0 && locked2 != 0 ) {
-    pthread_mutex_unlock( chopstick1 );
-  } else if (locked1 != 0 && locked2 != 0 ) {
-    /* Do nothing */
-  } else {
-    locked_both = 1;
-  }
-}
-eat( );
-
-pthread_mutex_unlock( chopstick1 );
-pthread_mutex_unlock( chopstick2 );
-\end{lstlisting}
-
-\end{frame}
-
-\begin{frame}[fragile]
-\frametitle{Try, Try Again}
-
-There does exist a ``try'' function for the semaphore as well:
-
-\begin{lstlisting}
-int sem_trywait( sem_t * sem );
-\end{lstlisting}
-
-If we would have been blocked at the call to \texttt{sem\_trywait}, it returns -1 and \texttt{errno} is set to \texttt{EAGAIN}.
-
-\end{frame}
-
-
-
-\begin{frame}
-	\frametitle{Knocking Down No Preemption}
-
-	Preemption: forcible removal of resources from a process.
-
-	Suppose a process $P_{1}$ holds $R_{1}$ and $R_{2}$ and wants to get $R_{3}$, but $R_{3}$ is unavailable.
-
-	$P_{1}$ will be blocked by the operating system.
-
-	If $P_{2}$ requests $R_{1}$ and $R_{2}$, the resources $R_{1}$ and $R_{2}$ are taken away from $P_{1}$.
-
-	The resources are added to the list of things that $P_{1}$ is waiting for.
-
-	In the meantime, $P_{2}$ can use them and continue.
-
-	$P_{1}$ will be unblocked when all three resources are once again available for it.
+	Unfortunately, sometimes we just end up at the same impasse again.
+	
+	Deadlock recovery strategies are not the only way to end up in livelock.
+	
+	Imagine the dining philosophers, perfectly synchronized.
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Allowing Preemption}
+\frametitle{Full of Sound and Fury, Signifying Nothing}
 
-	For preemption to work, however, the resource must be a resource of a type where the state can be saved and restored (e.g., the CPU with its registers).
+	In real life, it is unlikely that $n$ threads executing on a general purpose operating system would achieve this sort of perfect lock-step.
+	
+	Even so, livelock can occur in long-running tasks.
 
-	This isn't really something we can do as program designers.
-
-	This is not applicable to all resources; if a printer is in use by $P_{1}$ it cannot be preempted and given to $P_{2}$, otherwise the printout will be a jumble.
-
-	Thus, preemption is also not sufficient to prevent deadlock from ever transpiring, it once again only makes it less likely.
+	Problem: this is harder to detect than deadlock. Why?
+\end{frame}
 
 
+\begin{frame}
+\frametitle{Full of Sound and Fury, Signifying Nothing}
+
+	In deadlock, threads are known to be blocked and analysis tools (e.g., a debugger) can tell you at what statement those threads are blocked.
+	
+	With livelock, it seems like the threads are running and working, but somehow no work is getting done. 
+
+	For this reason, a well-designed recovery strategies may have some sort of limit on the number of retries...
 
 \end{frame}
+
 
 
 \end{document}

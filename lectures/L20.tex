@@ -2,141 +2,393 @@
 
 \begin{document}
 
-\lecture{ 20 --- Deadlock Avoidance }{\term}{Jeff Zarnett}
+\lecture{ 20 --- Advanced Concurrency Problems }{\term}{Jeff Zarnett}
 
-\section*{Dealing with Deadlock}
+\section*{Get a Pizza This!}
+Let's consider a more advanced concurrency problem. In~\cite{lbs} it's called the ``Cigarette Smokers Problem'', but smoking is bad for you so it's going to be the ``Pizza Makers Problem''. Pizza, while not exactly health food, is amazing. Delicious, delicious pizza.
 
-\subsection*{Deadlock Option 3: Deadlock Avoidance}
-In examining deadlock prevention, we were attempting to rule deadlock out categorically by eliminating one of the three preconditions for deadlock to be possible. If successful, then we can be sure that deadlock does not occur. Unfortunately, eliminating the pillars came with some conditions and the best we could accomplish was merely making deadlock less likely and not resolving the problem in its entirety. Thus, we are forced to live with a system where a deadlock is possible. However, deadlock being possible is not the same thing as deadlock being inevitable; we can take steps to avoid it if there is a danger of it actually happening. The basic strategy is: do not allow a cycle in the resource allocation graph.
+A new show to be hosted by some famous TV chef personality is being pitched, and you're going to write a simulation of it. The show is about making pizza. A pizza requires three ingredients: dough, sauce, and cheese. All three ingredients are necessary to make a pizza (otherwise it does not meet the definition of a pizza).
 
-In the dining philosophers problem, one strategy to prevent the deadlock was limiting the number of concurrently-eating philosophers to four, even though the table has five seats. This was a way of preventing a cycle in the resource allocation graph: with only four philosophers and five chopsticks, there were insufficient requests to complete a cycle. This solution is suitable, but not necessarily generalizable to all deadlock situations.
+Each contestant has an unlimited supply of one ingredient. Contestant A has an unlimited supply of dough, Contestant B has an unlimited supply of sauce, and Contestant C has an unlimited supply of cheese. Each contestant needs to get the two ingredients they do not have and then can make a pizza. They will continue to (try to) make pizza in a loop until time is up. At the beginning of the episode, the host places two different random ingredients out. Contestants can signal the host to ask for more ingredients, but they should not do so unless they actually need some. Each time the host is woken up (signalled), he again places two different random ingredients out. When an ingredient is placed on the table, the host posts on the associated semaphore. For example, if the host puts out cheese and sauce, then the host posts on both \texttt{cheese} and \texttt{sauce}.
 
-\subsubsection*{Ordering of Resources}
-A general strategy to prevent a cycle from forming is to impose ordering on resource requests. Resources are given some order and requests must follow that order. This idea may have occurred seemed obvious from this example:
+In this scenario, there are resources provided by some external system and the contestants are processes that want resources. But we shouldn't be wasteful: resources should only be requested when they are needed and processes should take only what they need. Applications should only wake up if they can do something useful.
+
+There are some restrictions, though, and they could make the problem either impossible or trivial. In the impossible version, you can't modify what the host does (which is sensible, because you don't control the other system) but you also cannot use conditional (if) statements, which is pretty ridiculous. In the trivial version, the host tells which contestants whose turn it is, which is boring but also unrealistic, because again it requires the host system to know too much about the contestants. The interesting version has just the restriction that we can't control the host behaviour~\cite{lbs}. And he is a TV chef personality, after all, they do wacky things.
+
+Consider the following solution. All semaphores start at 0, except for \texttt{host} which starts as 1 (so the host will run the first time). Does this work?
+
+\begin{multicols}{3}
+	\textbf{Contestant A}
+	\begin{lstlisting}
+wait( sauce )
+get_sauce()
+wait( cheese )
+get_cheese()
+make_pizza( )
+post( host )
+\end{lstlisting}
+	\columnbreak
+	\textbf{Contestant B}
+	\begin{lstlisting}
+wait( dough )
+get_dough()
+wait( cheese )
+get_cheese()
+make_pizza( )
+post( host )
+\end{lstlisting}
+	\columnbreak
+	\textbf{Contestant C}
+	\begin{lstlisting}
+wait( sauce )
+get_sauce()
+wait( dough )
+get_dough()
+make_pizza( )
+post( host )
+\end{lstlisting}
+\end{multicols}
+
+No. Deadlock can easily occur. Suppose the host puts out sauce and dough. If contestant B takes the dough and contestant A takes the sauce, then both of them are blocked and nobody can proceed and nobody gets pizza.
+
+Part of the problem here is that a contestant doesn't have a good way to assess what the ingredients are before going up there. And once there, if it finds that the ingredients match someone else's needs, we don't call that contestant over. That would be clever, but to make this work we would need a way to ``check'' what ingredients are there and semaphores don't let us do that. If we want to do that, we'd have to break the rule about not modifying the host's behaviour. Can we work with what we have?
+
+Imagine now that each contestant gets a helper. The job of the helper is to, well, help their contestant to make pizza by figuring out whose turn it is. For this there are boolean variables \texttt{dough\_present}, \texttt{sauce\_present}, and \texttt{cheese\_present} that are all initialized to \texttt{false}. They are protected by a semaphore (called \texttt{mutex}). The helpers update that variable, and based on the information available, signal which contestant should come up to the table and take ingredients. Each contestant now has a semaphore (such as \texttt{contestantA} for contestant A) which the helpers will post on. Contestants are still responsible for telling the host to put out more ingredients.
+
+\begin{multicols}{3}
+	\textbf{Helper 1}
+	\begin{lstlisting}
+wait( sauce )
+wait( mutex )
+if dough_present  
+  dough_present = false;
+  post( contestantC )
+else if cheese_present
+  cheese_present = false;
+  post( contestantA )
+else
+  sauce_present = true;
+end if  
+post( mutex )
+\end{lstlisting}
+	\columnbreak
+	\textbf{Helper 2}
+	\begin{lstlisting}
+wait( dough )
+wait( mutex )
+if sauce_present  
+  sauce_present = false;
+  post( contestantC )
+else if cheese_present
+  cheese_present = false;
+  post( contestantB )
+else
+  dough_present = true;
+end if  
+post( mutex )
+\end{lstlisting}
+	\columnbreak
+	\textbf{Helper 3}
+	\begin{lstlisting}
+wait( cheese )
+wait( mutex )
+if dough_present  
+  dough_present = false;
+  post( contestantB )
+else if sauce_present
+  sauce_present = false;
+  post( contestantA )
+else
+  cheese_present = true;
+end if  
+post( mutex )
+\end{lstlisting}
+\end{multicols}
+
+So let's analyze Helper 1. Each of the other helpers does the same thing but for a different ingredient. In this case, the helper is woken up when sauce is placed on the table. It then locks the mutex so that it can manipulate the shared variables of what ingredients are present. Now we decide what to do here. If the current helper is the first one to run, then all the variables will be false, so we'll end up at the else block and just set \texttt{sauce\_present} to true and then let the next helper run. If \texttt{dough\_present} is true, then Helper 2 has already run and we know that dough is present on the table. With both sauce and dough present, we know that the ingredients present match the needs of Contestant C. If \texttt{cheese\_present} is true then Helper 3 has already run and the ingredients present match the needs of Contestant A.
+
+Obviously, each of the other helpers will signal the appropriate contestant based on its assessment of the state of the ingredients.
+
+\begin{multicols}{3}
+	\textbf{Contestant A}
+	\begin{lstlisting}
+wait( contestantA )
+get_sauce()
+get_cheese()
+make_pizza( )
+post( host )
+\end{lstlisting}
+	\columnbreak
+	\textbf{Contestant B}
+	\begin{lstlisting}
+wait( contestantB )
+get_dough()
+get_cheese()
+make_pizza( )
+post( host )
+\end{lstlisting}
+	\columnbreak
+	\textbf{Contestant C}
+	\begin{lstlisting}
+wait( contestantC )
+get_sauce()
+get_dough()
+make_pizza( )
+post( host )
+\end{lstlisting}
+\end{multicols}
+
+The contestant code is pretty much trivial now: wait until a helper signals, then go take your ingredients and make a pizza. Once the pizza is in the oven, indicate that you are ready for more ingredients.
+
+The generalized version of the problem is what happens when the host puts out ingredients periodically, without a need to be signalled to ask for more. How do we modify the solution to deal with that?
+
+Obviously if there is no longer a need for the contestants to signal that they want more resources then the \texttt{post( host )} statements in the contestant code has to be removed. But what about the helpers?
+
+Instead of boolean variables to indicate the presence or absence of an ingredient what we need instead is an integer counter to know how many there are. So let's call them \texttt{num\_dough}, \texttt{num\_sauce}, and \texttt{num\_cheese}, and they all start as zero.
+
+\begin{multicols}{3}
+	\textbf{Helper 1}
+	\begin{lstlisting}
+wait( sauce )
+wait( mutex )
+if num_dough > 0  
+  num_dough--
+  post( contestantC )
+else if num_cheese > 0
+  num_cheese--
+  post( contestantA )
+else
+  num_sauce++
+end if  
+post( mutex )
+\end{lstlisting}
+	\columnbreak
+	\textbf{Helper 2}
+	\begin{lstlisting}
+wait( dough )
+wait( mutex )
+if num_sauce > 0  
+  num_sauce--
+  post( contestantC )
+else if num_cheese > 0
+  num_cheese--
+  post( contestantB )
+else
+  num_dough++
+end if  
+post( mutex )
+\end{lstlisting}
+	\columnbreak
+	\textbf{Helper 3}
+	\begin{lstlisting}
+wait( cheese )
+wait( mutex )
+if num_dough > 0 
+  num_dough--
+  post( contestantB )
+else if num_sauce > 0
+  num_sauce--
+  post( contestantA )
+else
+  num_cheese++
+end if  
+post( mutex )
+\end{lstlisting}
+\end{multicols}
+
+Now instead of setting the variables to true and false, the variables tracking the ingredients are incremented and decremented. Otherwise not much has changed. This pattern is referred to as the ``scoreboard''~\cite{lbs} -- there are variables keeping track of the state of the system which are viewable from all threads. As threads go about their actions, they take a look at the current state (the scoreboard) and decide how to act based on that.
+
+\section*{The Barbershop Problem}
+Consider the ``Barbershop Problem'', originally proposed by Dijkstra. A variant of this appears in~\cite{osc}. A barbershop is a place where customers get their hair cut. A barbershop consists of a waiting area with $n$ chairs, and a barber chair.
+
+If there are no customers to be served, the barber goes to sleep. If a customer enters the barbershop and all chairs are occupied, then the customer leaves the shop. If the barber is busy, but chairs are available, then the customer sits in one of the free chairs. If the barber is asleep, the customer wakes up the barber.
+
+Customer threads should call \texttt{get\_hair\_cut()} when it is their turn. If the shop is full, the customer should \texttt{return} (exit/leave). The barber thread will call \texttt{cut\_hair}. The barber can cut only one person's hair at a time, so there should be exactly one thread calling \texttt{get\_hair\_cut()} concurrently. You can assume that external forces cause customers to appear and the barber to keep working (so you do not need to write any loops). Assume \texttt{n} is initialized to an appropriate value.
+
+We need an integer counter for customers waiting called \texttt{customers} that starts at 0. We will also have a mutex for controlling access to \texttt{customers} called \texttt{mutex} (it obviously starts at 1). Finally, two semaphores, \texttt{customer} and \texttt{barber} that both start at 0.
+
+As for the solution:
+\begin{multicols}{2}
+	\textbf{Customer}
+	\begin{lstlisting}
+wait( mutex )
+if customers == n+1
+    signal( mutex )
+    return
+end if
+customers++
+signal( mutex )
+
+signal( customer )
+wait( barber )
+get_hair_cut()
+
+wait( mutex )
+customers--
+signal( mutex )
+\end{lstlisting}
+	\columnbreak
+	\textbf{Barber}
+	\begin{lstlisting}
+wait( customer )
+signal( barber )
+cut_hair()
+  \end{lstlisting}
+\end{multicols}
+
+
+The barber code is much simpler, so let's start there. The barber waits for there to be a customer. When there is one, the barber calls the customer forward by signalling on \texttt{barber}, and then cuts hair. Simple enough.
+
+As for the customer, \texttt{customers} is shared data, so its access should be protected by \texttt{mutex}. If we find that the number of customers is already $n$ -- that is, the waiting area is full, the customer should leave. But not without unlocking \texttt{mutex}! If the customer forgot to do that then no more customers could enter. That's a problem. Otherwise the count of customers is increased and the customer signals the semaphore \texttt{customer}. This will wake up the barber, if the barber is sleeping, but also indicates the number of customers waiting. Then the customer must wait for the barber. When the customer gets called forward by the barber, the customer can get their hair cut. Finally, when leaving, the customer decrements the number of customers counter.
+
+Let's look over this for a risk of deadlock. We don't see anywhere, really, the nested-waits pattern that usually indicates trouble. There isn't really any scenario where a customer can get blocked waiting for another customer or the barber, and the barber code is very simple.
+
+As for starvation, it also won't happen. Assuming there are actually customers, the barber will have work to do. And the customers will wait for a finite period before they get their hair cut. The size of the waiting area is limited so we expect that a customer doesn't get delayed indefinitely. It is possible for them to wait quite a while, though, but they will eventually get a turn.
+
+We can maybe say that customers who give up in frustration are disappointed but that's better than making them wait forever. If they are told they won't get service today, they can go to a different barbershop or come again some other time. That's why there's the limit on the waiting area at all. In the scenario, the barber is only human and can only cut so many people's hair in a day. The exact number will vary based on how long each hair cut takes, which depends on the person whose hair is being cut. But there is a limit of some sort: at some point the barber will go home. And only so many people can fit into the waiting room anyway: if there are too many, then nobody can move around (and this violates fire code!).
+
+This is actually a good lesson for services in general. They have a certain capacity, and when things are overloaded it's helpful to tell clients that they are unable to take any more requests right now. Clients can then choose what to do (and it's usually either ``wait a while and try again'' or ``go to a different service''). And you can! If the game that you want to play requires a server and all servers are busy, you can play a different game (or go outside, or who knows what!).
+
+
+\subsection*{Chemistry: Building H$_{2}$O}
+There are two kinds of thread, \texttt{oxygen()} and \texttt{hydrogen()}. As you will recall from basic chemistry, water, H$_{2}$O, requires two hydrogen modules and one oxygen module. To assemble the desired molecule (water) a group rendezvous pattern is needed to make each thread wait until all ingredients are present in the correct amounts. As each thread passes the barrier, it should call the function \texttt{bond()} which makes the water. Our solution must function so that all threads for one molecule invoke \texttt{bond()} before any of the threads from the next molecule do.
+
+To clarify, if an oxygen thread arrives at the barrier when no hydrogen threads are present, it has to wait for two hydrogen threads to arrive. If a hydrogen thread arrives a the barrier when no other threads are waiting, it has to wait for an oxygen thread and another hydrogen thread. It is not necessary for the threads to know what other threads they are matched with, as long as the correct elements are present in the correct proportions.
+
+In the example, we'll assume the \texttt{oxygen} and \texttt{hydrogen} threads are created and started correctly and in the correct proportions. The code for the creation of those two types of threads is not shown for space reasons. The reusable two-phase barrier from earlier has also been converted into C code.
+
+The oxygen queue and hydrogen queue start as ``locked'' so we'll only signal the threads when they are going to proceed. Before that we have a scoreboard pattern, where threads take a look at the state of the system and decide what to do.
 
 \begin{multicols}{2}
-	\textbf{Thread P}\vspace{-2em}
-	\begin{verbatim}
-	 1. wait( a ) 
-	 2. wait( b )
-	 3. [critical section]
-	 4. post( a )
-	 5. post( b )
-  \end{verbatim}
+	\begin{lstlisting}[firstline=0, language=C]
+int oxygen;
+int hydrogen;
+pthread_mutex_t barrier_mutex;
+sem_t turnstile;
+int barrier_count;
+int barrier_N;
+sem_t bond;
+sem_t oxygen_queue;
+sem_t hydrogen_queue;
+
+void barrier_enter( ) {
+  pthread_mutex_lock( &barrier_mutex );
+  barrier_count++;
+  if ( barrier_count == barrier_N ) {
+    sem_post( &turnstile );
+  }
+  pthread_mutex_unlock( &barrier_mutex );
+  sem_wait( &turnstile );
+  sem_post( &turnstile );            
+}
+
+void barrier_exit( ) {
+  pthread_mutex_lock( &barrier_mutex );
+  barrier_count--;
+  if ( barrier_count == 0 ) {
+    sem_wait( &turnstile );
+  }
+  pthread_mutex_unlock( &barrier_mutex );
+}
+
+
+\end{lstlisting}
 	\columnbreak
-	\textbf{Thread Q}\vspace{-2em}
-	\begin{verbatim}
-	 1. wait( b ) 
-	 2. wait( a )
-	 3. [critical section]
-	 4. post( b )
-	 5. post( a )
-  \end{verbatim}
+	\begin{lstlisting}[language=C]
+int main( void ) {
+  oxygen = 0;
+  hydrogen = 0;
+  barrier_count = 0;
+  barrier_N = 3;
+
+  pthread_mutex_init( &barrier_mutex, NULL );
+  sem_init( &barrier_turnstile, 0, 0 );
+  
+  sem_init( &bond, 0, 1 );
+  sem_init( &oxygen_queue, 0, 0 );
+  sem_init( &hydrogen_queue, 0, 0 ); 
+
+  /* Creation of oxygen and hydrogen threads
+   not shown for space reasons */
+
+  pthread_mutex_destroy( &barrier_mutex );
+  sem_destroy( &barrier_turnstile );
+  sem_destroy( &bond );
+  sem_destroy( &oxygen_queue );
+  sem_destroy( &hydrogen_queue );   
+
+  pthread_exit( 0 );
+}
+
+\end{lstlisting}
 \end{multicols}
-\vspace{-2em}
 
-Thread $Q$ requests \texttt{b} first and then \texttt{a}, while $P$ does the reverse. The deadlock would not take place if both threads requested these two resources in the same order, whether \texttt{a} then \texttt{b} or \texttt{b} then \texttt{a}. Of course, when they have names like this, a natural ordering (alphabetical, or perhaps reverse alphabetical) is obvious.
+\begin{multicols}{2}
+	\begin{lstlisting}[language=C]
+void* oxygen( void* ignore ) {
+  sem_wait( &bond );
+  oxygen++;
+  
+  if( hydrogen >= 2 ){
+    sem_post( &hydrogen_queue );
+    sem_post( &hydrogen_queue );
+    hydrogen -= 2;
+    sem_post( &oxygen_queue );
+    oxygen--;
+  } else {
+    sem_post( &bond );
+  }
+  
+  sem_wait( &oxygen_queue );
+  bond();
 
-To generalize and formalize this principle, if the set of all resources in the system is $R = \{R_{0}, R_{1}, R_{2}, ... R_{m}\}$, we assign to each resource $R_{k}$ a unique integer value. Let us define this function as $f(R_{i})$, that maps a resource to an integer value. This integer value is used to compare two resources: if a process has been assigned resource $R_{i}$, that process may request $R_{j}$ only if $f(R_{j}) > f(R_{i})$. Note that this is a strictly greater-than relationship; if the process needs more than one of $R_{i}$ then the request for all of these must be made at once (in a single request). To get $R_{i}$ when already in possession of a resource $R_{j}$ where $f(R_{j}) > f(R_{i})$, the process must release any resources $R_{k}$ where $f(R_{k}) \geq f(R_{i})$. If these two protocols are followed, then a circular-wait condition cannot hold~\cite{osc}.
+  barrier_enter();
+  barrier_exit();
 
-In the dining philosophers problem, we assign each of the five chopsticks a number from 0 to 4. Each philosopher must then request them in ascending order. The first philosopher requests chopstick 0, on her left, and then chopstick 1, on her right. The second requests chopstick 1 and then chopstick 2. This continues until the last philosopher who would previously have requested chopstick 4 and then 0, but under the new rules, this is forbidden. This philosopher must instead request 0 on his right, and then 4, on his left. This last philosopher will be blocked when trying to acquire chopstick 0 and it means chopstick 4 will be available for the second-to-last philosopher. Thus, deadlock is avoided.
+  sem_post( &bond );
+  
+  pthread_exit( NULL )
+}
+\end{lstlisting}
+	\columnbreak
+	\begin{lstlisting}[language=C]
+void* hydrogen( void* ignore ) {
+  sem_wait( &bond );
+  hydrogen++;
+  
+  if( hydrogen >= 2 && oxygen >= 1 )
+    sem_post( &hydrogen_queue );
+    sem_post( &hydrogen_queue );
+    hydrogen -= 2;
+    sem_post( &oxygen_queue );
+    oxygen--;
+  } else {
+    sem_post( &bond );
+  }
+  
+  sem_wait( &hydrogen_queue );
+  bond();
+  
+  barrier_enter();
+  barrier_exit();
+  
+  pthread_exit( NULL )
+}
+\end{lstlisting}
+\end{multicols}
 
-In~\cite{osc} is a proof that ordering the resources prevents deadlock. The approach is proof by contradiction: assume a circular wait is present. Let the set of processes in the circular wait be $\{P_{0}, P_{1}, ... P_{n}\}$ and the set of resources be $\{R_{0}, R_{1}, ... R_{n}\}$. The cycle is formed as: $P_{i}$ is waiting for resource $R_{i}$ and that resource is held by $P_{i+1}$. The exception is the case of $P_{n}$, which is waiting for resource $R_{n}$ that is held by $P_{0}$ (completing the cycle by wrapping around). Since Process $P_{i+1}$ holds resource $R_{i}$ while requesting $R_{i+1}$, this means $f(R_{i}) < f(R_{i+1})$ for all $i$. But this means that $f(R_{0}) < f(R_{1}) < ... < f(R_{n}) < f(R_{0})$. It cannot be the case that $f(R_{0}) < f(R_{0})$: a contradiction, meaning a circular wait cannot occur.
 
-In development this is usually enforced just by coding convention and code review. If you say that mutexes must always be acquired in alphabetical order (or their order in some file), if everyone sticks to that there will be no issue. Sometimes it's not that simple, though, because one mutex can be pointed to by two pointers... which name is the correct one?
+Let's analyze the solution then, starting with oxygen threads. When it enters, it waits on the \texttt{bond} semaphore, which in this case is used somewhat like a mutex. If there are at least two hydrogen threads waiting, then, we can unblock two of them, signal the oxygen queue, and update the counters. If there are not two hydrogens waiting, then we just signal \texttt{bond} so that the next thread will arrive. Then the thread can get in line at the oxygen queue.
 
-\subsubsection*{Stay Alert, Stay Safe\footnote{If this reference makes no sense to you, it's because I'm old: https://www.youtube.com/watch?v=cgvv4wnVlFU}}
+The hydrogen code is more or less the same, but the if-condition is different since it's not enough for 1 hydrogen to be present (we need at least two). If we have what we need, signal the queues to release the needed molecules, and we are ready to go. If not, get in line.
 
-Suppose that instead of ordering the resources, each process will need to give the operating system some additional information about what resources might be requested. Processes need to say in advance of execution what is the maximum number of resources of each type they might conceivably need. In a system with a tape drive and printer, perhaps process $A$ needs the tape drive first, then the printer, and process $B$ needs the printer and then the tape drive. With this knowledge, the system can make more intelligent decisions about when to run a process or make it wait, to avoid getting into a deadlock~\cite{osc}.
+When threads are released from the oxygen queue and hydrogen queue respectively, they proceed forward to the \texttt{bond()} step, and afterwards there is a barrier enter followed by exit to wait for all of them to be finished. All we really need is for all three threads to be done with \texttt{bond()} before they can exit so the barrier enter and exit happen one after the other.
 
-We say a state is \textit{safe} if there is some scheduling order in which every process can run to completion even if all of them suddenly request their maximum resources immediately~\cite{mos}. Hence why we needed to know in advance the maximum resources that could be required by the process.
+Now it may be that when a thread arrives it unblocks some thread ahead of it in line. So if the oxygen that arrives is the 2nd oxygen and there is already one waiting ahead of it, that first one proceeds. That's okay -- one molecule of water is as good as any other so we don't really care which oxygen ends up in its composition.
 
-More formally, there must exist a \textit{safe sequence}: a sequence of processes $<P_{1}, P_{2}, ... P_{n}$ is a safe sequence in the current allocation state if, for each $P_{i}$ the resource requests that $P_{i}$ can still make can be satisfied by the currently available resources plus resources held by $P_{j}$ where $j < i$. If a resource $P_{i}$ needs is not currently available, $P_{i}$ can wait until all $P_{j}$ have finished and releases its resources. When $P_{i}$ terminates, $P_{i+1}$ can obtain its needed resources and continue~\cite{osc}.
+It is a little strange that the hydrogen threads don't post on \texttt{bond}. Isn't this a problem? It turns out no, because the oxygen threads post on it unconditionally. The reasoning on this is not too complicated. When a thread arrives but the water molecule cannot be formed, whether it is oxygen or hydrogen, a post on \texttt{bond} takes place. If, however, the thread arriving is the last one necessary for bonding to take place, then one oxygen and two hydrogen proceed. Whoever waited on \texttt{bond} does not matter, as long as one of the threads that went into the water molecule posts on it before leaving. As the chemical composition of water has one oxygen, the job is assigned to this molecule. If we put it in hydrogen we might post on it twice.
 
-Any state that is not safe is considered \textit{unsafe}. If the system is in a safe state, then there is no deadlock. Being in an unsafe state does not mean that there is a deadlock, but it means a deadlock is possible. The analysis we do is the worst case scenario: every process immediately requests the maximum resources it could ever use. Perhaps the processes do not make those requests in reality.
-
-Consider an example from~\cite{mos} in which there are three processes, $A$, $B$, and $C$. Assume there is only one resource, and a maximum of 10 instances exist. Suppose $A$ has 3 resources but may request up to 9, $B$ has 2 and may request up to 4, $C$ has 2 and may request up to 7. There are 3 resources currently free. How do we determine that the state described below is safe?
-
-\begin{center}
-	\includegraphics[width=0.15\textwidth]{images/safe-state-initial.png}\\
-	A diagram representing the resource allocation state of the system~\cite{mos}.
-\end{center}
-
-Recall that for a state to be safe we need only one path that allows all processes to complete. Multiple solutions may exist, and there may be paths that lead to deadlock. But we need only one solution, such as:
-
-\begin{center}
-	\includegraphics[width=0.75\textwidth]{images/safe-state.png}\\
-	A diagram demonstrating the state in (a) is safe~\cite{mos}.
-\end{center}
-
-The part of the diagram labelled (a) is the initial state of the system. Imagine that process $B$ is allowed to run exclusively, until it gets two more resources, so it now has 4 resources and there is one free, as diagram (b) depicts. $B$ is allowed to run to completion, and it therefore finishes and releases its resources to the free pool, shown in (c). Then process $C$ is scheduled and gets its full complement of resources, consuming all the elements in the free pool, as in (d). $C$ runs exclusively until completion and it releases its resources, shown in (e). Finally, $A$ is able to get all the resources and run to completion, too. Thus, we proved that the state is safe: there is a way the system can avoid a deadlock, and run all processes to completion.
-
-Suppose, however, $A$ requests and gets another resource. In that case, the initial condition has changed so that $A$ has 4 resources and there are 2 free resources. Or, in the diagram below, the state changes from (a) to (b).
-
-\begin{center}
-	\includegraphics[width=0.35\textwidth]{images/unsafe-state-initial.png}\\
-	A diagram representing the updated resource allocation state of the system~\cite{mos}.
-\end{center}
-
-Given this new initial state (b), we need to evaluate if it is safe.
-
-\begin{center}
-	\includegraphics[width=0.70\textwidth]{images/unsafe-state.png}\\
-	A diagram demonstrating the state of~\cite{mos}.
-\end{center}
-
-Let us start by attempting to run $A$ - there are 3 free resources and $A$ would need 6 to continue (because a process immediately takes its full resources when it runs), so it cannot run to completion. The same is true for $C$ - it needs 5 additional resources when 3 are available. $B$, however, can continue: it needs 2 resources when 3 are available. If we attempt to run $B$ exclusively, it gets its full resources, shown in part (c), and then will terminate and release its resources, as in (d). At this point, however, there is no way to continue; neither $A$ nor $C$ can get the full complement of resources it might need because there are only 4 free resources. We are out of options; there is no path that guarantees all processes run to completion. Thus, the state is unsafe.
-
-Remember that just because the state is unsafe, does not mean that deadlock is present or certain. The analysis is worst-case: $C$ may never need all 7 of the resource and may run to completion with its current 2. However, in an unsafe state, we cannot be certain that deadlock will not occur.
-
-\paragraph{Resource-Allocation-Graph Algorithm.} The fourth condition for deadlock is modelled, typically as being a resource allocation graph with a cycle in it. Idea: let us use that idea to avoid deadlock by having the operating system maintain a resource allocation graph. This is applicable if there is only one instance of each resource and still requires that all the resources that a process will require must be declared in advance. However, this condition does not have to be strictly adhered to, if the system allows additional requests only when none of the process's requests have yet been made.
-
-The model for resource allocation graphs earlier had two kinds of edges: one representing requests (a process requests a resource) and one representing allocation (a resource currently belongs to a process). We will require a new type of edge in the graph: a \textit{claim} edge, as a way of indicating a process may request a resource at some time in the future, and it is drawn with a dashed line. When the process actually makes the request for the resource, a claim edge is converted to a request edge, and upon release the assignment edge reverts to a claim edge~\cite{osc}.
-
-\begin{center}
-	\includegraphics[width=0.25\textwidth]{images/resource-allocation-graph-claim.png}\\
-	A resource allocation graph showing claim edges~\cite{osc}.
-\end{center}
-
-A resource request will only be granted if converting the request edge to an assignment edge will not result in a cycle in the graph. There are graph algorithms in code that can be used to detect a cycle (and you may have studied them in a data structures and algorithms class). If no cycle is found, then allocation of the resource will not move the system into an unsafe state. If a cycle is found, the request should not be granted, as it risks a deadlock.
-
-As mentioned, this is applicable only if all resource requests are known in advance and there is only one instance of each resource.
-
-\paragraph{The Banker's Algorithm.} The banker's algorithm is more general: it allows for resources with multiple instances. It received this name because it is hypothetically an algorithm that a small town banker might follow if he or she were trying to prevent allocating the cash on hand in such away that he or she could no longer satisfy customers\footnote{Although the financial crisis of 2008 might convince you that the banker's algorithm is ``do whatever makes you rich and when you run out of money, the government will bail you out'', this is not the algorithm we are studying here.}. Banks typically lend out more money than they have on hand on the (usually-correct) theory that not everyone will come asking for all their deposits all at once\footnote{Not to digress too much to the subject of banking, but if it IS the case that everyone asks for their money all at once, this is called a ``run'' on the bank and is generally considered a disaster. Central banks step in with more money to fix this situation.}.
-
-In fact, the analysis we did earlier to determine if a state is safe or unsafe, is the foundation of the banker's algorithm. Recall this diagram from earlier:
-
-\begin{center}
-	\includegraphics[width=0.35\textwidth]{images/unsafe-state-initial.png}\\
-	A diagram representing the updated resource allocation state of the system~\cite{mos}.
-\end{center}
-
-Granting the request from process $A$, the transition from (a) to (b), moved the system from a safe state to an unsafe state. The operating system, when it receives a resource request, will evaluate the new state to see if it would transition the system to an unsafe state. If it would result in that transition, the request will be denied or $A$ will be blocked until the request can be fulfilled without putting the system in an unsafe state. Holding to this condition means deadlock will be avoided.
-
-The banker's algorithm can accommodate multiple resources, as shown in the diagram below.
-
-\begin{center}
-	\includegraphics[width=0.6\textwidth]{images/bankers-multiple.png}\\
-	The banker's algorithm with multiple resources~\cite{mos}.
-\end{center}
-
-The left matrix shows the current state of assigned resources and the matrix on the right shows the maximum number of resources that a process might need to complete execution. At the far right of the diagram is a series of vectors: $E$ for the existing resources, $P$ for the resources some process currently possesses, and $A$ for the available instances of that resource.
-
-The informal approach for checking if a state is safe is described by~\cite{mos}:
-\begin{enumerate}
-	\item Look for a row in the matrix, $r$, where the unmet resource needs are less than or equal to the available resources in $A$. If no such row exists, the system state is unsafe.
-	\item Assume the process from $r$ gets all the resources it needs. Mark that process as terminated and put all its resources into $A$, the available pool.
-	\item Repeat steps 1 and 2 until either: (i) all processes are marked terminated and the initial state was safe; or (ii) no process remains whose needs can be met and the initial state is unsafe.
-\end{enumerate}
-
-If more than one process may be chosen in step 1, it does not matter which we choose: the pool of available resources will either stay the same or get larger; it cannot shrink.
-
-To determine if granting a resource will make the system unsafe, the operating system should simply perform a what-if calculation. Assume the resource is granted and do the safe state calculation given that new state. If the result is that the state is unsafe, the request should be deferred or denied.
-
-A formal, mathematical description of the banker's algorithm is defined in~\cite{osc}.
-
-As great as the banker's algorithm is in theory, in practice it is utterly useless, as highlighted by~\cite{mos}. Processes rarely know in advance what their maximum resource needs will be. Also, the number of processes is not fixed, but varies as users log in and launch and close programs and log out. Finally, a resource that was thought to be available can suddenly vanish (a peripheral device is disconnected, the network goes down, a printer breaks...). Thus in practice, the banker's algorithm can almost never be used.
-
+These are by no means all the concurrency problems in the world. There are many more in~\cite{lbs} that could be considered. But for now we will leave it here, before  we get into really obscure problems...
 
 \input{bibliography.tex}
 

@@ -1,9 +1,9 @@
 \input{configuration}
-\usepackage{multirow}
 
-\title{Lecture 18 --- The Readers-Writers Problem }
+\title{Lecture 18 --- Deadlock Avoidance }
 
-\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}\institute{Department of Electrical and Computer Engineering \\
+\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
+\institute{Department of Electrical and Computer Engineering \\
 	University of Waterloo}
 \date{\today}
 
@@ -16,721 +16,469 @@
 \end{frame}
 
 \begin{frame}
-	\frametitle{Reader/Writer Locks}
-	Reads don't interfere with one another so we can let them run in parallel!
+	\frametitle{Deadlock Avoidance}
 
-	But sometimes writes occur, and nobody can read when this happens.
+	We were attempting to rule deadlock out categorically by eliminating one of the three preconditions for deadlock to be possible.
+
+	If successful, then we can be sure that deadlock does not occur.
+
+	Unfortunately, eliminating the pillars came with some conditions and the best we could accomplish was merely making deadlock less likely.
+
+	Thus, we are forced to live with a system where a deadlock is possible.
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Deadlock Avoidance}
+
+	Deadlock being possible is not the same thing as deadlock being inevitable.
+
+	We can take steps to avoid it if there is a danger of it actually happening.
 
 	\begin{center}
-		\includegraphics[width=0.8\textwidth]{images/groupreading.jpg}
+		\includegraphics[width=0.4\textwidth]{images/keepback.png}
 	\end{center}
-	\hfill Image Credit: Understood.org
+
+	The basic strategy is: do not allow a cycle in the resource allocation graph.
+
+
 \end{frame}
 
 \begin{frame}
-	\frametitle{Reader/Writer Rules}
+	\frametitle{Deadlocked Diners}
 
+	In the dining philosophers problem: limit the number of concurrently-eating philosophers to four, even though the table has five seats.
+
+	With only four philosophers and five chopsticks, there were insufficient requests to complete a cycle.
+
+	This solution is suitable, but not necessarily generalizable to all situations.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Ordaaaah! Ordah!}
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/order.jpg}
+	\end{center}
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Ordering of Resources}
+
+	Impose ordering on resource requests. Recall this example:
+
+	\begin{multicols}{2}
+		\textbf{Thread P}
+		\begin{verbatim}
+	 1. wait( a ) 
+	 2. wait( b )
+	 3. [critical section]
+	 4. signal( a )
+	 5. signal( b )
+  \end{verbatim}
+		\columnbreak
+		\textbf{Thread Q}
+		\begin{verbatim}
+	 1. wait( b ) 
+	 2. wait( a )
+	 3. [critical section]
+	 4. signal( b )
+	 5. signal( a )
+  \end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
+
+	Deadlock would not take place if both threads requested these two resources in the same order, whether \texttt{a} then \texttt{b} or \texttt{b} then \texttt{a}.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Ordering of Resources}
+
+	Let's generalize and formalize this principle.
+
+	The set of all resources in the system is $R = \{R_{0}, R_{1}, R_{2}, ... R_{m}\}$.
+
+	We assign to each resource $R_{k}$ a unique integer value. Let us define this function as $f(R_{i})$, that maps a resource to an integer value.
+
+	This integer value is used to compare two resources: if a process has been assigned resource $R_{i}$, that process may request $R_{j}$ only if $f(R_{j}) > f(R_{i})$.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Ordering of Resources}
+
+	Note that this is a strictly greater-than relationship.
+
+	If the process needs more than one of $R_{i}$ then the request for all of these must be made at once (in a single request).
+
+	To get $R_{i}$ when already in possession of a resource $R_{j}$ where $f(R_{j}) > f(R_{i})$, the process must release any resources $R_{k}$ where $f(R_{k}) \geq f(R_{i})$.
+
+	If these two protocols are followed, then a circular-wait condition cannot hold.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{The Proof is the Proof}
+
+	Assume a circular wait is present.
+
+	Let the set of processes in the circular wait be $\{P_{0}, P_{1}, ... P_{n}\}$ and the set of resources be $\{R_{0}, R_{1}, ... R_{n}\}$.
+
+	The cycle is formed as: $P_{i}$ waits for resource $R_{i}$ and that resource is held by $P_{i+1}$.
+
+	The exception is the case of $P_{n}$, which waits for resource $R_{n}$ that is held by $P_{0}$.
+
+	Since Process $P_{i+1}$ holds resource $R_{i}$ while requesting $R_{i+1}$, this means $f(R_{i}) < f(R_{i+1})$ for all $i$.
+
+	But this means that $f(R_{0}) < f(R_{1}) < ... < f(R_{n}) < f(R_{0})$.
+
+	It cannot be the case that $f(R_{0}) < f(R_{0})$: a contradiction.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Ordering of Resources}
+
+	Back to the philosophers: we assign each chopstick a number from 0 to 4.
+
+	Each philosopher must then request them in ascending order.
+
+	The first philosopher requests 0, on her left, and then 1, on her right.
+
+	The second requests chopstick 1 and then chopstick 2.
+
+	This continues until the last philosopher who would previously have requested chopstick 4 and then 0, but under the new rules, this is forbidden.
+
+	This philosopher must instead request 0 on his right, and then 4, on his left.
+
+	This last philosopher will be blocked when trying to acquire chopstick 0 and it means chopstick 4 will be available for the second-to-last philosopher.
+
+	Thus, deadlock is avoided.
+
+\end{frame}
+
+
+
+\begin{frame}
+	\frametitle{Ordering Resources}
+
+	In development this is usually enforced just by coding convention and code review.
+
+	If you say that mutexes must always be acquired in alphabetical order (or their order in some file), if everyone sticks to that there will be no issue.
+
+	But may not be as easy as that in a real-world scenario...
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Stay Alert, Stay Safe}
+
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{images/sass1.png}\\
+		\includegraphics[width=0.4\textwidth]{images/sass2.png}
+	\end{center}
+
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Stay Alert, Stay Safe}
+
+	Alternative: each process will need to give the operating system some additional information about what resources might be requested.
+
+	Processes need to say in advance of execution what is the maximum number of resources of each type they might conceivably need.
+
+	Perhaps process $A$ needs the tape drive first, then the printer, and process $B$ needs the printer and then the tape drive.
+
+	With this knowledge, the system can make more intelligent decisions about when to run a process or make it wait, to avoid getting into a deadlock.
+
+\end{frame}
+
+
+
+\begin{frame}
+	\frametitle{Safe States}
+
+
+	We say a state is \alert{safe} if there is some scheduling order in which every process can run to completion.
+
+	Even if all of them suddenly request their maximum resources immediately.
+
+	Hence why we needed to know in advance the maximum resources that could be required by the process.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Safe Sequences}
+
+	More formally, there must exist a \alert{safe sequence}.
+
+	A sequence of processes $<P_{1}, P_{2}, ... P_{n}$ is a safe sequence in the current allocation state if:
+
+	For each $P_{i}$ the resource requests that $P_{i}$ can still make can be satisfied by the currently available resources plus resources held by $P_{j}$ where $j < i$.
+
+	If a resource $P_{i}$ needs is not currently available, $P_{i}$ can wait until all $P_{j}$ have finished and releases its resources.
+
+	When $P_{i}$ terminates, $P_{i+1}$ can obtain its needed resources and continue.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Safe/Unsafe}
+
+	Any state that is not safe is considered \alert{unsafe}.
+
+	If the system is in a safe state, then there is no deadlock.
+
+	Being in an unsafe state does not mean that there is a deadlock, but it means a deadlock is possible.
+
+	The analysis we do is the worst case scenario: every process immediately requests the maximum resources it could ever use.
+
+	Perhaps the processes do not make those requests in reality.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Safe State Example}
+
+	There are three processes $A$, $B$, and $C$.
+
+	Assume there is only one resource, and a maximum of 10 instances exist.
+
+	Suppose $A$ has 3 resources but may request up to 9.\\
+	$B$ has 2 and may request up to 4.\\
+	$C$ has 2 and may request up to 7.
+
+	There are 3 resources currently free.
+
+	\begin{center}
+		\includegraphics[width=0.25\textwidth]{images/safe-state-initial.png}
+	\end{center}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Being Safe}
+
+
+	For a state to be safe, we need one path that allows all processes to complete.
+
+	Multiple solutions may exist, and there may be paths that lead to deadlock.
+
+	\begin{center}
+		\includegraphics[width=0.9\textwidth]{images/safe-state.png}
+	\end{center}
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Crossing the Line}
+
+	Suppose, however, $A$ requests and gets another resource.
+
+	In that case, the initial condition has changed so that $A$ has 4 resources and there are 2 free resources.
+
+	Or, in the diagram below, the state changes from (a) to (b).
+
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/unsafe-state-initial.png}
+	\end{center}
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Evaluating the New Initial State}
+
+	Trying to find a way for all processes to complete is not possible.
+	
+	\begin{center}
+	\includegraphics[width=0.4\textwidth]{images/danger.jpg}
+	\end{center}
+
+	Thus, this state is unsafe.
+
+	This does not mean that deadlock is present or certain.
+
+	The analysis is worst-case.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{I Dare Say, Holmes...}
+
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/sherlock-wall.png}
+	\end{center}
+	\hfill Image Credit: Sherlock Holmes: Game of Shadows.
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Resource-Allocation-Graph Algorithm}
+
+	The fourth condition for deadlock is modelled, typically as being a resource allocation graph with a cycle in it.
+
+	Idea: let us use that idea to avoid deadlock by having the operating system maintain a resource allocation graph.
+
+	This works if there is only one instance of each resource and still requires that all the resources that a process will require must be declared in advance.
+
+	This condition does not have to be strictly adhered to if the system allows additional requests only when no requests have yet been granted.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Resource-Allocation-Graph}
+
+	The model for resource allocation graphs earlier had two kinds of edges:
+
+	One representing requests (a process requests a resource); and
+	One representing allocation (a resource currently belongs to a process).
+
+	We will require a new type of edge in the graph: a \alert{claim} edge.
+
+	When the process actually makes the request for the resource, a claim edge is converted to a request edge.
+
+	Upon release the assignment edge reverts to a claim edge.
+\end{frame}
+
+\begin{frame}
+	\frametitle{Resource Allocation Graph}
+
+	\begin{center}
+		\includegraphics[width=0.3\textwidth]{images/resource-allocation-graph-claim.png}
+	\end{center}
+
+	A resource request will only be granted if converting the request edge to an assignment edge will not result in a cycle in the graph.
+
+	If no cycle is found, then allocation of the resource will not move the system into an unsafe state.
+
+	If a cycle is found, the request should not be granted, as it risks a deadlock.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{The Banker's Algorithm}
+
+	The previous algorithm is applicable only if all resource requests are known in advance and there is only one instance of each resource.
+
+	The banker's algorithm is general: it allows for resources with multiple instances.
+
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{images/monopoly-man.jpg}
+	\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{The Banker's Algorithm}
+
+
+	It received this name because it is hypothetically an algorithm that a small town banker might follow.
+
+	It's not ``run up huge debts and then cry until the government bails you out...''
+
+	He or she is trying to prevent allocating the cash on hand in such away that he or she could no longer satisfy customers.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{The Banker's Algorithm}
+
+
+	The analysis we did earlier to determine if a state is safe or unsafe, is the foundation of the banker's algorithm.
+
+	\begin{center}
+		\includegraphics[width=0.35\textwidth]{images/unsafe-state-initial.png}
+	\end{center}
+
+	Granting the request from process $A$ moved the system safe to unsafe.
+
+	The operating system, when it receives a resource request, will evaluate the new state to see if it would transition the system to an unsafe state.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{The Banker's Algorithm}
+
+	If so, the request will be denied or $A$ will be blocked until the request can be fulfilled without putting the system in an unsafe state.
+
+	Holding to this condition means deadlock will be avoided.
+
+	The banker's algorithm can accommodate multiple resources.
+
+	\begin{center}
+		\includegraphics[width=0.6\textwidth]{images/bankers-multiple.png}
+	\end{center}
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Checking if a State is Safe}
 
 	\begin{enumerate}
-		\item Any number of readers may be in the critical section simultaneously.
-		\item Only one writer may be in the critical section (and when it is, no readers are allowed).
+		\item Look for a row in the matrix, $r$, where the unmet resource needs are less than or equal to the available resources in $A$.\\
+		      \quad If no such row exists, the system state is unsafe.
+		\item Assume the process from $r$ gets all the resources it needs. Mark that process as terminated and put all its resources into $A$, the available pool.
+		\item Repeat steps 1 and 2 until either:\\
+		      \quad (i) all processes are marked terminated and the initial state was safe; or \\
+		      \quad (ii) no process remains whose needs can be met; initial state is unsafe.
 	\end{enumerate}
 
+	If more than one process may be chosen in step 1, it does not matter which.
 
-	This is very often how file systems work.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{With Variation}
-
-	This is similar to, but distinct from, the general mutual exclusion problem and the producer-consumer problem.
-
-	Readers do not modify the data (consumers do take things out of the buffer, modifying it).
-
-	If any thread could read or write the shared data structure, we would have to use the general mutual exclusion solution.
-
-	Allowing multiple readers can permit better performance!
-
-	And there are many scenarios where updates are rare but reads are common.
+	The pool of available resources will either stay the same or get larger.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Readers-Writers Solution 1}
-	Let us keep track of the number of readers at any given time with \texttt{readers}.
+	\frametitle{The Banker's Algorithm}
 
-	We will need a way of protecting this variable from concurrent modifications, so there will have to be a binary semaphore \texttt{mutex}.
+	Determine if granting a resource makes the system unsafe: what-if calculation.
 
-	We will also need one further semaphore, \texttt{roomEmpty}.
+	Assume the resource granted; do the safe state calculation given that new state.
 
-	A writer has to wait for the room to be empty (i.e., \texttt{wait} on the \texttt{roomEmpty} semaphore) before it can enter.
-\end{frame}
-
-
-
-\begin{frame}[fragile]
-	\frametitle{Readers-Writers Solution 1}
-
-	\begin{multicols}{2}
-		\textbf{Writer}
-		\begin{verbatim}
-	 1. wait( roomEmpty )
-	 2. [write data]
-	 3. post( roomEmpty )
-	 
-	 
-	 
-	 
-	 
-	 
-	 
-	 
-	 
-	 
-  \end{verbatim}
-		\columnbreak
-		\textbf{Reader}
-		\begin{verbatim}
-	 1. wait( mutex )
-	 2. readers++
-	 3. if readers == 1
-	 4.     wait( roomEmpty )
-	 5. end if
-	 6. post( mutex )
-	 7. [read data]
-	 8. wait( mutex )
-	 9. readers--
-	10. if readers == 0
-	11.     post( roomEmpty )
-	12. end if
-	13. post( mutex )
-  \end{verbatim}
-	\end{multicols}
-	\vspace{-2em}
+	If the result is that the state is unsafe, the request should be deferred or denied.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Readers-Writers Solution 1 Analysis}
+	\frametitle{The Banker's Algorithm: Useless?}
 
-	The first reader that arrives encounters the situation that the room is empty, so it ``locks'' the room (waiting on the \texttt{roomEmpty} semaphore).
+	As great as the banker's algorithm is in theory, in practice it is utterly useless.
 
-	That will prevent writers from entering the room.
+	Processes rarely know in advance what their maximum resource needs will be.
 
-	Additional readers do not check if the room is empty; they just proceed to enter.
+	The number of processes is not fixed, but varies with users' wishes.
 
-	When the last reader leaves the room, it indicates that the room is empty (``unlocking it'' to allow a writer in).
+	Finally, a resource that was thought to be available can suddenly vanish.
 
-\end{frame}
-
-\begin{frame}
-	\frametitle{Readers-Writers Solution 1 Analysis}
-
-	This pattern is sometimes called the \alert{light switch}.
-
-	\begin{center}
-		\includegraphics[width=0.6\textwidth]{images/lightswitch.png}
-	\end{center}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Readers-Writers Solution 1 Analysis}
-
-	The reader code has that situation that makes us concerned.\\
-	\quad A wait on \texttt{roomEmpty} inside a critical section controlled by \texttt{mutex}.
-
-	With a bit of reasoning, we can convince ourselves that there is no deadlock.
-
-	A reader waits on \texttt{roomEmpty} only if a writer is currently in its critical section.
-
-	As long as the write operation takes finite time, eventually the writer will post the \texttt{roomEmpty} semaphore and the threads can continue.
-
-	Deadlock is not a problem.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Readers-Writers Solution 1 Analysis}
-
-	There is, however, a second problem that we need to be concerned about.
-
-	Suppose some readers are in the room, and a writer arrives.
-
-	The writer must wait until all the readers have left the room.
-
-	When each of the readers is finished, it exits the room.
-
-	In the meantime, more readers arrive and enter the room.
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Readers-Writers Solution 1 Analysis}
-
-	So even though each reader is in the room for only a finite amount of time, there is never a moment when the room has no readers in it.
-
-	This undesirable situation is not deadlock, because the reader threads are not stuck, but the writer (and any subsequent writers) is (are) going to wait forever.
-
-	This is a situation called \alert{starvation}: a thread never gets a chance to run.
-
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Starvation}
-
-	Recall criterion 3 of properties we want in any mutual exclusion solution:\\
-	\quad It must not be possible for a thread to be delayed indefinitely.
-
-	This problem is just as bad as deadlock in that if it is discovered, it eliminates a proposed solution as an acceptable option.
-
-	Even though starvation might only be an unlikely event.
-
-	We must therefore improve on this solution such that there is no longer the possibility that a writer starves.
-
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Readers-Writers Solution 2}
-
-	When a writer arrives, any readers should be permitted to finish their read.\\
-	\quad No new readers should be allowed to start reading.
-
-	Eventually, all the readers currently in the critical section will finish.
-
-	The writer will get a turn, because the room is empty.
-
-	When the writer is done, all the readers that arrived after the writer will be able to enter.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Readers-Writers Solution 2}
-	\begin{multicols}{2}
-		\textbf{Writer}
-		\begin{verbatim}
-	 1. wait( turnstile )
-	 2. wait( roomEmpty )
-	 3. [write data]
-	 4. post( turnstile )
-	 5. post( roomEmpty )
-	 
-	 
-	 
-	 
-	 
-	 
-	 
-	 
-	 
-	 
-  \end{verbatim}
-		\columnbreak
-		\textbf{Reader}
-		\begin{verbatim}
-	 1. wait( turnstile )
-	 2. post( turnstile )
-	 3. wait( mutex )
-	 4. readers++
-	 5. if readers == 1
-	 6.     wait( roomEmpty )
-	 7. end if
-	 8. post( mutex )
-	 9. [read data]
-	10. wait( mutex )
-	11. readers--
-	12. if readers == 0
-	13.     post( roomEmpty )
-	14. end if
-	15. post( mutex )
-  \end{verbatim}
-	\end{multicols}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Readers-Writers Solution 2 Analysis}
-
-	Does this solution satisfy our goals of avoidance of deadlock and starvation?
-
-	Starvation is fairly easy to assess: the first attempt at the solution had one scenario leading to starvation and this solution addresses it.
-
-	You should be able to convince yourself that the solution as described cannot starve the writers or readers.
-
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Readers-Writers Solution 2 Analysis}
-
-	On to deadlock: the reader code is minimally changed from before
-
-	The writer has that dangerous pattern: two waits.
-
-	If the writer is blocked on the \texttt{roomEmpty} semaphore, no readers or writers could advance past the turnstile and no writers.
-
-	If the writer is blocked on that semaphore, there are readers in the room.
-
-	The readers will individually finish and leave (their progress is not impeded).
-
-	So the room will eventually become empty; the writer will be unblocked.
+	Thus in practice, the banker's algorithm can almost never be used.
 
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Readers-Writers Solution 2 Analysis}
+	\frametitle{Summary of Avoidance}
 
-	Note that this solution does not give writers any particular priority: when a writer exits it posts on \texttt{turnstile} and that may unblock a reader or a writer.
+	Avoidance techniques may be useful in preventing a deadlock from occurring without having to preempt resources or forbidding hold-and-wait conditions.
 
-	If it unblocks a reader, a whole bunch of readers may enter before the next writer is unblocked and locks the turnstile again.
+	Unfortunately, it requires a fixed number of known resources to allocate.
 
-	That may or may not be desirable, depending on the application.
+	It also requires foreknowledge about what resources a process might need.
 
-	In any event, it does mean it is possible for readers to proceed even if a writer is queued.
-
-	If there is a need to give writers priority, there are techniques for doing so.
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Business Class Passengers Board in Zone 1}
-
-	\begin{center}
-		\includegraphics[width=0.9\textwidth]{images/priority-boarding.jpg}
-	\end{center}
-	\hfill Image Credit: Tag Along Travel
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Business Class Passengers Board in Zone 1}
-
-	Let's modify the solution so that writers have priority over readers.
-
-	We will probably want to break up the \texttt{roomEmpty} semaphore into \texttt{noReaders} and \texttt{noWriters}.
-
-	A reader in the critical section should hold the \texttt{noReaders} semaphore and a writer should hold \texttt{noWriters} and \texttt{noReaders}.
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Writer Priority}
-
-	\begin{multicols}{2}
-		\textbf{Writer}\vspace{-1em}
-		\begin{verbatim}
-     1. wait( writeMutex )
-     2. writers++
-     3. if writers == 1
-     4.     wait( noReaders )
-     5. end if
-     6. post( writeMutex )
-     7. wait ( noWriters )
-     8. [write data]
-     9. post( noWriters ) 
-    10. wait( writeMutex )
-    11. writers--
-    12. if writers == 0
-    13.    post( noReaders )
-    14. end if
-    15. post( writeMutex )     
-  \end{verbatim}
-		\columnbreak
-		\textbf{Reader}\vspace{-2em}
-		\begin{verbatim}
-     1. wait( noReaders )
-     2. wait( readMutex )
-     3. readers++
-     4. if readers == 1
-     5.    wait( noWriters )
-     6. end if
-     7. post( readMutex )
-     8. post( noReaders )
-     9. [read data]
-    10. wait( readMutex )
-    11. readers--
-    12. if readers == 0
-    13.     post( noWriters )
-    14. end if
-    15. post( readMutex )
-\end{verbatim}
-	\end{multicols}
-	\vspace{-2em}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Analysis: Writer Priority}
-
-	Yikes! The complexity for the writer increased dramatically.
-
-	The reader is not all that different than it was before.
-
-	The writer now is to some extent the mirror image of the reader.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Too Much Typing?}
-
-	Using the pseudocode as above, we can implement the readers-writers behaviour in a given program using only semaphore and mutex constructs.
-
-	But in the pthread library there is support for readers-writers lock types, meaning we don't have to reinvent the wheel.
-
-	The type for the lock is \texttt{pthread\_rwlock\_t}.
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{RW Lock Syntax: Init, Destroy}
-
-	\begin{lstlisting}[language=C]
-pthread_rwlock_init( pthread_rwlock_t * rwlock, pthread_rwlockattr_t * attr )
-\end{lstlisting}
-
-	\texttt{rwlock}: the lock to initialize.
-
-	\texttt{attr}: the attributes (\texttt{NULL} for defaults is fine.)
-
-
-	\begin{lstlisting}[language=C]
-pthread_rwlock_destroy( pthread_rwlock_t * rwlock )
-\end{lstlisting}
-
-	\texttt{rwlock}: the lock to destroy.
-
-
-	Both of these are exactly like the regular mutex.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{RW Lock Syntax: Locking}
-
-	\begin{lstlisting}[language=C]
-pthread_rwlock_rdlock( pthread_rwlock_t * rwlock )
-pthread_rwlock_tryrdlock( pthread_rwlock_t * rwlock )
-pthread_rwlock_wrlock( pthread_rwlock_t * rwlock )
-pthread_rwlock_trywrlock( pthread_rwlock_t  *  rwlock )
-\end{lstlisting}
-
-	We can acquire a read lock, or a write lock.
-
-	Pretty self-explanatory, which is which and when you use what.
-
-	For each of those there is an associated trylock function.
-
-	All four functions take one argument: \texttt{rwlock}, the lock.
-
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{RW Lock Syntax: Unlock}
-
-	\begin{lstlisting}[language=C]
-pthread_rwlock_unlock( pthread_rwlock_t * rwlock )
-\end{lstlisting}
-
-	Unlock works just like the regular mutex unlock.
-
-	We do not need to specify what kind of luck we are releasing.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Writer Priority?}
-
-	As for whether readers or writers get priority, the specification says this is implementation defined.
-
-	If possible, for threads of equal priority, a writer takes precedence over a reader.
-
-	But your system may vary.
-
-
-\end{frame}
-
-
-
-\begin{frame}
-	\frametitle{Mine, Mine, Mine!}
-
-	In theory, the same thread may lock the same rwlock $n$ times.
-
-	Just remember to unlock it $n$ times as well.
-
-	Readers get priority? Implementation defined.
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Without RW Locks}
-
-	\begin{multicols}{2}
-		\begin{lstlisting}[language=C]
-int readers;
-pthread_mutex_t mutex;
-sem_t roomEmpty;
-
-void init( ) {
-  readers = 0;
-  pthread_mutex_init( &mutex, NULL );
-  sem_init( &roomEmpty, 0, 1 );
-}
-
-void cleanup( ) {
-  pthread_mutex_destroy( &mutex );
-  sem_destroy( &roomEmpty );
-}
-\end{lstlisting}
-
-		\columnbreak
-
-		\begin{lstlisting}[language=C]
-void* writer( void* arg ) {
-  sem_wait( &roomEmpty );
-  write_data( arg );
-  sem_post( &roomEmpty );
-}
-
-void* reader( void* read ) {
-  pthread_mutex_lock( &mutex );
-  readers++;
-  if ( readers == 1 ) {
-    sem_wait( &roomEmpty );
-  }
-  pthread_mutex_unlock( &mutex );
-  read_data( arg );
-  pthread_mutex_lock( &mutex );
-  readers--;
-  if ( readers == 0 ) {
-    sem_post( &roomEmpty );
-  }
-  pthread_mutex_unlock( &mutex );
-}
-\end{lstlisting}
-
-	\end{multicols}
-
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{With RW Locks}
-
-	\begin{multicols}{2}
-		\begin{lstlisting}[language=C]
-pthread_rwlock_t rwlock;
-
-void init( ) {
-  pthread_rwlock_init( &rwlock, NULL );
-}
-
-void cleanup( ) {
-  pthread_rwlock_destroy( &rwlock );
-}
-\end{lstlisting}
-
-		\columnbreak
-
-		\begin{lstlisting}[language=C]
-void* writer( void* arg ) {
-  pthread_rwlock_wrlock( &rwlock );
-  write_data( arg );
-  pthread_rwlock_unlock( &rwlock );
-}
-
-void* reader( void* read ) {
-  pthread_rwlock_rdlock( &rwlock );
-  read_data( arg );
-  pthread_rwlock_unlock( &rwlock );
-}
-\end{lstlisting}
-
-	\end{multicols}
-
-	Conclusion: don't reinvent the wheel!
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Seek and Destroy}
-
-	\begin{center}
-		\includegraphics[width=0.5\textwidth]{images/seek-and-destroy.jpg}
-	\end{center}
-	An extension of the readers-writers problem: the search-insert-delete problem.
-
-	Three kinds of thread: searcher, inserter, deleter.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Searcher Rules}
-
-	\alert{Searchers} merely examine the list; hence they can execute concurrently with each other.
-
-	Searcher threads must call \texttt{void search( void* target )} where the argument to the searcher thread is the element to be found.
-
-	These most closely resemble readers in the readers-writers problem.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Inserter Rules}
-
-	\alert{Inserters} add new items to the end of the list; only one insertion may take place at a time.
-
-	However, one insert can proceed in parallel with any number of searches.
-
-	Inserter threads call \texttt{node* find\_insert\_loc()} to find where to do the insertion.
-
-	Then \texttt{void insert( void* to\_insert, node* after )} where the arguments are the location and the element to be inserted.
-
-	Inserters resemble readers, with restrictions.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Deleter Rules}
-
-	\alert{Deleters} remove items from anywhere in the list. At most one deleter process can access the list at a time.
-
-	When the deleter is accessing the list, no inserters and no searchers may be accessing the list.
-
-	Deleter threads call \texttt{void delete( void* to\_delete )}.
-
-	These resemble writers.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Let's Get It Done}
-
-	It turns out we don't need to modify things too much to allow for this third kind of thread.
-
-	We need to keep track of when there are ``no inserters'' and ``no searchers''.
-
-	Plus another mutex to go around the actual insertion...
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Search-Insert-Delete}
-	\begin{lstlisting}[language=C]
-pthread_mutex_t searcher_mutex;
-pthread_mutex_t inserter_mutex;
-pthread_mutex_t perform_insert;
-sem_t no_searchers;
-sem_t no_inserters;
-int searchers;
-int inserters;
-
-
-void init( ) {
-  pthread_mutex_init( &searcher_mutex, NULL );
-  pthread_mutex_init( &inserter_mutex, NULL );
-  pthread_mutex_init( &perform_insert, NULL );
-  sem_init( &no_inserters, 0, 1 );
-  sem_init( &no_searchers, 0, 1 );
-  searchers = 0;
-  inserters = 0;
-}
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Search-Insert-Delete}
-	\begin{lstlisting}[language=C]
-void* searcher_thread( void *target ) {
-  pthread_mutex_lock( &searcher_mutex );
-  searchers++;
-  if ( searchers == 1 ) {
-    sem_wait( &no_searchers );
-  }
-  pthread_mutex_unlock( &searcher_mutex );
-  
-  search( target );
-  
-  pthread_mutex_lock( &searcher_mutex );
-  searchers--;
-  if ( searchers == 0 ) {
-    sem_post( &no_searchers );
-  }
-  pthread_mutex_unlock( &searcher_mutex );
-}
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Search-Insert-Delete}
-	\begin{lstlisting}[language=C]
-void* deleter_thread( void* to_delete ) {
-  sem_wait( &no_searchers );
-  sem_wait( &no_inserters );
-  
-  delete( to_delete );
-  
-  sem_post( &no_inserters );
-  sem_post( &no_searchers );
-}
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Search-Insert-Delete}
-	\begin{lstlisting}[language=C]
-void* inserter_thread( void *to_insert ) {
-  pthread_mutex_lock( &inserter_mutex );
-  inserters++;
-  if ( inserters == 1 ) {
-    sem_wait( &no_inserters );
-  }
-  pthread_mutex_unlock( &inserter_mutex );
-  
-  node * insert_after = find_insert_location( );
-  pthread_mutex_lock( &perform_insert );
-  insert( to_insert, insert_after );
-  pthread_mutex_unlock( &perform_insert );
-  
-  pthread_mutex_lock( &inserter_mutex );
-  inserters--;
-  if ( inserters == 0 ) {
-    sem_post( &no_inserters );
-  }
-  pthread_mutex_unlock( &inserter_mutex );
-}
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}
-\frametitle{Make It Work}
-
-Could you implement Search-Insert-Delete with a \texttt{pthread\_rwlock\_t} despite there being three kinds of thread?
+	Finally, because it deals with the worst case, it reduces system performance in the name of safety.
 
 \end{frame}
 

@@ -2,208 +2,259 @@
 
 \begin{document}
 
-\lecture{ 28 --- More Concurrency in File Systems }{\term}{Jeff Zarnett}
+\lecture{ 28 --- Asynchronous I/O with AIO }{\term}{Jeff Zarnett}
 
-\section*{Concurrency in File Systems, Continued}
+\section*{AIO}
+Previously we had talked about how just opening a file for non-blocking I/O doesn't quite do what we want. There is, however, a way to do what we want using the POSIX Asynchronous I/O Interface, which we will just call AIO from here on, because it's shorter.
 
+The general approach is that you create a control block (\texttt{struct aiocb} -- AIO Control Block) that specifies what operation you want to happen. You enqueue this structure by telling the operating system that you want this to happen. And you can, if you wish, set up a callback to run if the desired event occurs, or you can check periodically if the AIO has completed instead. Your choice. Whichever one depends on your application.
 
-\subsection*{Copy-Modify-Merge}
-Thus far when we talk about modification of shared data we follow a model that could be described as ``Lock-Modify-Unlock''. But you've also used \texttt{git} or some other version control system (\texttt{svn}) that uses a different model: Copy-Modify-Merge. Let's take a minute to talk about that.
-
-Using \texttt{git} or something else, you and your lab partner check out a repository. You make changes and then try to merge those changes. When changes are being applied, we want to make sure that all changes in a particular grouping (in version control, a commit) either succeed as a group or fail as a group and nothing is left half-done.
-
-A \textit{transaction} is a grouping of operations that belong together and should be treated as an indivisible unit. You will recall from a great deal of discussion on the subject of concurrency that bad things can happen when an intermediate state of a multiple-step operation becomes inadvertently visible. Most of the examples looked at things like \texttt{x++;} being a read, addition, and a write and how concurrent accesses to \texttt{x} could result in the wrong value being read or written. The solution is usually mutual exclusion: forcing other accesses to \texttt{x} to wait while some operation was in progress. And this of course also scales up so you could change \texttt{x, y, z, a, b, c} all in one go. But in the copy-modify-merge scenario, people can make their changes separately and then we try to put them all together.
-
-A transaction has some sort of begin transaction statement at the beginning, then the operations to take place in the transaction, and finally an end transaction statement. Execution looks something like writing down the transaction into a log, doing the operations in the transaction, and when the last one is complete, if all went well, marking the transaction as successful.
-
-In the case of version control, if there are merge conflicts then we are notified that the merge cannot take place until conflicts are resolved. But in file systems, the last write wins.
-
-\subsection*{You Have 15 Unread Notifications...}
-
-Another way that we can use the file system (in Linux only!) for synchronization or concurrency control is through the use of \texttt{inotify}. Using this API, you can register your program as being interested in the events in the file system. We'll come back to a definition of what an event is soon. But in short, you say you want to watch a file or directory, and when an event occurs, then your program is informed. Note that this is not a portable thing: it is Linux only.
-
-The key steps are~\cite{lpi}:
-\begin{enumerate}
-	\item Use an initialization function to create the management structure (and get a file descriptor back to refer to it).
-	\item Then you tell the kernel what files you are interested in by adding them to the structure (you can also remove them).
-	\item To collect an event, use \texttt{read} on the file descriptor. Each call returns one or more event structures.
-	\item If you're done, close the file descriptor representing the management structure, which conveniently cleans everything up for you.
-\end{enumerate}
-
-It is noteworthy that the mechanism is not recursive: so if you add a directory, that covers the files in that directory, but not subdirectories.
-
-The API calls:
+Let's look at the structure of an AIO control block~\cite{apunix}:
 \begin{lstlisting}[language=C]
-int inotify_init( ); /* Returns file descriptor referring to the struct */
-int inotify_add_watch( int fd, const char* pathname, uint32_t mask );
-int inotify_rm_watch( int fd, uint32_t wd );
-\end{lstlisting}
-
-Initialization doesn't require any arguments, so that's quite convenient.
-
-Adding an item to the watch takes as an argument the inotify structure to add it to, the name of the file to add, and a mask. You must have at least read permission on the file to be able to watch it. The mask is how we specify details about the events that we are interested in (we'll come back to that). If the file is already being watched, then calling add with a different mask will replace the mask with the new one.
-
-We have to save the return value of the add function if we want to use the remove function, because it takes that return value as an argument. The remove function says remove the given watch item from the list.
-
-When we're completely done, just call close on the file descriptor representing the inotify.
-
-There are about 23 different events that you can watch for using the bit mask. Some of them are a bit obscure, but here are some that are highlighted in the spec:
-
-\begin{center}
-	\begin{tabular}{l|l}
-		\textbf{Bit Value}          & \textbf{Description}                             \\ \hline
-		\texttt{IN\_ACCESS}         & File accessed (read/execute)                     \\
-		\texttt{IN\_ATTRIB}         & Metadata changed, such as permissions            \\
-		\texttt{IN\_CLOSE\_WRITE}   & File opened for writing was closed               \\
-		\texttt{IN\_CLOSE\_NOWRITE} & File not opened for writing was closed           \\
-		\texttt{IN\_CREATE}         & File or directory created in watched directory   \\
-		\texttt{IN\_DELETE}         & File or directory deleted from watched directory \\
-		\texttt{IN\_DELETE\_SELF}   & Watched file or directory deleted                \\
-		\texttt{IN\_MODIFY}         & File modified (write, for example)               \\
-		\texttt{IN\_OPEN}           & File opened                                      \\
-		\texttt{IN\_ALL\_EVENTS}    & Watch for all of the above (and a few more)
-	\end{tabular}
-\end{center}
-
-Great, so imagine we have set up some files that we would like to watch. When you're ready for such an event, use \texttt{read} on the file descriptor for the inotify. If an event occurred, you get back a structure \texttt{inotify\_event} that looks like this (as described in the official docs):
-
-\begin{lstlisting}[language=C]
-struct inotify_event {
-  int      wd;       /* Watch descriptor */
-  uint32_t mask;     /* Mask describing event */
-  uint32_t cookie;   /* Unique cookie associating related events (for rename(2)) */  
-  uint32_t len;      /* Size of name field */
-  char     name[];   /* Optional null-terminated name */
+struct aiocb {
+  int aio_fildes;               /* File descriptor */
+  off_t aio_offset;             /* Offset for I/O */
+  volatile void* aio_buf;       /* Buffer */
+  size_t aio_nbytes;            /* Number of bytes to transfer */
+  int aio_reqprio;              /* Request priority */
+  struct sigevent aio_sigevent; /* Signal Info */
+  int aio_lio_opcode;           /* Operation for List I/O */
 };
 \end{lstlisting}
 
-The first returned value is which file descriptor it was the event happened on, as we'd expect. The second says what kind of event occurred. The third parameter is a delicious, delicious cookie: it allows you to identify a rename operation (if a file is renamed in the directory, this shows up as two events and the cookie is used to link the two). The length field tells you how long the name array is, and then there is of course the name array. That means memory size of an inotify event is thus the structure size plus the length of the array, i.e.: \texttt{sizeof( struct inotify\_event) + len}~\cite{lpi}.
+So, looking at the fields: the first is obviously the file descriptor of the file we would like to read or write; the offset is how far into the file we start the operation. The buffer is the source (for a write) or destination (for a read). Those cover the mandatory fields and the ones that most resemble our typical read or write operation. At this point we could skip right to the example, if we knew how to enqueue a request.
 
-This is something somewhat rare -- usually when we do a read we need to know how many bytes we'd like to read. If we're reading a struct, we know the size of the struct, but now it depends on the length of the data you get back. Your standard clairvoyance problem. One approach is to just make the buffer really big: much bigger than it needs to be. The length of the largest filename plus one (for the null terminator) would work. If your buffer isn't big enough the read call will fail.
+A couple of notes are in order. The offset does nothing if the file has been opened in ``append'' mode. Also, when we do a write or read the pointer to the place where we are in the file advances as per usual, but it's not the same pointer into the file as the regular (blocking) read and write operations. If you mix the two kinds of operations you may not get the behaviour that you want.
 
-Alternatively, \texttt{ioctl} can tell you what you want to know: \texttt{ioctl( fd, FIONREAD, \&numbytes )} updates \texttt{numbytes} with the number of bytes currently available to read from the inotify instance~\cite{lpi}.  If multiple events occurred you can get multiple structures back (if your buffer is big enough).
+The priority field is a suggestion that we can provide as to how the AIO events should be scheduled, but the operating system is free to ignore this if it wishes. We'll just ignore the ability to set priorities for the purposes of this course. The last parameter is about list-based asynchronous I/O (a more advanced topic), but we need to look deeper at the event first. The best way to do that is to look at the structure:
 
-A relatively simple example then: we'd like to observe when a lock file is deleted, so that we can try to take some action that occurs afterwards. We can demonstrate this program working when we start it and the lock file already exists.
+\begin{lstlisting}[language=C]
+struct sigevent {
+  int sigev_notify;                              /* Notify Type */
+  int sigev_signo;                               /* Signal number */
+  union sigval sigev_value;                      /* Notify argument */
+  void (*sigev_notify_function) (union sigval); /* Notify Function */
+  pthread_attr_t *sigev_notify_attributes;       /* Notify attributes */
+};
+\end{lstlisting}
+
+(If you're confused about a \texttt{union}: it's defined like a structure, except where the struct is made of all of the fields in the definition, a union can be any single one of the fields of the definition at a time.) A \texttt{sigval} is either an integer or a \texttt{void*} pointer.
+
+The first field is one of the following options:
+\begin{itemize}
+	\item \texttt{SIGEV\_NONE}: Don't do anything when the request completes.
+	\item \texttt{SIGEV\_SIGNAL}: The signal specified in the signal number field is generated when the request is complete.
+	\item \texttt{SIGEV\_THREAD}: The function specified in the notify function field is executed, in a different, detached thread. The argument to this function is the signal value. And the attributes of the thread (including whether it is detached) can be overridden using the last parameter if you wish.
+\end{itemize}
+
+We should notice that the signature of the function is not the same as when creating pthreads: the return type is just \texttt{void} and not a void pointer; the argument is \texttt{union sigval} rather than a void pointer. The definition of the union is:
+
+\begin{lstlisting}[language=C]
+union sigval {
+  int sival_int;
+  void* sival_ptr;
+};
+\end{lstlisting}
+
+Using this, we can choose what we want to happen when the AIO event is complete, if anything. The thread approach is probably the one we'll use most commonly, because it is flexible and convenient. Alright, let's go!
+
+When we're ready to enqueue a request, the functions are:
+\begin{lstlisting}[language=C]
+int aio_read( struct aiocb* aiocb );
+int aio_write( struct aiocb* aiocb );
+\end{lstlisting}
+
+These are self-explanatory, I would think. The return values are not the same as the actual I/O request return value (as we'll see). It is important to know that once we enqueue the result we can't change the control block or buffer while the operation is in progress, otherwise we might get inconsistent results. And so if we want to know if we are done~\cite{apunix}:
+
+\begin{lstlisting}[language=C]
+int aio_error( const struct aiocb* aiocb );
+ssize_t aio_return( const struct aiocb* aiocb );
+\end{lstlisting}
+
+The \texttt{aio\_error} function should probably really be called \texttt{aio\_status} instead, because it tells you what the status of the operation is. A return value of 0 means the operation has completed successfully! A return of -1 means that the call failed and \texttt{errno} tells you the actual reason. If the operation is still waiting to run or in progress the return value is \texttt{EINPROGRESS}; if we get any other value then an error occurred and the value is the error code.
+
+If the operation completed successfully, \texttt{aio\_return} will get the return value from the read or write operation. Calling this while the operation in still progress returns undefined results and potentially fails. We can call this only once per AIO operation; once the value has been collected then some internal structures can be deallocated, so it is polite to call it even if you do not need it.
+
+\paragraph{AIO Example: Read While You Eat.}
+
+Suppose we have been asked to design a program that processes a group of files. We can use asynchronous I/O to partially parallelize this: start the read for file $n+1$ and process file $n$ in the meantime. This doesn't work for the first file, so a blocking read takes place first. The maximum size of any file we will read is \texttt{MAX\_SIZE}, so always use this size as the length of a read (even though we may read less, that's okay). We need two buffers: one for the file being processed and one where the next read is taking place.
+
+A list of files to read will be provided as arguments on the commandline to the program. To make the code a bit more compact, we'll assume that errors won't occur and therefore we do not need to check for them (i.e., memory allocation, enqueuing an asynchronous read, actually reading the data, et cetera, will always succeed).
+
+In this example, rather than set up a callback, we'll just do the thing where we check to see if the enqueued AIO has occurred and sleep if it's not ready. We could consider changing this to create a thread instead, but using threads is something we may save for a future exercise.
+
+\begin{lstlisting}[language=C]
+void process( char* buffer ); /* Implementation not shown */
+
+int main( int argc, char** argv ) {
+  char* buffer1 = malloc( MAX_SIZE * sizeof( char ));
+  char* buffer2 = malloc( MAX_SIZE * sizeof( char ));
+  
+  int fd = open( argv[1], O_RDONLY );
+  memset( buffer1, 0, MAX_SIZE * sizeof( char ));
+  read( fd, buffer1, MAX_SIZE );
+  close( fd );
+  
+  for ( int i = 2; i < argc; i++ ) {
+    int nextFD = open( argv[i], O_RDONLY );
+    
+    struct aiocb cb;
+    memset( &cb, 0, sizeof( struct aiocb ));
+    
+    cb.aio_nbytes = MAX_SIZE;
+    cb.aio_fildes = nextFD;
+    cb.aio_offset = 0;
+    memset( buffer2, 0, MAX_SIZE * sizeof( char ));
+    cb.aio_buf = buffer2;
+    aio_read( &cb );
+ 
+    process( buffer1 );
+    
+    while( aio_error( &cb ) == EINPROGRESS ) {
+      sleep( 1 );
+    }
+    aio_return( &cb ); /* This frees some internal structures */
+    close( nextFD );
+    
+    char* tmp = buffer1;
+    buffer1 = buffer2;
+    buffer2 = tmp;
+  }
+  process( buffer1 );
+  free( buffer1 );
+  free( buffer2 );
+
+  return 0;
+}
+\end{lstlisting}
+
+It's worth noting that we need the header \texttt{aio.h} and to compile with the \texttt{-lrt} option.
+
+Is sleep really the best way to deal with this? I would argue no: if we have nothing to do we could get blocked instead. There is a function that allows us to do that~\cite{apunix}:
+
+\begin{lstlisting}[language=C]
+int aio_suspend( const struct aiocb *const list[], int nent, const struct timespec* timeout );
+\end{lstlisting}
+
+The first argument is an array of the control blocks; the second is the size of this array; the last is a timeout. This function allows us to block until one of the AIO operations in the list is complete, or the timeout elapses. If the timeout does occur then the function returns -1; if any AIO request finishes then 0 is returned. If everything was finished already by the time this function was called, the function does not block.
+
+\paragraph{Callback when AIO is complete.} Let's also look at setting up a callback that makes a function run when the AIO is completed:
 
 \begin{lstlisting}[language=C]
 #include <stdlib.h>
 #include <stdio.h>
-#include <sys/inotify.h>
-#include <stdbool.h>
-#include <unistd.h>
+#include <aio.h>
 #include <fcntl.h>
 #include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <pthread.h>
 
-const char filename[] = "file.lock";
+#define MAX_SIZE 512
+
+void worker( union sigval argument) {
+    char* buffer = (char*) argument.sival_ptr;
+    printf("Worker thread here. Buffer contains: %s\n", buffer);
+    free( buffer );
+}
 
 int main( int argc, char** argv ) {
-    int lockFD;
-    bool our_turn = false;
+    char* buffer = malloc( MAX_SIZE * sizeof( char ));
+
+    int fd = open( "example.txt", O_RDONLY );
+    memset( buffer, 0, MAX_SIZE * sizeof( char ));
+    struct aiocb cb;
+    memset( &cb, 0, sizeof( struct aiocb ));
+
+    cb.aio_nbytes = MAX_SIZE;
+    cb.aio_fildes = fd;
+    cb.aio_offset = 0;
+    cb.aio_buf = buffer;
+    cb.aio_sigevent.sigev_notify = SIGEV_THREAD;
+    cb.aio_sigevent.sigev_notify_function = worker;
+    cb.aio_sigevent.sigev_value.sival_ptr = buffer;
+
+    aio_read( &cb );
     
-    while( !our_turn ) {
-        lockFD = open( filename, O_CREAT | O_EXCL );
-        if ( lockFD == -1 ) {
-            printf( "The lock file exists and process %ld will wait its turn...\n", getpid() ); 
-            int notifyFD = inotify_init( );
-            uint32_t watched = inotify_add_watch( notifyFD, filename, IN_DELETE_SELF );
-            
-            /* Read the file descriptor for the notify -- we get blocked here
-               until there's an event that we want */
-            int buffer_size = sizeof( struct inotify_event ) + strlen( filename ) + 1;
-            char* event_buffer = malloc( buffer_size );
-            printf("Setup complete, waiting for event...\n");
-            read( notifyFD, event_buffer, buffer_size );
+    pthread_exit( NULL );
+}
+\end{lstlisting}
 
-            struct inotify_event* event = (struct inotify_event*) event_buffer;
-            /* Here we can look and see what arrived and decide what to do.
-               In this example, we're only watching one file and one type
-               of event, so we don't need to make any decisions now */
 
-            printf("Event occurred!\n");
+If an AIO request is no longer needed, it can be cancelled~\cite{apunix}:
+\begin{lstlisting}[language=C]
+int aio_cancel( int fd, struct aiocb* aiocb );
+\end{lstlisting}
 
-            free( event_buffer );
-            inotify_rm_watch( lockFD, watched );
-            close( notifyFD );
-        } else {
-            char* pid = malloc( 32 );
-            memset( pid, 0, 32 );
-            int bytes_of_pid = sprintf( pid, "%ld", getpid() );
+We specify the file descriptor with the AIO operations and the specific request we wish to cancel. If \texttt{NULL} is given as the control block argument, then it tries to cancel all outstanding asynchronous I/O requests for that file.
 
-            write( lockFD, pid, bytes_of_pid ); 
-            free ( pid );
-            close( lockFD );
-            our_turn = true; 
-        }
-    } 
+Ah, you noticed that I said ``tries'' to cancel. This function returns one of four values:
+\begin{itemize}
+	\item \texttt{AIO\_CANCELLED}: The requested operation(s) have been cancelled.
+	\item \texttt{AIO\_NOTCANCELLED}: At least one operation could not be cancelled.
+	\item -1: Something went wrong in cancelling; \texttt{errno} set.
+	\item \texttt{AIO\_ALLDONE}: All operations finished before they could be cancelled.
+\end{itemize}
 
-    printf("Process %ld is in the area protected by file lock.\n", getpid());
-    remove( filename );
+Here, a silly but complete example of creating a request and then immediately cancelling it:
+
+\begin{lstlisting}[language=C]
+#include <stdlib.h>
+#include <stdio.h>
+#include <aio.h>
+#include <fcntl.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+
+#define MAX_SIZE 512
+
+int main( int argc, char** argv ) {
+    char* buffer = malloc( MAX_SIZE * sizeof( char ));
+
+    int fd = open( "example.txt", O_RDONLY );
+    memset( buffer, 0, MAX_SIZE * sizeof( char ));
+
+    struct aiocb cb;
+    memset( &cb, 0, sizeof( struct aiocb ));
+
+    cb.aio_nbytes = MAX_SIZE;
+    cb.aio_fildes = fd;
+    cb.aio_offset = 0;
+    cb.aio_buf = buffer;
+    aio_read( &cb );
+    
+    /* Do something */
+    
+    aio_cancel( fd, & cb );
+
+    sleep( 5 );
+
+    close( fd );
+    free( buffer );
+
     return 0;
 }
 \end{lstlisting}
 
-\section*{Consistency: Journalling}
+\paragraph{One last thing: the list.}
+In the AIO control block there was one more parameter that we did not cover but said that we would come back to: \texttt{aio\_lio\_opcode}. What's this for? Well, we can submit a group of AIO requests in a single operation. Rather than calling read or write individually on each control block, the following function allows us to enqueue a list of requests all in one go~\cite{apunix}:
 
-Unfortunately, an error, crash, or power failure may result in a loss of data or inconsistent data in the file system. The directory structures, pointers, inodes, et cetera are all data structures and if they become corrupted it may lead to serious problems.
+\begin{lstlisting}[language=C]
+int lio_listio( int mode, struct aiocb * const list[ ], int nent, 
+    struct sigevent* sigev );
+\end{lstlisting}
 
-We could check for inconsistent data periodically (e.g., on system boot up) and many operating systems do so. This is, of course, an operation that will consume a very large amount of time while the whole disk is scanned. The UNIX tool for this is \texttt{fsck} (... not exactly something you want to say out loud) and the Windows tool is \texttt{chkdsk} (check disk). These tools will look for inconsistent states (e.g., a file that claims to be 12 blocks but the linked list contains only 5) and will attempt to repair the data structures. Its level of success depends on the nature of the problem and the implementation of the file system.
+The first argument \texttt{mode} is a choice of either \texttt{LIO\_WAIT} or \texttt{LIO\_NOWAIT}. If we choose the wait option, then the function doesn't return until all the operations are complete. If that's the case, the last argument is ignored. If we choose no-wait, then as soon as the I/O requests are queued the function returns and we can go on.
 
-Obviously we would like to prevent the problem, if we can. The solution is to use transactions, just as we do in version control. Either a change takes place in its entirety or it is as if it never happened.
+The next parameters are the list (array) of control blocks and the number of entries in that list (array); not surprising at all. If it's going into the \texttt{lio\_listio} function, in the AIO block you specify the \texttt{aio\_lio\_opcode} (operation code) as either \texttt{LIO\_READ}, \texttt{LIO\_WRITE}, or \texttt{LIO\_NOP} (this one means do nothing).
 
+The last parameter is an event that will fire once all operations are complete. You can pass in \texttt{NULL} if you don't want anything. This is separate from the individual callbacks that you can register in the control blocks; those can still fire if they are set up, either signals or threads -- but this is an extra one that's available if we want it.
 
-\subsection*{ZFS (Sun/Oracle File System)}
-Let's consider ZFS (as I understand it, pronounced ``Zee Eff Ess''), which is intended for scalability and has some interesting features. The primary source for this section is the official documentation~\cite{zfs}. Because what better place than from the source?
+\paragraph{AIO is HARD!}
+There's a funny (and sad) note in~\cite{lpi} and~\cite{linuxaio} about what actually happens in Linux when it comes to the POSIX Asynchronous I/O approach: it's actually implemented internally using threads that do blocking reads (ouch). Work continues on the subject, but the current state of affairs is that for a long time people have been working on a properly in-the-kernel implementation of the AIO behaviour as specified above. The current implementation does not scale very well.
 
-ZFS uses the idea of transactions, making sure that the state is always consistent on disk. Much like the copy-modify-merge model, data is copied, then changed, then rewritten. Blocks are never overwritten with new data. Instead, a transaction writes all data and metadata to new blocks. Only when the transaction is complete, any references to the old blocks are replaced with the location of the new blocks. Then the old pointers and blocks can be cleaned up (reused or disposed of).
-
-This does have an interesting weakness: if the disk becomes completely and totally full it is not possible to delete anything and make space, because there's no place to allocate new blocks. That's a problem. And not just a hypothetical: it happened to a friend of mine when he tried to put too much data in his NAS (network attached storage). He was mad. But he was going to buy a new one anyway, I guess...
-
-\subsection*{APFS (Apple File System)}
-
-Like some version control systems, APFS brings the ability to take snapshots of the file system: freeze the state of the file system and from there any additional changes are ``diffs'' against that base state, meaning only new things take up space. This is potentially quite helpful for taking backups (you do take backups, right?)~\cite{apfs}.
-
-Speedier backups can result: the performance of your system can be degraded while backups are being taken because you need to compute the difference between the last backup copy and the current. This is faster! But it is also a way to avoid corruption: you can replay changes as needed to get the file back to \textit{a} consistent state (of some sort).
-
-The APFS does potentially harm the most common ``backup'' system of non-technical users: take a copy of the file and put it in a different folder. If you copy a file to the same volume (and make no changes) then APFS will not copy the data and instead just have two references to the same underlying location. It sounds like they're doing you a favour if you think of this as just reducing wasted space, but is actually a negative from the perspective of redundancy: if that part of the disk is damaged then all copies are lost~\cite{apfs}.
-
-Somewhat like ZFS, the APFS approach to avoiding inconsistent data amidst a crash is something like copy-on-write, though in typical Apple fashion they were pretty vague about what this means in a practical sense; the APFS lead developer Dominic Giampaolo just says it's a ``novel copy-on-write metadata scheme'' but also somehow not exactly the same as ZFS's single-atomic-update approach~\cite{apfs}.
-
-\subsection*{NTFS (Windows File System)}
-Though UNIX and similar systems have often been a focus of the examples, in this case, we will instead examine NTFS, the default file system for Windows since Windows NT and used in 2000, XP, Vista, 7, 8, 10... NTFS supports large disks and large files, and uses journalling.
-
-A volume is laid out as follows:
-
-\begin{center}
-	\includegraphics[width=0.6\textwidth]{images/ntfs-volume.png}\\
-	Standard layout of an NTFS volume~\cite{osi}.
-\end{center}
-
-The Master File Table (MFT) contains information about all the files and folders. Following the that, a block is allocated to system files that contain some important system information~\cite{osi}:
-
-\begin{enumerate}
-	\item \textbf{MFT2}: Mirror of the first few rows of the MFT (in case the original is damaged).
-	\item \textbf{Log File}: The journalling transaction log.
-	\item \textbf{Cluster Bitmap}: Bitmap showing which of the clusters are in use.
-	\item \textbf{Attribute Definition Table}: Attribute types supported on this volume.
-\end{enumerate}
-
-NTFS uses journalling to ensure that the file system will be in a consistent state at all times, even after a crash or restart. There is a service responsible for maintaining a log file that will be used to recover in the event that things go wrong.  Note that the goal of recovery is to make sure the system-maintained metadata is in a consistent state; user data can still get lost. This was a decision on the part of Microsoft to make the recovery operations significantly simpler and faster.
-
-All metadata changes are written sequentially to a log file; once the changes are written to the log, control may return to the program that requested the operation. Meanwhile, the log entries are actually carried out. As changes are made, a pointer is updated to indicate which of the log entries have really happened and which have not. When an entire transaction is completed, it is removed from the log file. If the system crashes, the log file will contain zero or more transactions. If there are zero there is no problem: nothing was in progress at the time of the crash. If there are some, then the transactions were not completed and the operations should still be carried out. If a transaction was aborted (not committed), we walk backwards through the log entries to undo any completed operations and go back to the state before the start of the transaction~\cite{osc}.
-
-Even though a particular write may not have taken place because of a crash, resulting in some data loss, at least the system will always remain in a consistent state. As a side benefit, we can sometimes re-order the writes to get better performance (e.g., schedule them in such a way that we get better disk utilization).
-
-
-The actual implementation of journalling works as follows~\cite{russ}:
-
-\begin{enumerate}
-	\item Record the change(s) in the log file in the cache.
-	\item Modify the volume in the cache.
-	\item The cache manager flushes the log file to disk.
-	\item Only after the log file is flushed to disk, the cache manager flushes the volume changes.
-\end{enumerate}
-
-What's really interesting about this is that the changes are carried out in the background, that is to say, asynchronously. A program can say that it wants to write some data, and not have to wait for the data to be written before going on to the next thing. How interesting! Can we get that behaviour in our (regular) program? Yes we can...
+Does this affect your program? No -- what we covered here does still work and is the POSIX-compliant portable way of writing your code. But should you wish to create a very large number of asynchronous I/O requests then you will want to consider an alternative approach for reading your data, such as libevent.
 
 \input{bibliography.tex}
 

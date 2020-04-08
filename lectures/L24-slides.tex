@@ -1,6 +1,6 @@
 \input{configuration}
 
-\title{Lecture 24 --- Of Asgard and Hel }
+\title{Lecture 24 --- Concurrency in File Systems }
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
@@ -17,341 +17,580 @@
 
 
 \begin{frame}
-	\frametitle{Yggdrasil, the World Tree}
+	\frametitle{Concurrency in File Systems}
+
+	We need to peel back the interface a bit and have at least a high-level understanding of their implementation.
+
+	File can be of arbitrary size (although in a particular file system there may be a limit).
+
+	They have to be allocated on disk according to some strategy.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Contiguous Allocation}
+	Contiguous: a file occupies a set of contiguous blocks on disk.
+
+	So a file is allocated, starting at block $b$ and is $n$ blocks in size, the file takes up blocks $b, b+1, b+2, ..., b+(n-1)$.
+
+	This is advantageous, because if we want to access block $b$ on disk, accessing $b+1$ requires no head movement, so seek time is nonexistent to minimal.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Contiguous Allocation}
+
+	All that we need to maintain are $b$ and $n$: the start location and length of the file.
+
+	Both sequential and direct access are very easy: the first block of a file is at $b$.
+
+	To access a block $i$ at some offset into the file, it's at the base address $b$ plus $i$.
+
+	Checking if the access is valid is also an easy operation: if $i < n$ then it is valid.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Contiguous Allocation}
 
 	\begin{center}
-		\includegraphics[width=0.5\textwidth]{images/Yggdrasil.jpg}
-	\end{center}
-	\hfill Image Credit: Rick Riordan, Magnus Chase and the Gods of Asgard
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Ginnungagap}
-
-	Everything came into creation in the gap between fire and ice, and the World Tree (Yggdrasil) connects the nine worlds.
-
-	Asgard is the home of the \AE sir, the Norse gods.
-
-	Helheim, or simply Hel, is the underworld where the dead go upon their death.
-
-	In Hel or Asgard (it's not clear), there is Valhalla, hall of the honoured dead.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Carry We, Who Die In Battle...}
-
-	Those who die in battle and are judged worthy will be carried to Valhalla by the Valkyries.
-
-	There they will reside until they are called upon to aid in Odin's fight with the wolf Fenrir in Ragnar\"ok.
-
-	humans live in the ``middle realm'', Midg\aa rd, surrounded by the serpent Jormungand, who will fight against Thor in  Ragnar\"ok.
-
-	Thor will kill the serpent, but the serpent's poison will also finish off Thor.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Across the Rainbow Bridge, To Valhalla...}
-
-	We're going to examine some very useful tools for programming called Valgrind and Helgrind (also Cachegrind).
-
-	Where do they take their names from? Valgrind is the gateway to Valhalla; a gate that only the worthy can pass.
-
-	Helgrind is the gateway to, well, Hel.
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{I may be interested in this subject...}
-
-	\begin{center}
-		\includegraphics[width=0.4\textwidth]{images/Loki.jpg}
+		\includegraphics[width=0.6\textwidth]{images/disk-contiguous.png}
 	\end{center}
 
 \end{frame}
 
-
 \begin{frame}
-	\frametitle{Through the Bifrost}
+	\frametitle{Contiguous Allocation}
 
-	But all of these are analysis tools for your C and \Cpp programs.
 
-	They are absolute murder on performance, but they are wonderful for finding errors in your program.
+	If we need a memory block of size $N$:\\
+	\quad (1) can we find a contiguous block of $N$ or greater to meet that allocation?\\
+	\quad (2) if there is more than one block, which one do we choose?
 
-	To use them, start the tool of your choice and instruct it to invoke your program.
-
-	The target program then runs under the ``supervision'' of the tool.
-
-	Remember to enable debugging symbols in your compile.
+	As before, we suffer the problem of external fragmentation, plus a bit of internal fragmentation in the last block of the file.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Valgrind (memcheck)}
+	\frametitle{Contiguous Allocation}
 
-	Valgrind is the base name of the project and by default what it's going to do is run the memcheck tool.
+	Another problem: how much space is a file going to take?
 
-	The purpose of memcheck is to look into all memory reads, writes, and to intercept and analyze every call to \texttt{malloc}/\texttt{free} and \texttt{new}/\texttt{delete}.
+	If it is just a copy-paste operation, the copy is the same size as the original.
+
+	When a user opens a new document, how big will it be?
+
+	If we allocate too little space, we may be able to tack on space at the end, or that block may be allocated, forcing us to move the file and reallocate it.
+
+	If the value we choose is too large, then significant space will be wasted for small files (and many files tend to be relatively small).
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Is Your Program Worthy?}
+	\frametitle{Linked Allocation}
+
+	Linked allocation is a solution to the problems of contiguous allocation.
+
+	Instead of a file being all in consecutive blocks, we maintain a linked list of the blocks, and the blocks themselves may be located anywhere on the disk.
+
+	The directory listing just has a pointer to the first and last blocks (head and tail of the linked list).
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Linked Allocation}
+
+	If a new file is created, it will be created with size zero and the head and tail pointers are null.
+
+	When a new block is needed, it can come from anywhere and will just be added to the linked list.
+
+	Thus, compaction and relocation are not really an issue.
+
+	Unfortunately, however, accessing block $i$ of a file is no longer as simple as computing an offset from the first block; it requires following $i$ pointers (a pain).
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Linked Allocation}
 
 	\begin{center}
-		\includegraphics[width=\textwidth]{images/heimdall-waits.jpg}
+		\includegraphics[width=0.6\textwidth]{images/disk-linked.png}
 	\end{center}
 
 \end{frame}
 
-
 \begin{frame}
-	\frametitle{Is Your Program Worthy?}
+	\frametitle{Linked Allocation}
 
-	Memcheck can find problems like:
-	\begin{itemize}
-		\item Accessing uninitialized memory
-		\item Reading off the end of an array
-		\item Memory leaks
-		\item Incorrect freeing of memory
-		\item Incorrect use of C standard functions like \texttt{memcpy}
-		\item Using memory after it's been freed.
-		\item Asking for an invalid number of bytes in an allocation
-	\end{itemize}
+	A possible solution to the problem of following so many pointers (and the overhead of maintaining so many) is to group up the blocks into \alert{clusters}.
 
-\end{frame}
+	A cluster is comprised of, say, four blocks.
 
-\begin{frame}[fragile]
-	\frametitle{Valgrind Output}
-	{\scriptsize
-		\begin{verbatim}
-==8476== All heap blocks were freed -- no leaks are possible
-\end{verbatim}
-	}
-
-That's the ideal. But is this realistic?
-\end{frame}
-
-\begin{frame}
-	\frametitle{Send the Plumbers to the Watergate}
-
-
-	Take the program's suggestion to use the \texttt{--leak-check=full}.
-
-	You get a bit more detail about where you made the mistake.
-
-	In the example below, lines 49 and 24 in the file \texttt{search.c} are the locations of the \texttt{malloc} calls that lack a matching call to \texttt{free}.
-
-	It can't tell you where the call to \texttt{free} should go, only where the memory that isn't freed was allocated.
+	Then we waste less memory maintaining pointers and it improves disk accesses because there is less seeking back and forth to various disk locations.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Reading the Output}
+	\frametitle{Indexed Allocation}
 
-	\begin{itemize}
-		\item \textbf{Definitely lost}
-		\item \textbf{Indirectly lost}
-		\item \textbf{Possibly lost}
-		\item \textbf{Still reachable}
-		\item \textbf{Suppressed}
-	\end{itemize}
+	If we stuck to pure linked allocation, we still have the problem that accessing some part in the middle of the file is a pain.
 
-\end{frame}
+	We have to follow and retrieve a lot of pointers to the different blocks.
 
+	The idea of indexed allocation is to take all the pointers and put them into one location: an index block.
 
-\begin{frame}
-\frametitle{Not My Problem?}
-
-It's also important to learn what to ignore (or what's out of our hands). 
-
-Example: it's thread creation or a library or similar. What do we do?
-
-Consider carefully if we can do something about it!
-
-Let's do some examples.
 
 \end{frame}
 
 
 
 \begin{frame}
-	\frametitle{Helheim}
+	\frametitle{Indexed Allocation}
+
+	So, the first block of the file contains a whole bunch of pointers.
+
+	To get to block $i$, just go to index $i$ of the index block and we can get the location of block $i$ much more efficiently than we could in linked allocation.
+
+	All pointers to blocks start as null, and when we add a new block, add its corresponding entry into the index block.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Indexed Allocation}
 
 	\begin{center}
-		\includegraphics[width=\textwidth]{images/helheim.jpg}
+		\includegraphics[width=0.6\textwidth]{images/disk-indexed.png}
 	\end{center}
 
-	\hfill Credit: Norse Legends Fandom User OlaTansta
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{What Fresh Hel is This}
-
-	The purpose of Helgrind is to detect errors in the use of POSIX pthreads.
-
-	In a way, Helgrind is a pretty neat tool for improving performance, even though it doesn't actually directly speed anything up.
-
-	When we take single-threaded program and split it off into a multithreaded program, we may introduce a lot of errors.
-
-	Humans are not very good at parallel thinking; we are very much sequential.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{What Fresh Hel is This}
+	\frametitle{Block Size}
 
-	But a program that is fast and wrong is probably less useful than one that is slow and correct.
+	Like many of the other systems we have examined, there is a need to make a decision about the size of a block.
 
-	But can we make it faster and still have it be correct?
+	If a file needs only 1-2 blocks, one whole block is allocated for the pointers which contains only 1-2 entries.
 
-	That's the goal of Helgrind: determine where, if anywhere, there are concurrency problems.
+	That suggests we want the index to be small, but what if we need more pointers than fit into one block? There are a few mechanisms for this.
 
-	It can't prove that your program is correct (if only) but it can at least catch some of the common problems you might introduce when writing a parallel program.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Hel Hath No Fury...}
+	\frametitle{Block Size}
 
-	Helgrind will categories errors into three basic categories:
+	What if we need more pointers than fit into one block?
 
 	\begin{enumerate}
-		\item Misuses of the pthreads API
-		\item Lock ordering problems
-		\item Data races
+		\item \textbf{Linked Scheme}
+		\item \textbf{Multilevel Index}
+		\item \textbf{Combined Scheme}
 	\end{enumerate}
 
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Misuse of the API}
+	\frametitle{UNIX inodes}
 
-	The first category does not require much explanation:
-
-
-	\begin{itemize}
-		\item Unlocking a mutex that is unlocked
-		\item Deallocation of memory with a locked mutex in it
-		\item Thread exit while holding a locked lock
-	\end{itemize}
-	... and many more.
-
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Type Two Errors}
-
-	The second category of errors should be familiar to you:
-
-	\begin{multicols}{2}
-		\textbf{Thread P}
-		\begin{verbatim}
-	 1. wait( a ) 
-	 2. wait( b )
-	 3. [critical section]
-	 4. signal( a )
-	 5. signal( b )
-  \end{verbatim}
-		\columnbreak
-		\textbf{Thread Q}
-		\begin{verbatim}
-	 1. wait( b ) 
-	 2. wait( a )
-	 3. [critical section]
-	 4. signal( b )
-	 5. signal( a )
-  \end{verbatim}
-	\end{multicols}
-	\vspace{-2em}
-
-	Potential Deadlock!
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Interleaving Leaves Locks}
-
-	Risk of deadlock:thread P holds mutex \texttt{a} and thread Q holds mutex \texttt{b}.
-
-	Each waits for the mutex that the other one has.
-
-	The example is slightly silly, of course, because it's super easy to see.
-
-	There will not necessarily be an obvious (alphabetical) order.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Graph Theory Strikes Back}
-
-
-	Helgrind builds a directed graph of lock acquisitions, so that when a thread acquires a lock, the graph is checked to see if a cycle exists.
-
-	It will report as an error the initial order (the first order seen is the one viewed as ``correct'') and the the ``incorrect'' order that is the source of the potential problem.
-
-	Really, though, all that matters is consistency.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Category 3}
-
-	The third category we have discussed already.
-
-	Recall the earlier definition of a race condition.
-
-	Helgrind looks for when two threads access the same memory location without using locks.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Behind the Scenes}
-
-	It examines the use of the standard threading primitives - lock, unlock, signal/post, wait...
-
-	Anything that implies there might be an ordering between events is taken and added to a directed acyclic graph that represents these dependencies.
-
-	If memory is accessed from two different threads and there is no path through this directed acyclic graph that indicates an ordering, then a race is reported.
-
-	Although obviously at least one of these accesses must be a write.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Name \& Shame}
-
-	You can ask Helgrind to try to tell you about variable names (if it can) with the command line option \texttt{--read-var-info=yes}.
-
-	\begin{verbatim}
-==10454== Location 0x60104c is 0 bytes inside global var "var"
-==10454== declared at datarace.c:3
-\end{verbatim}
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Fixing it Isn't My Problem}
-
-
-	The authors of Helgrind assume that if it tells you where the problem is, you will figure out what variables are affected and how to properly prevent data races.
+	A visual representation of an inode.
 
 	\begin{center}
-		\includegraphics[width=0.3\textwidth]{images/its-your-job.jpg}
+		\includegraphics[width=0.6\textwidth]{images/unix-inode.png}
 	\end{center}
-
-	You might find this frustrating.
-
-	Let's do some more examples.
 
 \end{frame}
 
-\end{document}
+\begin{frame}
+	\frametitle{UNIX inodes}
 
+	\begin{center}
+		\includegraphics[width=0.7\textwidth]{images/yodawg.jpg}
+	\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Partial Locking}
+
+	Previously: \texttt{flock(}) to lock a file, and this locks the entire file.
+
+	Using \texttt{fcntl}, we can lock only a part of a file.
+
+	This is referred to as \alert{record locking}.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Partial Locking}
+
+	Locking just a part of the file allows for more concurrency!
+
+	\begin{lstlisting}[language=C]
+int fcntl( int file_descriptor, int command, ... /* struct flock * flockptr */ )
+\end{lstlisting}
+
+	We need to provide one \texttt{struct flock} and a \texttt{command}.
+
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Struct Flock}
+
+	The \texttt{struct flock} has the following definition:
+	\begin{lstlisting}[language=C]
+struct flock {
+  short  l_type;   /* F_RDLCK, F_WRLCK, or F_UNLCK */
+  short  l_whence; /* SEEK_SET, SEEK_CUR, or SEEK_END */
+  off_t  l_start;  /* offset in bytes, relative to l_whence */
+  off_t  l_len;    /* length, in bytes; 0 means lock to EOF */
+  pid_t  l_pid;    /* returned with F_GETLK */
+};
+\end{lstlisting}
+
+	About \texttt{l\_type}: the types of lock are read and write.
+
+	Compatibility matrix: reads are compatible with reads; writes with nothing.
+
+	To unlock, use \texttt{F\_UNLCK}.
+
+	This is vulnerable to deadlock...
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Struct Flock}
+
+	The \texttt{struct flock} has the following definition:
+	\begin{lstlisting}[language=C]
+struct flock {
+  short  l_type;   /* F_RDLCK, F_WRLCK, or F_UNLCK */
+  short  l_whence; /* SEEK_SET, SEEK_CUR, or SEEK_END */
+  off_t  l_start;  /* offset in bytes, relative to l_whence */
+  off_t  l_len;    /* length, in bytes; 0 means lock to EOF */
+  pid_t  l_pid;    /* returned with F_GETLK */
+};
+\end{lstlisting}
+
+	\texttt{l\_whence}: where does the offset begin?
+
+	It is possible for a locked region to extend past the end of the file.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Das war ein Befehl!}
+
+	For \texttt{command}, our choices are~\cite{apunix}:
+	\begin{itemize}
+		\item \texttt{F\_GETLK}
+		\item \texttt{F\_SETLK}
+		\item \texttt{F\_SETLKW}
+	\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Unlocking and Combining Locks}
+
+	When unlocking a region, just as for locking, you can specify what part of the file you would like to unlock.
+
+	Partial unlocking is unusual, but why not?
+
+	The system will combine or split locks as appropriate,
+
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Lock Usage Example}
+
+	\begin{lstlisting}[language=C]
+int write_lock_file( int file_descriptor ) {
+
+  struct flock fl;
+  fl.l_type = F_WRLOCK;
+  fl.l_start = 0;
+  fl.l_whence = SEEK_SET;
+  fl.l_len = 0;
+  
+  return fcntl( fd, F_SETLK, &fl );
+}
+
+int unlock_file( int file_descriptor ) {
+
+  struct flock fl;
+  fl.l_type = F_UNLCK;
+  fl.l_start = 0;
+  fl.l_whence = SEEK_SET;
+  fl.l_len = 0;
+  
+  return fcntl( fd, F_SETLK, &fl );
+}
+\end{lstlisting}
+
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Knock Knock}
+
+	Checking if a given part of a file is locked:
+
+
+	\begin{lstlisting}[language=C]
+int fd = open ( "example.txt", O_RDONLY );
+struct flock lock;
+
+lock.l_type = F_RDLOCK;
+lock.l_start = 1024;
+lock.l_whence = SEEK_SET;
+lock.l_len = 256;
+
+fcntl( fd, F_GETLK, &lock );
+if ( lock.l_type == F_UNLCK ) {
+	/* Lock is unlocked; we may proceed */
+} else if ( lock.l_type = F_WRLOCK ) {
+  /* File is write locked by a different process */
+  printf( "File locked by process ID %d.\n", lock.l_pid );
+  return -1;
+}
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Orders, Captain?}
+
+	Checking on things with \texttt{F\_GETLK} is really for information purposes only.
+
+	``Read the value and then whatever operation you'd like to do next'' is not
+	atomic.
+
+	Instead, use the command \texttt{F\_SETLK} and actually try to set the lock.
+
+	If -1 is returned then locking was not successful.
+
+	Or, if the plan is to wait, use \texttt{F\_SETLKW} as one would expect.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Immutability is for Cowards}
+
+	\texttt{fcntl} changes some values of the \texttt{struct lock}!
+
+	If you wanted to re-use it you need to make sure to reset it as appropriate.
+
+	You can use the same \texttt{struct lock} later to unlock the thing that you locked, just do so carefully.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{SPLITTERS!}
+	\begin{center}
+		\includegraphics[width=0.6\textwidth]{images/jpf.jpg}
+	\end{center}
+
+	Sometimes the name you want is taken...
+
+	\texttt{lockf}: a simplified way of locking a file.
+
+	While \texttt{fcntl} is more flexible, sometimes all we need is the simple version.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Locking, Simplified}
+
+	\begin{lstlisting}[language=C]
+int lockf( int file_descriptor, int command, off_t length );
+\end{lstlisting}
+
+	The command options can be:
+	\begin{itemize}
+		\item \texttt{F\_LOCK}
+		\item \texttt{F\_TLOCK}
+		\item \texttt{F\_ULOCK}
+		\item \texttt{F\_TEST}
+	\end{itemize}
+
+	The length is an offset, and is based off the current position in the file.
+
+	If zero is provided then it locks the whole file.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Close up for the Day}
+
+	The file is automatically unlocked when the file descriptor is closed.
+
+	And, on some systems \texttt{lockf} just calls \texttt{fcntl} but on some others they use different mechanisms.
+
+	So don't mix and match.
+
+	If you lock a file with one function, unlock it with the matching one.
+
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{There are Rules}
+
+	It is noteworthy that both kinds of lock are ``advisory'' only.
+
+	It only is really effective if everyone involved in accessing the shared resource follows the proper protocol and checks if access is permitted or not.
+
+	Mandatory locks do exist, but are hard to use and are not recommended.
+
+	The notes link to why you shouldn't!
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{I am become Lock}
+
+	We can use the very existence of a file as a way of controlling concurrency.
+
+	For example, \texttt{git} places a file \texttt{index.lock} in a particular directory to indicate that an operation is in progress.
+
+	Thus two different \texttt{git} clients do not operate on the same repository at the same time.
+
+\end{frame}
+
+
+
+\begin{frame}
+	\frametitle{Open Sesame?}
+
+	If we want to check, we just try to \texttt{open()} the file, but unless we are careful this can lead to a problem if two processes want to create the file.
+
+	If they both call \texttt{open}, they both might succeed. To get around this, we need to use the \texttt{flags} parameter
+
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+	\frametitle{File Operations}
+	\begin{lstlisting}[language=C]
+int open(const char *filename, int flags); 
+int rename(const char *old_filename, const char *new_filename);
+int remove(const char *filename); 
+\end{lstlisting}
+
+	When opening a file the following flags may be used for the \texttt{flags} parameter (and can be combined with bitwise OR, the \texttt{|} operator):
+
+	{\scriptsize
+	\begin{tabular}{l|l}
+		\textbf{Value}     & \textbf{Meaning}                                                                                 \\ \hline
+		\texttt{O\_RDONLY} & Open the file read-only                                                                          \\ \hline
+		\texttt{O\_WRONLY} & Open the file write-only                                                                         \\ \hline
+		\texttt{O\_RDWR}   & Open the file for both reading and writing                                                       \\ \hline
+		\texttt{O\_APPEND} & Append information to the end of the file                                                        \\ \hline
+		\texttt{O\_TRUNC}  & Initially clear all data from the file                                                           \\ \hline
+		\texttt{O\_CREAT}  & Create the file                                                                                  \\ \hline
+		\texttt{O\_EXCL}   & If used with \texttt{O\_CREAT}, the caller MUST create the file; if the file exists it will fail \\
+	\end{tabular}
+	}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Lock-File Behaviour}
+
+	Team-up \texttt{open} and \texttt{rename} to get lock-like behaviour between different programs that share nothing except a common file system.
+
+	The \texttt{open} call should be used to create the lock file, and fail if the file already exists.
+
+	If we want we can use \texttt{remove} to delete the lock file if we want to let the next process try, but there's an alternative option: \texttt{rename}.
+
+	The \texttt{rename} function is also atomic!
+
+	To lock: change the name; to unlock, change it back!
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Using a File as a Lock}
+	\begin{lstlisting}[language=C]
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <pthread.h>
+#define NUM_THREADS 10
+
+int lock_fd;
+int shared = 0;
+
+void* run( void* arg ) {
+  int* id = (int*) arg;
+  while( rename( "file.lock", "file.locked" ) == -1 ) {
+    printf("Thread %d waiting.\n", *id); 
+  }
+  printf("Thread %d in critical section.\n", *id);
+  printf("Shared incremented from %d", shared);
+  shared++;
+  printf(" to %d.\n", shared);
+  rename("file.locked", "file.lock"); /* Unlock */
+
+  free( arg );
+  pthread_exit(NULL);
+}
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Using a File as a Lock}
+	\begin{lstlisting}[language=C]
+void* writer( void* arg ) {
+  /* Write data implementation not shown */
+  pthread_exit(NULL);
+}
+
+int main( int argc, char** argv ) {
+  lock_fd = open( "file.lock", O_CREAT | O_EXCL );  
+  if (lock_fd == -1 ) {
+   printf( "File creation failed.\n");
+   return -1;
+  }
+
+  pthread_t threads[NUM_THREADS];
+  for (int i = 0; i < NUM_THREADS; i++) {
+    int * id = malloc( sizeof( int ) );
+    *id = i;
+    pthread_create( &threads[i], NULL, run, id );
+  }
+  for (int i = 0; i < NUM_THREADS; i++) {
+    pthread_join( threads[i], NULL );
+  }
+  close( lock_fd );
+  remove( "file.lock" );
+
+  return 0;
+}
+\end{lstlisting}
+\end{frame}
+
+
+\end{document}

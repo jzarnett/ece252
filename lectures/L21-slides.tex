@@ -1,6 +1,6 @@
 \input{configuration}
 
-\title{Lecture 21 --- Deadlock Detection \& Recovery }
+\title{Lecture 21 --- Condition Variables, Monitors, Atomic Types }
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
@@ -17,665 +17,557 @@
 
 
 \begin{frame}
-	\frametitle{Elementary...}
+	\frametitle{Condition Variables}
 
 	\begin{center}
-		\includegraphics[width=0.7\textwidth]{images/jeremy-brett.jpg}
+		\includegraphics[width=0.4\textwidth]{images/monday.png}
 	\end{center}
 
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Detecting Deadlock}
-
-	Thus far we have examined several ways to prevent or avoid deadlock, but all of those solutions have come with significant drawbacks or limitations.
-
-	Avoidance analyses are also conservative; they will prevent a request from taking place if there is even a small chance it could lead to a deadlock.
-
-	Perhaps we cannot stop deadlock from happening or cannot live with the performance reduction that avoidance mandates.
-
-	Then the next best thing is to let all resource requests proceed and then determine later if a deadlock exists, and if so, do something about it.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Detecting Deadlock}
-
-	The basic strategy for deadlock detection is like the deadlock avoidance strategy in that it relies on a model of the resource allocation and requests.
-
-	If resources have only a single instance, we may reduce the graph to a simplified version called the \textit{wait-for} graph.
-
-	This removes the resource boxes from the diagram.
-
-	It indicates that a process $P_{i}$ is waiting for process $P_{j}$ rather than for a resource $R_{k}$ that happens to be held by $P_{j}$.
-
-	An edge $P_{i} \rightarrow P_{j}$ exists in the wait-for graph if and only if the resource allocation graph has a request $P_{i} \rightarrow R_{k}$ and an assignment edge $R_{k} \rightarrow P_{j}$
+	Condition variables are another way to achieve synchronization.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Wait-For Graph}
+	\frametitle{Condition Variables}
 
+	How do we know if some condition has been fulfilled?
+
+	Signal on a semaphore?
+
+	Lock mutex, read variable(s), unlock mutex?
+
+	Or: a Condition Variable.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Condition Variable}
+
+	We can think of condition variables as ``events'' that occur.
+
+	What differentiates it: broadcast!
+
+	We have the option, when an event occurs, to signal either one thread waiting for that event to occur, or to broadcast (signal) to all threads waiting for the event.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Condition Variable Syntax}
+
+	\begin{lstlisting}[language=C]
+pthread_cond_init( pthread_cond_t *cv, pthread_condattr_t *attributes );
+pthread_cond_wait( pthread_cond_t *cv, pthread_mutex_t *mutex );
+pthread_cond_signal( pthread_cond_t *cv );
+pthread_cond_broadcast( pthread_cond_t *cv );
+pthread_cond_destroy( pthread_cond_t *cv );
+\end{lstlisting}
+
+	As with other pthread functions we've seen there are create and destroy calls.
+
+	Signal is self-explanatory; but broadcast is new and wait looks weird!
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Wait, in Two Parts}
+
+	Condition variables are always used in conjunction with a mutex.
+
+	\texttt{pthread\_cond\_wait} takes the condition variable and a mutex.
+
+	This routine should be called only while the mutex is locked.
+
+	It will automatically release the mutex while it waits for the condition!
+
+	When the condition is true, then the mutex will be automatically locked again so the thread may proceed.
+
+	Then, manually unlock when finished.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{HEY GUYS!!! GUESS WHAT!!!}
 	\begin{center}
-		\includegraphics[width=0.75\textwidth]{images/rag-waitfor.png}
+		\includegraphics[width=0.6\textwidth]{images/newsanchor.jpg}
 	\end{center}
 
-\end{frame}
+	\texttt{pthread\_cond\_broadcast} signals all threads waiting on that condition variable.
 
-\begin{frame}
-	\frametitle{Cycle Detection}
-
-	Given the wait-for graph, it is trivial for humans to look at this and determine if there is a cycle, but for the computer it takes slightly more work.
-
-	A cycle exists in the wait for graph if and only if a deadlock exists in the system.
-
-	Such cycle detection algorithms tend to have runtime characteristics of $\Theta(n^{2})$ where $n$ is the number of nodes in the graph.
+	It's this ``broadcast'' idea that makes the condition variable more interesting than the simple ``signalling'' pattern we covered much earlier on.
 
 \end{frame}
 
+\begin{frame}[fragile]
+	\frametitle{Condition Variable Example}
+
+	\begin{lstlisting}[language=C]
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define NUM_THREADS  3
+#define COUNT_LIMIT 12
+
+int count = 0;
+pthread_mutex_t count_mutex;
+pthread_cond_t count_threshold_cv;
+
+void* inc_count( void* arg ) {
+  for (int i = 0; i < 10; i++ ) {
+    pthread_mutex_lock( &count_mutex );
+    count++;
+    if ( count == COUNT_LIMIT ) {
+      printf( "Condition Fulfilled!\n" );
+      pthread_cond_signal( &count_threshold_cv );
+      printf( "Sent signal.\n" );
+    }
+    pthread_mutex_unlock( &count_mutex );
+  }
+  pthread_exit( NULL );
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Condition Variable Example}
+
+	\begin{lstlisting}[language=C]
+void* watch_count( void *arg ) {
+  pthread_mutex_lock( &count_mutex );  
+  if ( count < COUNT_LIMIT ) {
+    pthread_cond_wait( &count_threshold_cv, &count_mutex );
+    printf( "Watcher has woken up.\n" );
+    /* Do something useful here now that condition is fulfilled. */
+  }
+  pthread_mutex_unlock( &count_mutex );
+  pthread_exit( NULL );
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Condition Variable Example}
+	\begin{lstlisting}[language=C]
+int main( int argc, char **argv ) {
+  pthread_t threads[3];
+
+  pthread_mutex_init( &count_mutex, NULL );
+  pthread_cond_init ( &count_threshold_cv, NULL );
+
+  pthread_create( &threads[0], NULL, watch_count, NULL );
+  pthread_create( &threads[1], NULL, inc_count, NULL );
+  pthread_create( &threads[2], NULL, inc_count, NULL );
+
+  for ( int i = 0; i < NUM_THREADS; i++ ) {
+    pthread_join(threads[i], NULL);
+  }
+  
+  pthread_mutex_destroy( &count_mutex );
+  pthread_cond_destroy( &count_threshold_cv );
+  pthread_exit( NULL );
+}
+\end{lstlisting}
+\end{frame}
+
+
 \begin{frame}
-	\frametitle{General Deadlock Detection Algorithm}
+	\frametitle{Anybody Listening?}
 
-	We will use the general deadlock detection algorithm that allows for multiple resources of each type.
+	If a thread signals a condition variable that an event has occurred, but no thread is waiting for that event, the event is ``lost''.
 
-	There are $n$ processes numbered $P_{1}$ through $P_{n}$ and $m$ resources.
+	This is sometimes called the ``lost wakeup problem'', because threads don't get woken up if they weren't waiting for this.
 
-	Resources are represented by two vectors:\\
-	\quad $E$ -- the existing resource vector.\\
-	\quad $A$ -- the available resource vector.
-
-	If resource $i$ has two instances total and one is currently assigned to a process, $E_{i}$ is 2 and $A_{i}$ is 1.
+	That's usually an error, but it might be acceptable.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{General Deadlock Detection Algorithm}
+	\frametitle{Can We Apply This To What We Know?}
 
-	We need two matrices to represent the current situation of the system.
+	The condition variable with broadcast can be used to replace some of the synchronization constructs we've seen already.
 
-	The first is $C$, the current allocation.
-
-	Row $i$ of $C$ shows how many of each resource $P_{i}$ has.
-
-	The second matrix is $R$, the request matrix.
-
-	$C_{ij}$ shows the number of instances of resource $j$ that $P_{i}$ has and $R_{ij}$ shows the number of instances of resource $j$ that $P_{i}$ wants.
+	What patterns could be replaced?
 
 \end{frame}
 
+\begin{frame}[fragile]
+	\frametitle{Broadcast Barrier}
+
+	Consider the barrier pattern from earlier.
+
+	There are $n$ threads and we wait for the last one to arrive.
+		{\scriptsize
+			\begin{multicols}{2}
+				\begin{verbatim}
+	1. wait( mutex )
+	2. count++
+	3. if count == n
+	4.     post( barrier )
+	5. end if
+	6. post( mutex )
+	7. wait( barrier )
+	8. post( barrier )
+  \end{verbatim}
+				\columnbreak
+				\begin{verbatim}
+	1. wait( mutex )
+	2. count++
+	3. if count < n
+	4.     cond_wait( barrier, mutex )
+	5. else 
+	6.     cond_broadcast( barrier )
+	7. end if
+	8. post( mutex )
+  \end{verbatim}
+			\end{multicols}
+		}
+
+	The \texttt{wait} takes place before the post on \texttt{mutex}. That looks strange, doesn't it?
+
+\end{frame}
+
+
 \begin{frame}
-	\frametitle{General Deadlock Detection Algorithm}
+	\frametitle{Spidey Sense Tingling?}
 
-	\begin{multicols}{2}
-		\begin{center}
-			\textsf{Resources in Existence}\\
-			$[E_{1}, E_{2}, ..., E_{m}]$\vspace{5em}
 
-			\textsf{Current Allocations}
-			\[
-				\left[ {\begin{array}{cccc}
-								C_{11} & C_{12} & ... & C_{1m} \\
-								C_{21} & C_{22} & ... & C_{2m} \\
-								\vdots & \vdots &     & \vdots \\
-								C_{n1} & C_{n2} & ... & C_{nm}
-							\end{array} } \right]
-			\]
-		\end{center}
-		\columnbreak
+	We give up the mutex \texttt{lock} when we wait on the condition variable.
 
-		\begin{center}
-			\textsf{Resources Available}\\
-			$[A_{1}, A_{2}, ..., A_{m}]$\vspace{3em}
+	The fact that we don't get to the unlock statement first does not cause a problem.
 
-			\textsf{Requests}
-			\[
-				\left[ {\begin{array}{cccc}
-								R_{11} & R_{12} & ... & R_{1m} \\
-								R_{21} & R_{22} & ... & R_{2m} \\
-								\vdots & \vdots &     & \vdots \\
-								R_{n1} & R_{n2} & ... & R_{nm}
-							\end{array} } \right]
-			\]
-		\end{center}
+	So we are alright.
 
-	\end{multicols}
+	The last thread doesn't wait on the condition at all because there's no need to!
 
+	It knows that it is last and there's nothing to wait for so it should proceed.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Barrier Pattern Code Example}
+	\begin{lstlisting}[language=C]
+int count;
+pthread_mutex_t lock;
+pthread_cond_t cv; 
+
+void barrier( ) {
+  pthread_mutex_lock( &lock );
+  count++;
+  if ( count < NUM_THREADS ) {
+    pthread_cond_wait( &cv, &lock );
+  } else {
+    pthread_cond_broadcast( &cv );
+  }
+  pthread_mutex_unlock( &lock );
+}
+\end{lstlisting}
+
+	Will this work?
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Monitors}
 	\begin{center}
-		$\sum\limits_{i=1}^n C_{ij} + A_{j} = E_{j}$.
+		\includegraphics[width=0.5\textwidth]{images/monitor.jpg}
 	\end{center}
 
+	Uh... wait... this isn't the right kind.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Less Than? Says Who?}
+	\frametitle{What's a Monitor?}
 
-	There is one more bit of setup before we are ready to run the algorithm.
+	A condition variable can be used to create a \alert{monitor}, a higher level synchronization construct.
 
-	The key idea is comparison of vectors, so let us define for notational convenience, the idea of ``less than'' for two vectors.
+	This is a bit like in OOP the idea of a class.
 
-	We will say that for two vectors $A$ and $B$ of length $m$,  $A \leq B$ means that $A_{i} \leq B_{i}$ for all $i$ from 1 to $m$.
+	When we use a monitor we are packaging up the shared data and operations on that data.
 
-\end{frame}
-
-\begin{frame}
-	\frametitle{Run, Algorithm, Run}
-
-	All processes are unmarked and the vectors and matrices are populated.
-
-	\begin{enumerate}
-		\item Search for an unmarked process whose requests can all be satisfied with the available resources in $A$. Mathematically: find a process $P_{i}$ such that row $R_{i} \leq A$.
-		\item If a process is found, add the allocated resources of that process to the available vector and mark the process. Mathematically: $A = A + C_{i}$. Go back to step 1.
-		\item If no process was found in the search of step 1, the algorithm terminates.
-	\end{enumerate}
-
-	At the end, any processes that are not marked are deadlocked.
+	Eliminate the need to write synchronization code ourselves.
 
 \end{frame}
 
-\begin{frame}
-	\frametitle{General Deadlock Detection Algorithm Analysis}
 
-	This approach is similar to the banker's algorithm.
+\begin{frame}[fragile]
+	\frametitle{Did We Forget Something?}
 
-	Step 1: look for a process that can run to completion; it will be able to do so because the currently available resources equal or exceed its needs.
-
-	That process can finish, and when it does so, its currently-held resources are released and available for another process to acquire.
-
-	Step two reflects this by adding the resources it holds to the available set.
-
-	Then another process is selected.
-
-	At the end, either all processes can finish and there is no deadlock, or there is a set of processes (at least two) that are deadlocked.
-
-	This algorithm has a runtime performance characteristic of $\Theta(m \times n^{2})$.
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Detection of Deadlock Example}
-	System initial state (4 resources, 3 processes):
-
-	\begin{multicols}{2}
-		\begin{center}
-			$E = [4, 2, 3, 1]$
-			\[ C =
-				\left[ {\begin{array}{cccc}
-								0 & 0 & 1 & 0 \\
-								2 & 0 & 0 & 1 \\
-								0 & 1 & 2 & 0 \\
-							\end{array} } \right]
-			\]
-		\end{center}
-		\columnbreak
-
-		\begin{center}
-			$A = [2, 1, 0, 0]$
-			\[ R =
-				\left[ {\begin{array}{cccc}
-								2 & 0 & 0 & 1 \\
-								1 & 0 & 1 & 0 \\
-								2 & 1 & 0 & 0
-							\end{array} } \right]
-			\]
-		\end{center}
-
-	\end{multicols}
-
+	\begin{lstlisting}[language=C]
+void foo( ) {
+  pthread_mutex_lock( &l );
+  /* Read some data */
+  if ( condition ) {
+    printf( "Cannot continue due to reasons...\n" );
+    return;
+  }
+  /* More stuff */
+   
+  pthread_mutex_unlock( &l );
+}
+\end{lstlisting}
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{I'll Take Your Word For It}
+	\frametitle{Control Flow Problems}
 
-If we have started some operation and it is taking too long, we can assume that a deadlock occurred and decide to take action.
+	There is control flow that could lead to exiting this function \texttt{foo} without unlocking the mutex \texttt{l}.
 
-\begin{center}
-	\includegraphics[width=0.5\textwidth]{images/zoidberg.jpg}
-\end{center}
-
-This does mean we might declare a deadlock when there really is none.
-
-One way to implement this is via a watchdog timer.
+	It looks super obvious in this case, but in real life it's harder to see!
 
 \end{frame}
 
+\begin{frame}[fragile]
+	\frametitle{Java Anyone?}
+
+	The idea of monitors should be familiar to you if you have used Java synchronization constructs, notably the \texttt{synchronized} keyword.
+
+	In Java we can declare a method to be \texttt{synchronized}.
+
+	There is a lock created around that method. Locking and unlocking is handled automatically.
+
+	\begin{lstlisting}[language=Java]
+public synchronized void doSomething() {
+    // Synchronized area
+}
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Synchronized Blocks}
+
+	in Java one can also define a block as synchronized:
+
+	\begin{lstlisting}[language=Java]
+public void exampleMethod() {
+    synchronized( object ) { // Lock must be acquired to enter this block
+           // Critical section 
+    } // Lock is automatically released.
+}
+\end{lstlisting}
+
+	This sort of ``automatic'' locking and releasing is intended to simplify the process of writing multithreaded code.
+
+\end{frame}
 
 \begin{frame}
-	\frametitle{When to Detect Deadlock}
+	\frametitle{This isn't an endorsement of Java...}
 
-	The runtime characteristic of the simple deadlock detection algorithm: $\Theta(n^{2})$.
+	Monitors don't have to be written in Java (or similar).
 
-	The runtime characteristic of the general algorithm was shown as $\Theta(m \times n^{2})$.
-
-	($n$ is the number of processes and $m$ is the number of resources in the system)
-
-	This means that the deadlock detection routine is expensive to execute.
+	They do frequently appear in Object-Oriented languages because the concepts are familiar enough.
 
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{When to Detect Deadlock}
-
-	This prompts a question: how often should the deadlock detection algorithm be run?
-
-	One strategy is to run it every time a resource is requested.
-
-	Optimization: it should run if a resource request cannot be granted.
-
-	Another idea: run it periodically instead.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{When to Detect Deadlock}
-
-	When to run the deadlock detection algorithm depends on how often we expect deadlock to occur, and how severe a problem it is when deadlock occurs.
-
-	If deadlock happens a lot, checking for deadlock often will make sense.
-
-	If the consequences of a deadlock are severe, it makes sense to check frequently to identify the problem as soon as possible.
-
-	Idea: run it when CPU utilization is low...?
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{We Can Fix This}
-
+	\frametitle{Atomic Types}
 	\begin{center}
-		\includegraphics[width=\textwidth]{images/recovery.png}
+		\includegraphics[width=0.5\textwidth]{images/bohrmodel.png}
 	\end{center}
+	\hfill Image Credit: Wikipedia user JabberWok
+
+	A testament to how good humans are at blowing things up...
 
 \end{frame}
 
 
-\begin{frame}
-	\frametitle{Deadlock Recovery}
 
-	Once a deadlock has been detected, a system can recover from that deadlock by ``breaking'' the deadlock.
+\begin{frame}[fragile]
+	\frametitle{Atomic Types}
 
-	These are called recovery strategies and they are ways the system may automatically deal with the problem.
+	Frequently we have a code pattern that looks something like this:
 
-	It is possible to have a manual form of deadlock recovery, where an operator is notified and that person is responsible for sorting out the problem.
+	\begin{lstlisting}[language=C]
+pthread_mutex_lock( lock );
+shared_var++;
+pthread_mutex_unlock( lock );
+\end{lstlisting}
 
-	The manual method needs no further discussion.
+	It seems like a lot of work to lock and unlock the mutex, no?
 
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Recovery Strategies}
-
-	There are several strategies that we could apply.
-
-	They can result in data loss, delays in completion, other problems...
-
-	Ideally we would like to break the deadlock with as little disruption as possible, so the strategies that rely on selection of victims should choose carefully.
-
-	These strategies are not mutually exclusive.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Here's One Idea}
-
-	\begin{center}
-		\includegraphics[width=\textwidth]{images/oceans-eleven.jpeg}
-	\end{center}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Robbery}
-
-	The strategy of ``robbery'' is just a humorous way of saying preemption.
-
-	This is virtually identical to the discussion of deadlock prevention.\\
-	\quad But it happens  only when deadlock is detected.
-
-	The operating system needs to choose a victim to rob...
-
-	The resource should be an appropriate type to be preempted!
-
+	Thinking back to the ``test and set'' type of instruction from earlier, wouldn't it be nice if we could do that sort of thing for something like incrementing a variable?
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Robbery}
+	\frametitle{Hey glibc, Could You Please...}
 
+The GNU (Linux) standard C library (\texttt{glibc}) provides operations that are guaranteed to execute atomically, to avoid simple race conditions
 
-	Suppose $P_{1}$ has a resource $R_{1}$ and needs $R_{2}$, while $P_{2}$ has $R_{2}$ and needs $R_{1}$.
-
-	The OS may block $P_{2}$ and take away $R_{2}$ from $P_{2}$ and allow $P_{1}$ to have it.
-
-	After that resource becomes available again, it is returned to $P_{2}$.
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Mass Murder}
-
-	\begin{center}
-		\includegraphics[width=0.65\textwidth]{images/killemall.jpg}
-	\end{center}
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Mass Murder}
-
-	Terminate (kill) all the processes involved in the deadlock.
-
-	This solution is surprisingly common.
-
-	It is one way to be certain that the deadlock cycle is broken.
-
-	The resources that these processes were holding will become available.
-
-	There is no need to determine a victim: kill 'em all and let root sort them out.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Mass Murder}
-
-	This solution, while easy to implement, may not solve the problem.
-
-	The circumstances that caused the deadlock may occur again.
-
-	If the deadlock were an unlikely situation caused by ``unlucky'' timing then it will probably not recur, or at least, will not recur for some time.
-
-	If $P_{1}$ and $P_{2}$ are deadlocked, however, is it really necessary to kill both?
-
-	If we killed only one, the other could proceed...
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Hello, Clarice...}
-
-	\begin{center}
-		\includegraphics[width=\textwidth]{images/mikkelsen.jpg}
-	\end{center}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Murder}
-
-	Perhaps instead of killing all processes involved in a deadlock, the operating system chooses to kill processes selectively.
-
-	Like preemption, selecting which process is the victim is important.
-
-	When the victim is killed, its resources are added to the available set and this will hopefully allow other processes to proceed.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Murder}
-	Run the deadlock detection algorithm again to determine if deadlock still exists.
-
-	If so, this strategy needs to be repeated.
-
-	Repeat until the logjam is broken.
-
-	Presumably kills fewer processes than the ``mass murder'' strategy.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Next Idea: Back we Go...}
-
-	\begin{center}
-		\includegraphics[width=\textwidth]{images/bttf.jpg}
-	\end{center}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Time Travel}
-
-	\alert{Rollback}: returning the state of a process to a saved state from an earlier time.
-
-	There must be a saved state that was created in advance of a problem. \\
-	\quad Otherwise there is no state to roll back to!
-
-	The saved state is called a \alert{checkpoint} and the act of creating and saving a checkpoint is called \alert{checkpointing}.
-
-	Checkpoints may be created periodically or before beginning a particular operation that requires a lot of resources.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Time Travel}
-
-	A checkpoint contains the memory image, including the call stack, and resource state of a process.
-
-	It is written to disk and will usually persist as long as the process executes.
-
-	You might already be somewhat familiar with the concept of rollbacks if you have used version control software like Subversion (\texttt{svn}) or Git (\texttt{git}).
-
-	Rollbacks are also common in databases.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Time Travel}
-
-	Unfortunately, rollback does not always succeed.
-
-	Sometimes moving the process back to an earlier state just moves it a few steps back on the same road that leads to the deadlock.
-
-	Rollback may be attempted a few times before trying another strategy.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Armageddon}
-
-	\begin{center}
-		\includegraphics[width=\textwidth]{images/defcon.jpg}
-	\end{center}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Armageddon}
-
-	Armageddon - the end of the world.
-
-	If a deadlock has occurred, sometimes the best thing to do is reboot the system.
-
-	This has a side effect of killing all processes, whether they are stuck or not, but is sometimes the best way to make sure that the system is in a valid state.
-
-	NASA's Spirit rover relies on this strategy if it detects a deadlock.
-
-	Like killing all affected processes, it is easy to implement, but is most disruptive.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Victim Selection}
-
-	If we have to choose a victim process for one of the strategies, e.g., termination, then we need a strategy for which process to choose.
-
-	We could choose randomly: kill a process and hope that that was enough.
-
-	Sometimes this will work, because it breaks the deadlock and the other processes can all proceed.
-
-	In general, however, making an informed decision is better.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{(Don't) Shoot Innocent Bystanders}
-
-	It is not necessary to choose one of the processes involved in the deadlock.
-
-	If $P_{1}$ and $P_{2}$ are deadlocked, $P_{3}$  may have an instance of a resource $P_{1}$ needs.
-
-	Killing $P_{3}$ will allow both $P_{1}$ and $P_{2}$ to proceed.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Victim Selection: An Optimization Problem}
-
-	Define a cost function for choosing each process, evaluate it, choose the lowest.
-
-	Some factors to consider:
-
-	\begin{enumerate}
-		\item The priority of the process.
-		\item How long the process has been executing.
-		\item How long is remaining in execution, if known.
-		\item What resources the process has (number and type).
-		\item Future resource requests, if known.
-		\item Whether the process is user-interactive or in the background.
-		\item How many times, if any, the process has been selected as a victim.
-	\end{enumerate}
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Geri and the Atrics}
-
-	Selection routines tend to favour older processes rather than younger ones.
-
-	This is not because older processes vote in higher numbers, but because it tends to be more expensive to restart an older process.
-
-	A process that has been running for a long time, if it is restarted, has to do a lot more work to get to the point where it was terminated than a younger process.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Geri and the Atrics}
-
-	If the oldest process were constantly the one selected, that process itself might never get to run to completion (starvation).
-
-	If the killing process is very aggressive then no tasks run to completion because each process, shortly after becoming the oldest, is killed.
-
-
-	Therefore, young processes tend to be the ones selected.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Keeping Track}
-
-	The final element in the list, keeping track of how many times a process has been victimized, is also there to prevent starvation.
-
-	The selection process very likely produces the same or similar results each time it is run, so it may happen that the same process is selected over and over again.
-
-	It may be advisable to take the number of rollbacks or terminations into account so that no process in particular is starved.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Miscarriages of Justice}
-
-	The deadlock detection algorithm we have chosen tends to be conservative.\\
-	\quad It will err on the side of saying that there is a deadlock.
-
-	The worst case is assumed: that processes take resources and keep them until the end of their execution.
-
-	We might detect a deadlock when there is none.
-
-	We may also, then, kill an innocent process in a system that is not actually deadlocked. Oops!
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{It's Okay to Make Mistakes}
-
-	It turns out that our deadlock detection algorithms do not have to be perfect if we have chosen an appropriate recovery strategy.
-
-	If killing the process and restarting it does not have unexpected side effects, then being selected does not have an impact on the correctness of the program.
-
-	... Only on how long it takes to execute.
-
-	For example, the victim process is a compiler.
-
-	If killed and started again, it takes slightly longer for the compile to finish, but there is no impact on the correctness of the binary.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Lifelock}
-
-\begin{center}
-	\includegraphics[width=0.7\textwidth]{images/lifelock.jpg}
-\end{center}
-
-No, wait, that's not quite correct.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Lifelock}
-
-\begin{center}
-	\includegraphics[width=0.5\textwidth]{images/zoidberg2.jpg}
-\end{center}
-
-Better.
-
-But we actually wanted to talk about Livelock.
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Livelock}
-
-	Ideally, our recovery strategy is effective: some threads continue.
+	Where possible, the compiler will try to turn these into uninterruptible hardware instructions.
 	
-	Unfortunately, sometimes we just end up at the same impasse again.
+	Otherwise a function that has locking will be used to implement the atomic nature.
+\end{frame}
+
+\begin{frame}
+	\frametitle{You Can't Take It With You}
 	
-	Deadlock recovery strategies are not the only way to end up in livelock.
+	These are, however, glib specific, and not necessarily available or portable.
 	
-	Imagine the dining philosophers, perfectly synchronized.
+	In the C11 (2011) standard, atomic types were finally introduced as part of the language specification. 
+	
+	In the specification, we see \texttt{type} as the type.
+	
+	In its place you would use an \texttt{int} for an integer. 
+	
+	A valid type is one that 1, 2, 4, or 8 bytes in length (integral or pointer).
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Atomic Operations}
+
+To set a value:
+\begin{lstlisting}[language=C]
+type __sync_lock_test_and_set( type *ptr, type value );
+\end{lstlisting}
+
+
+The following functions are used to swap two values, only if the old value matches the expected (i.e., what was provided as the second argument):
+
+\begin{lstlisting}[language=C]
+bool __sync_bool_compare_and_swap( type *ptr, type oldval, type newval );
+type __sync_val_compare_and_swap( type *ptr, type oldval, type newval );
+\end{lstlisting}
+
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Change and Return}
+
+The following functions perform the operation and return the \textit{old} value:
+\begin{lstlisting}[language=C]
+type __sync_fetch_and_add( type *ptr, type value );
+type __sync_fetch_and_sub( type *ptr, type value );
+type __sync_fetch_and_or( type *ptr, type value );
+type __sync_fetch_and_and( type *ptr, type value );
+type __sync_fetch_and_xor( type *ptr, type value );
+type __sync_fetch_and_nand( type *ptr, type value );
+\end{lstlisting}
+
+The following functions perform the operation and return the \textit{new} value:
+\begin{lstlisting}[language=C]
+type __sync_add_and_fetch( type *ptr, type value );
+type __sync_sub_and_fetch( type *ptr, type value );
+type __sync_or_and_fetch( type *ptr, type value );
+type __sync_and_and_fetch( type *ptr, type value );
+type __sync_xor_and_fetch( type *ptr, type value );
+type __sync_nand_and_fetch( type *ptr, type value );
+\end{lstlisting}
+
 
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Full of Sound and Fury, Signifying Nothing}
+\frametitle{Reading is... Fun?}
 
-	In real life, it is unlikely that $n$ threads executing on a general purpose operating system would achieve this sort of perfect lock-step.
-	
-	Even so, livelock can occur in long-running tasks.
+Interestingly, for x86 there is no atomic read operation. 
 
-	Problem: this is harder to detect than deadlock. Why?
+The (normal) read itself is atomic for 32-bit-aligned data. 
+
+This behaviour is specific to x86 and we try to avoid that.
+
+If we do rely on this, however, we could get an out-of-date value. 
+
+If you want to really be sure you did get the latest, you can use one of the above functions and add or subtract 0.
+
+
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+	\frametitle{Use Tool Appropriately}
+
+	\begin{lstlisting}[language=C]
+struct point {
+  volatile int x;
+  volatile int y;
+};
+__sync_lock_test_and_set( p1->x, 0 );
+__sync_lock_test_and_set( p1->y, 0 );
+
+/* Somewhere else in the program */
+__sync_lock_test_and_set( p1->x, 25 );
+__sync_lock_test_and_set( p1->y, 30 );
+\end{lstlisting}
+
+	Does this work?
+
 \end{frame}
 
 
 \begin{frame}
-\frametitle{Full of Sound and Fury, Signifying Nothing}
+	\frametitle{Use Tool Appropriately}
 
-	In deadlock, threads are known to be blocked and analysis tools (e.g., a debugger) can tell you at what statement those threads are blocked.
+	Although the set of each of \texttt{x} and \texttt{y} is atomic, the operation as a whole is not.
+
+	We could see invalid states, like (25, 0) or (0, 30).
 	
-	With livelock, it seems like the threads are running and working, but somehow no work is getting done. 
+\end{frame}
 
-	For this reason, a well-designed recovery strategies may have some sort of limit on the number of retries...
+
+\begin{frame}
+	\frametitle{You Spin Me Right Round...}
+
+	Another common technique for protecting a critical section in Linux is the \textit{spinlock}.
+
+	This is a handy way to implement constant checking to acquire a lock.
+
+	Unlike semaphores where the process is blocked if it fails to acquire the lock, a thread will constantly try to acquire the lock.
+
+	When would we want this behaviour?
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{When It's Worth It!}
+
+	It would be better to let another thread execute.
+
+	Except when the amount of time waiting on the lock might be small.
+
+	Specifically, less than it would take to block the process, switch to another, and unblock it when the value changes.
+
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Spinlock}
+
+	\begin{lstlisting}[language=C]
+spin_lock( &lock )
+    /* Critical Section */
+spin_unlock( &lock )
+\end{lstlisting}
+
+
+	In addition to the regular spinlock, there are \textit{reader-writer-spinlocks}.
+
+	Like the readers-writers problem discussed earlier, the goal is to allow multiple readers but give exclusive access to a writer.
+
+	\begin{center}
+		\begin{tabular}{l|l|l}
+			\textbf{Counter} & \textbf{Flag} & \textbf{Interpretation}                                     \\\hline
+			0                & 1             & The spinlock is released and available.                     \\
+			0                & 0             & The spinlock has been acquired for writing.                 \\
+			$n$ ($n > 0$)    & 0             & The spin lock has been acquired for reading by $n$ threads. \\
+			$n$ ($n > 0$)    & 1             & Invalid state.                                              \\
+		\end{tabular}
+	\end{center}
+
 
 \end{frame}
 

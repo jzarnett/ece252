@@ -2,258 +2,296 @@
 
 \begin{document}
 
-\lecture{ 29 --- Asynchronous I/O with select, poll }{\term}{Jeff Zarnett}
+\lecture{ 29 --- Event-Driven I/O with libevent }{\term}{Jeff Zarnett}
 
-\section*{Asynchronous (non-blocking) I/O}
-Consider some of the usual file read code:
+\section*{Event-Driven I/O with libevent}
 
-\begin{lstlisting}[language=C]
-int fd = open( "example.txt", O_RDONLY );
-int bytes_read = read( fd, buffer, num_bytes );
-close( fd );
-\end{lstlisting}
+We've now looked at a few different kinds of asynchronous I/O, including select/poll, cURL, and POSIX AIO. All of these seem to have some drawbacks, though. The libevent library is meant for high performance applications and scalable network servers. Instead of focusing now on whether an operation is blocking or not, we'll try to think about I/O as events: when something happens, take some action.
 
-As we discussed much earlier, the \texttt{read} call is blocking, as expected. So, your program waits for the I/O operation to be complete before continuing on to the next statements (whatever they are). This is sometimes, but not always, sensible. If you need the data in the next statement, you can't go on until the data is present.
-
-If you are waiting for the bus, do you stare off blankly into space while waiting for it to arrive? Probably not. More likely you pull out your phone and start to use it for something. Whether that is productive or not (e.g., answering a project e-mail or liking posts on Facebook) is up to you, but you are doing something and making use of the time.
-
-Our main solution until now is threads: if one thread gets blocked on the I/O the other ones can continue and is fine. But maybe you don't want to use threads, or maybe you can't due to: race conditions, thread stack size overhead, or limitations on the maximum number of threads. The last one might seem ridiculous, but in some embedded system you may not have the option to make new threads (or at least not as many as you want).
-
-Sometimes, also, your programming language (e.g., Javascript) doesn't allow you to make multiple threads and you really have no choice but to use asynchronous I/O. It's a useful tool to have in the toolbox so let's get into it.
-
-The simplest example:
+\paragraph{Getting ready.} The library supports a lot of different configuration options. Most of them are too advanced for consideration in this class, such as telling it how you want to handle fatal errors or override default memory allocation and deallocation behaviour. But the most important setup thing is that we need to configure it to use the pthreads library and functions. For this, the function is~\cite{libevent}:
 
 \begin{lstlisting}[language=C]
-int fd = open( "example.txt", O_RDONLY | O_NONBLOCK );
-int bytes_read = read( fd, buffer, num_bytes ); /* Returns instantly! */
-close( fd );
+int evthread_use_pthreads( )
 \end{lstlisting}
 
-If we opened the file in non-blocking, the \texttt{read} call returns instantly. Whether or not results are ready. Unfortunately, this doesn't work here. The \texttt{O\_NONBLOCK} option is not helpful, because this call says we should not wait for data when there is no data available. But a file \textit{always} has data available. It might take a long time to load it up from disk, but the data is there. Do we know any scenarios where we don't have data always available?
+It returns 0 on success and -1 on failure. There exists a matching Windows function, but obviously that doesn't work if running under Linux... This function is a composite of several configurations about locks and condition variables and threads, so there's no need to use the smaller ones. Just use this top level function and we're ready to go.
 
-Sure! Sockets. If we haven't received something, we would get blocked waiting for some data to arrive. But we can change that behaviour on a socket if we wish, by setting the socket to be nonblocking~\cite{getaddrinfo}:
+\paragraph{All your base...} Our goal is to handle events of some sort. Each event is associated with an \texttt{event\_base} structure, which is a container for a set of events and has some associated configuration. If locking is enabled, it's safe to use in multiple threads, though its loop can only be in one thread. So we might need multiple bases for multiple thread operations.
 
+We can choose what method we would like the event base to use check what events are ready. There are many, but the ones we are most familiar with are already here: select and poll. Other options include epoll, kqueue, dnvpoll, evport, win32~\cite{libevent}.
+
+To create an event base, we can do it in one of two ways:
 \begin{lstlisting}[language=C]
-sockfd = socket( PF_INET, SOCK_STREAM, 0 );
-fcntl( sockfd, F_SETFL, O_NONBLOCK );
+struct event_base* event_base_new( ); /* Create an event_base with default settings */
+struct event_base* event_base_new_with_config( const struct event_config* cfg ); /* Create with configuration */
+struct event_config* event_config_new( );
+void event_config_free( struct event_config* cfg );
 \end{lstlisting}
 
-This means that calls to \texttt{accept()}, \texttt{recv()}, or \texttt{recvfrom()} would not block. If you call those and there's no data to receive, you get back a return value of \texttt{-1} and \texttt{errno} is going to be either \texttt{EAGAIN} or \texttt{EWOULDBLOCK}. Sadly, the specification does not say which it would be, so the fully correct approach is to check for both. Not great, but it's how we are sure.
+Like with pthreads, the use of a configuration structure is optional. If we do want one, there are separate functions to allocate and to clean them up. The options allow us to say that we would like to avoid certain methods for checking on events and configure arcane options. We'll say that for the purposes of this course that default options are fine.
 
-Suppose that you are writing a server application that's going to listen on several sockets. This is a common enough scenario. You could have different threads listening on their individual sockets but -- see the reasoning above as to why we might not have that option. And we no longer have to!
-
-But if we are a server and there aren't any incoming requests, what exactly are we supposed to do with our time? If we just poll each socket using, for example, \texttt{accept()}, this amounts to tight polling and is CPU intensive and wastes the CPU's time. But we don't want to get blocked on a particular socket either, because what if it's not the one where the next packet arrives? What we need is a third option.
-
-\subsection*{Third option: \texttt{select()}} Our wish is granted. The third option is called \texttt{select()} -- it allows us to monitor a group of sockets, telling us about the state of each of them. A socket could be ready for a read, ready for a write (of small size -- you can't write a huge chunk to a socket without getting blocked at some point), or whether an exception has occurred. So actually, select works on three sets of sockets:
-
+To deallocate an event base, the (self-explanatory) function for that is:
 \begin{lstlisting}[language=C]
- int select( int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout );
+void event_base_free( struct event_base* base );
 \end{lstlisting}
 
-If we call this function, we'll get blocked until something happens on one of the sockets so that it becomes ``ready'' -- data is available to read, space is available to write, etc. or until we reach a timeout. While blocked, we could also get interrupted by something (e.g., a signal).
-
-The first parameter, \texttt{nfds}, is supposed to be the value of the highest number file descriptor in any of the three sets plus 1. So. It has come to this. One of the problems with \texttt{select()} is that it is pretty... arcane. According to the documentation, the reason why it is this, is because \texttt{select()} will scan through all the file descriptors from 0 up to \texttt{nfds-1} to figure out if we care about them.
-
-What's this about? Well, the \texttt{fd\_set} structure can have up to 1024 file descriptors, and is actually implemented as a bitfield; by specifying the highest file descriptor that we are interested in, the kernel can stop looking once we reached the last one (and the \texttt{fd\_set} structure doesn't have to be a linked list or array or anything large!)~\cite{apunix}.
-
-Well, we were going to have to figure out what the \texttt{fd\_set} means anyway. It represents a set of file descriptors, just as the name says.  There are then four functions for manipulating a set:
-
-\begin{lstlisting}
-void FD_ZERO( fd_set *set ); /* Clear the set */
-void FD_SET( int fd, fd_set *set ); /* Add fd to the set */
-void FD_CLR( int fd, fd_set *set ); /* Remove fd from the set */
-int  FD_ISSET( int fd, fd_set *set); /* Tests if fd is a part of the set */ 
-\end{lstlisting}
-
-When we create a new set, we should first initialize it with a \texttt{FD\_ZERO} call. That could also be used to reset it, if desired, at some later point. Then we can add file descriptors that we want to have. To add one, use \texttt{FD\_SET} with the file descriptor to add; to remove one that has been added, use \texttt{FD\_CLR} with the file descriptor to remove.
-
-But that last one, \texttt{FD\_ISSET}, is a little different. It's not as if we would forget whether we put a file descriptor in the set. It's really for us to see what happens after \texttt{select()} is called -- we can find out whether a given file descriptor is in a particular set or not.
-
-The \texttt{readfds} are obviously sockets we are interested in reading from and \texttt{writefds} are accordingly those we are interested in writing from. But what about the \texttt{exceptfds} -- this isn't Java, it's not like we're going to get a \texttt{SocketDoesNotFeelLikeDoingWorkRightNowException}. No, this is for sockets that are in an exceptional state, which usually means there is Out-Of-Band (OOB) data on a TCP socket. We didn't cover this earlier in network communication and we will also not be going into this subject now. But you can find out if a socket is in that state if you have a reason.
-
-We don't have to use all three of \texttt{readfds}, \texttt{writefds}, and \texttt{exceptfds} in a call to \texttt{select()} if we do not need them all. If we have only read sockets, we put them all in the \texttt{readfds} set and can just give \texttt{NULL} or empty \texttt{fd\_set}s in for the other parameters~\cite{getaddrinfo}.
-
-Finally, there is a timeout parameter: we can specify a maximum amount of time we  are willing to wait. If nothing happens before the timeout amount of time occurs, then \texttt{select()} returns. The format of this is a fairly simple structure \texttt{struct timeval}:
-
+Let's consider a brief example, then, in which we can ask on one of our servers what is available~\cite{libevent}:
 \begin{lstlisting}[language=C]
-struct timeval {
-  long tv_sec; /* seconds */
-  long tv_usec; /* microseconds */
-};
-\end{lstlisting}
+#include <stdlib.h>
+#include <stdio.h>
+#include <event2/event.h>
 
-If both fields of the \texttt{struct timeval} are zero, then \texttt{select()} returns immediately; if the pointer to it is \texttt{NULL} then there is no timeout and we will wait as long as it takes for something -- anything -- to happen.
+int main( int argc, char** argv ) { 
 
-When \texttt{select()} returns, however that happened, some if not all of the parameters other than \texttt{nfds} got updated (argh). The file descriptors passed in are modified in-place to see if they changed status.  And the \texttt{struct timeval} parameter may (but also may not) be updated to reflect how much time was left before the timeout. Because different systems may or may not change this value, it is not safe to re-use and should be overwritten if you plan to use that structure again.
-
-After select has returned, then we check the file descriptors in our sets. All of them. Yes, really. The function returns when there is something to do -- but we aren't told what socket is ready. So we would need to check each socket to see if, for example, it's ready for reading (if that's the plan). To do that we check \texttt{FD\_ISSET} with the socket and the set to see if it's in the desired state.
-
-Because the sets of file descriptors may have been modified, you probably need to rebuild them after each call, if you plan to use them again. If you were waiting, for example, three sockets, not all of them necessarily became ready at the same time. So if you want to go on waiting for those three, you will need to put them in a set again.
-
-Let's imagine a brief example where we have a server that is going to listen on some different sockets for different services, imaginatively called service1, service2, and service3.
-
-\begin{lstlisting}[language=C]
-void listen_for_connections( int service1_sock, int service2_sock, int service3_sock ) {
-  int nfds = 1 + (service1_sock > service2_sock
-    ? service1_sock > service3_sock ? service1_sock : service3_sock
-    : service2_sock > service3_sock ? service2_sock : service3_sock);
-    
-  fd_set s;
-  struct timeval tv;
-  printf( "Going to start listening for socket events.\n" );
-  
-  while( !quit ) {
-  
-    FD_ZERO( &s );
-    FD_SET( service1_sock, &s );
-    FD_SET( service2_sock, &s );
-    FD_SET( service3_sock, &s );
-    
-    tv.tv_sec = 30;
-    tv.tv_usec = 0;
-  
-    int res = select( nfds, &s, NULL, NULL, &tv );
-    if ( res == -1 ) { /* An error occurred */
-      printf( "An error occurred in select(): %s.\n", strerror( errno ) );
-      quit = 1;
-    } else if ( res == 0 ) { /* 0 sockets had events occur */
-      printf( "Still waiting; nothing occurred recently.\n" );
-    } else { /* Things happened */
-      if ( FD_ISSET( service1_sock, &s ) {
-        service1_activate( ); 
-      }
-      if ( FD_ISSET( service2_sock, &s ) {
-        service2_activate( ); 
-      }
-      if ( FD_ISSET( service3_sock, &s ) {
-        service3_activate( ); 
-      }
-  }
+    int i;
+    const char **methods = event_get_supported_methods();
+    printf("Starting Libevent %s.  Available methods are:\n",
+            event_get_version());
+    for (i=0; methods[i] != NULL; ++i) {
+        printf("    %s\n", methods[i]);
+    }   
+    return 0;
 }
 \end{lstlisting}
 
-You'll notice that we check each of the sockets individually -- more than one of them could become ready at once. Now, the \texttt{activate()} calls there could take some nontrivial time, and if sockets receive data in the meantime then on the next iteration of the loop then \texttt{select()} will return immediately because data is waiting.
+This produces as output on \texttt{ecetesla0} (at the time of writing):
+\begin{verbatim}
+jzarnett@ecetesla0:~/ece252$ gcc -std=c99 -g -levent -o le1 le1.c
+jzarnett@ecetesla0:~/ece252$ ./le1 
+Starting Libevent 2.1.8-stable.  Available methods are:
+    epoll
+    poll
+    select
+\end{verbatim}
 
-This represents a fairly simple scenario, though, where we are just waiting for \texttt{accept()} on the three services where we send back as simple response and that's the end of it. But if the connections we were looking at are supposed to stay open for some period of time, such as when there is occasional communication, then we would also have to add and remove sockets from the sets as connections were opened and closed. Managing the set of sockets in such a scenario is non-trivial, because each call to \texttt{select} can (and usually does) change the sets.
-
-\paragraph{Chat Server.} The more complicated example in~\cite{getaddrinfo} is about a chat program (if you ever used IRC you have a pretty good idea of how this would work). When people want to join the chat room they send a message to a server. The server accepts and opens the connection and adds the client to the chat room. But people don't always talk. So if nothing is happening right now there's nothing to send. So the server can use \texttt{select()} to keep an eye open for when someone has said something. Either way, we would wait for something to happen, either on one of the sockets from a current client, or the socket for accepting incoming connections.
-
-If it's the socket for accepting incoming connections that activated then accept the incoming connection, and add the new socket to the list that we are going to listen to. A chat server might choose to send a notification to other clients to let them know that a new person has joined the chat. That would be a write to the sockets that represent connected clients.
-
-If another socket activated, most likely someone had something to say. So we can read from the socket that is ready to read and pass on the message that we received to all the other clients. Except, sometimes there isn't one! A socket will show up as being ready for reading if it has closed. But the call to read will return 0 (or a negative number) if the socket has closed (i.e., the client has disconnected). If the connection has been closed, then we should remove that socket from the list that we are interested in. And also we sometimes send a message telling other clients that a person has left the chat.
-
-And when a message is received from a client, then of course the thing for the server to do is to send it on to the other clients, by writing to their sockets so the message is transmitted to them. The clients are waiting to receive messages and will then show them to the user when someone says something. And then look at that: you're talking to other people on the internet! Just remember not to give out your personal information to strangers.
-
-Obviously there are some other considerations that come with managing a chat server. There might be periodic connection-keep-alive kind of messages so that clients remain connected even if nobody is talking right now. And you might want the ability to kick out people who are spammers and perhaps even ban them, amongst other things. But the goal of this explanation wasn't really to learn how to write a chat server in great detail -- just to give an example of how you could use \texttt{select} to write something useful.
-
-\paragraph{Slightly different, mostly the same: \texttt{pselect}.}
-There is also \texttt{pselect()} which has the signature:
+If you actually want to know what method will be used internally~\cite{libevent}:
 \begin{lstlisting}[language=C]
-int pselect( int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, 
-            const struct timespec *timeout, const sigset_t *sigmask );
-\end{lstlisting}
+#include <stdlib.h>
+#include <stdio.h>
+#include <event2/event.h>
 
-The signature is different in two ways. The first is that instead of \texttt{struct timeval} it is a \texttt{struct timespec}, which is slightly different in its meaning, and also will never be modified by the call to \texttt{pselect}:
+int main( int argc, char** argv ) { 
+    struct event_base *base;
+    enum event_method_feature f;
 
-\begin{lstlisting}[language=C]
-struct timespec {
-  long tv_sec; /* seconds */
-  long tv_nsec; /* nanoseconds */
-};
-\end{lstlisting}
-
-Yes, the only real difference is that it is seconds and nanoseconds, rather than seconds and microseconds. The other parameter is about setting up a signal mask. We discussed the signal mask much earlier on when we talked about signals for interprocess communication. This is the same, but it allows us to change the signal mask atomically in the same step as the call to select, so we can choose what signals are allowed to wake us up while we are waiting for something to happen. Given appropriate allocation and initialization of the values, the call:
-
-
-\begin{lstlisting}[language=C]
-ready = pselect( nfds, &readfds, &writefds, &exceptfds, timeout, &sigmask );
-\end{lstlisting}
-
-is equivalent to an atomic operation that does all of:
-
-\begin{lstlisting}[language=C]
-sigset_t origmask;
-pthread_sigmask( SIG_SETMASK, &sigmask, &origmask );
-ready = select( nfds, &readfds, &writefds, &exceptfds, timeout );
-pthread_sigmask( SIG_SETMASK, &origmask, NULL );
-\end{lstlisting}
-
-If we had tried to do the multi-step sequence then there is always the possibility that something (e.g., a signal!) could happen in between changing the signal mask and the call to \texttt{select}. The syntax here for changing the signal mask is slightly different than what we have seen before, but this is the POSIX specification implementation of the \texttt{sigprocmask()} call. So, it works the same as we have seen earlier.
-
-\paragraph{I only wanted a nap...} It is possible to ``misuse'' a call to \texttt{select} or \texttt{pselect} as a way to make a very portable call to put the current thread to sleep. Some of the calls to sleep functions don't translate well to other UNIX-like systems, especially if you want a very short sleep -- but \texttt{select} is in the standard! So you can do this by calling \texttt{select} with all three sets empty and \texttt{nfds} at zero and whatever timeout you wish. Clever!
-
-\subsection*{Alternative: \texttt{poll()}}
-There's a slightly different function that is very much like \texttt{select()} and it is called \texttt{poll()}. Like its cousin, it is used to watch file descriptors and see if any of them are ready for an I/O operation. The signature is:
-
-\begin{lstlisting}[language=C]
-int poll( struct pollfd *fds, nfds_t nfds, int timeout );
-\end{lstlisting}
-
-The signature is a lot simpler, that's for sure. The first argument is an array of \texttt{struct pollfd}, which is our structure for passing in the sockets we wish to monitor. The second parameter is \texttt{ndfs} which is just the number of items in the array. Finally, \texttt{timeout} is the number of milliseconds to wait before returning with zero meaning don't wait at all, and a negative number meaning wait infinitely.
-
-Alright, let's look at the structure:
-
-\begin{lstlisting}[language=C]
-struct pollfd {
-  int fd;        /* file descriptor */
-  short events;  /* requested events */
-  short revents; /* returned events */
-};
-\end{lstlisting}
-
-Someone found a use for a \texttt{short} after all! Just kidding, hardware people.
-
-The first parameter is obviously the file descriptor to watch. The second is where we specify what events we want to wait for on this file descriptor, and the third parameter is set by the kernel so we can find out what happened.
-
-What can we add? You can look for data that's ready to read with \texttt{POLLIN}, a socket where you can write without blocking with \texttt{POLLOUT}, and an exception (as above) with \texttt{POLLPRI}. These can be combined with the bitwise OR operator if you want more than one.
-
-The return value will be constructed as a bitwise OR of the fields as well, with the possibility that you could have one of these other return values: \texttt{POLLERR} if an error occurred, \texttt{POLLHUP} if the other side ended the connection, or \texttt{POLLNVAL} if there's a problem with the socket (e.g., uninitialized)~\cite{getaddrinfo}.
-
-As with \texttt{select}, when \texttt{poll} returns we have to check which file descriptors have had an event occur and then decide what to do with them. Let's rewrite the \texttt{select} example with three services to see its \texttt{poll} equivalent:
-
-\begin{lstlisting}[language=C]
-void listen_for_connections( int service1_sock, int service2_sock, int service3_sock ) {
-  struct pollfd pollfds[3];
-  pollfds[0].fd = service1_sock;
-  pollfds[0].events = POLLIN;
-  pollfds[1].fd = service2_sock;
-  pollfds[1].events = POLLIN;
-  pollfds[2].fd = service3_sock;
-  pollfds[2].events = POLLIN;
- 
-  int timeout = 30 * 1000; /* 30 seconds in ms */ 
-  printf( "Going to start listening for socket events.\n" );
-  
-  while( !quit ) {
-    
-    int res = poll( &pollfds, 3, timeout );
-    if ( res == -1 ) { /* An error occurred */
-      printf( "An error occurred in select(): %s.\n", strerror( errno ) );
-      quit = 1;
-    } else if ( res == 0 ) { /* 0 sockets had events occur */
-      printf( "Still waiting; nothing occurred recently.\n" );
-    } else { /* Things happened */
-      if ( pollfds[0].revents & POLLIN ) {
-        service1_activate( ); 
-      }
-      if ( pollfds[1].revents & POLLIN ) {
-        service2_activate( ); 
-      }
-      if ( pollfds[2].revents & POLLIN ) {
-        service3_activate( ); 
-      }
-  }
+    base = event_base_new();
+    if (!base) {
+        puts("Couldn't get an event_base!");
+    } else {
+        printf("Using Libevent with backend method %s.",
+                event_base_get_method(base));
+        f = event_base_get_features(base);
+        if ((f & EV_FEATURE_ET))
+            printf("  Edge-triggered events are supported.");
+        if ((f & EV_FEATURE_O1))
+            printf("  O(1) event notification is supported.");
+        if ((f & EV_FEATURE_FDS))
+            printf("  All FD types are supported.");
+        puts("");
+    }   
+    return 0;
 }
 \end{lstlisting}
 
+Running this produces:
+\begin{verbatim}
+jzarnett@ecetesla0:~/ece252$ ./le2
+Using Libevent with backend method epoll.  
+ Edge-triggered events are supported.  
+ O(1) event notification is supported.
+\end{verbatim}
 
-\paragraph{Comparing the two.}
-Ultimately both functions do the same job; it is only the specifics of the API call that make the difference. You might find one or the other to be better, and in particular it is nice that \texttt{poll} doesn't ask you to find the maximum file descriptor or manage three sets or have to rebuild the sets on each iteration of the loop.
+Wait, we didn't learn about epoll... Do we need to? Well, no -- the great thing about libevent is that we don't have to think about the details of the backend -- whatever implementation is used is not really our concern.
 
-Both \texttt{select} and \texttt{poll} are slow, unfortunately. They have linear characteristics: the more file descriptors you give them the slower they get; if you get up to a hundred file descriptors, roughly, then you end up actually spending significant CPU time trying to figure out which of the sockets changed~\cite{pollvselect}.
+\paragraph{Event notification.} The goal is to watch for some events, and for that we need a definition of an event. An event happens on a file descriptor, as with all the other I/O methods we have discussed.
 
-If we want to do things more efficiently we will want to use a different tool, specifically \texttt{libevent}, but we aren't quite done with network communication. After sockets, we learned about cURL, and it turns out we can use nonblocking I/O there as well!
+An event has a lifecycle: it is created; when it becomes associated with an event base it is said to be initialized. When you add it, it is pending, which is to say that we are waiting for the event to happen. If the event that we're looking for does occur when the event is pending, then a user-defined callback runs. If we don't want to wait for an event anymore we can use delete to make an event non-pending; a non-pending event can be re-added if desired~\cite{libevent}.
 
+To create and destroy an event:
+
+\begin{lstlisting}[language=C]
+typedef void (*event_callback_fn)( evutil_socket_t fd, short what, void* arg )
+struct event* event_new( struct event_base* base, evutil_socket_t fd, short what, event_callback_fn cb, void* arg )
+void event_free( struct event* event )
+\end{lstlisting}
+
+The first line in there is the definition that the callback function must take: void return type with three parameters. We should be familiar enough with this sort of thing by now.
+
+The event creation function tells you everything you need to provide when creating an event. The definition of the structure is kind of unimportant to us because we don't access its internals directly. That's fine with us. Anyway, the first argument is the base that this event will be associated with. The second argument of type \texttt{evutil\_socket\_t} is really an \texttt{int} (in non-Windows system anyway) and we can just put in our regular file descriptor here. The \texttt{what} parameter is how we specify the kind of thing we want to be notified of (see below). And finally, the last two parameters are the callback function and our user-defined argument to that callback function.
+
+About that \texttt{what} parameter: hey look, we found a use for \texttt{short}! Only took half your degree... Anyway, we use this to say what we're looking for, and it's some combination of the following options (as defined by the library):
+
+\begin{lstlisting}[language=C]
+#define EV_TIMEOUT      0x01
+#define EV_READ         0x02
+#define EV_WRITE        0x04
+#define EV_SIGNAL       0x08
+#define EV_PERSIST      0x10
+#define EV_ET           0x20
+\end{lstlisting}
+
+Most of them are self explanatory, but some warrant a bit of explanation. The timeout flag is ignored when setting what you are interested in, but can be returned as a result. The ``ET'' one indicates that the event should be edge-triggered, which matters for read and writes (i.e., a change in readiness is reported rather than readiness). The ``persist'' one means that when an event is triggered it's automatically ready to trigger again immediately.
+
+They can be combined, as we've seen previously for say, an open system call. If you're interested in watching for a read and a write, combine them using \texttt{|} (bitwise OR) just as we've done for other scenarios: \texttt{EV\_READ | EV\_WRITE}.
+
+If you want the event itself to be the \texttt{void*} argument passed to the callback function, that can be done here as well. Normally this would not work, because the event doesn't exist yet. But there's a workaround for that, a function \texttt{event\_self\_cbarg()} that does a little magic for you~\cite{libevent}.
+
+Deallocating an event is pretty self explanatory as well. It is okay to call this even on an event that is pending or active, according to the library docs, because it checks this and will deactivate or make non-pending any event that gets freed using the \texttt{event\_free()} call.
+
+Alright, so we have created an event. When we're ready to start watching we can add the event, and when we're done watching we can remove it, with the following functions:
+\begin{lstlisting}[language=C]
+int event_add( struct event* ev, const struct timeval* tv );
+int event_del( struct event* ev );
+\end{lstlisting}
+
+We will see an example soon, but first we are missing one more important thing: dispatching the events!
+
+\paragraph{Let's get started.}
+There are two ways to dispatch events, the simple way and the hard way:
+\begin{lstlisting}[language=C]
+int event_base_dispatch( struct event_base* base);
+int event_base_loop(struct event_base *base, int flags);
+\end{lstlisting}
+
+The easy way is the same as the hard way with no flags set, so the hard way actually isn't all that hard. The flags are~\cite{libevent}:
+\begin{lstlisting}[language=C]
+#define EVLOOP_ONCE             0x01
+#define EVLOOP_NONBLOCK         0x02
+#define EVLOOP_NO_EXIT_ON_EMPTY 0x04
+\end{lstlisting}
+
+Once means that we just wait for some events to become active, then turn active events until there are no more, then return. The non-blocking option means we won't wait for events to trigger: we'll check if they're ready, run them if so, and skip them if not. And normally the behaviour is to exit from the loop when there are no more events pending or active; you can turn that off with the no-exit flag. If you plan to use that, you can manually exit the loop with one of:
+
+\begin{lstlisting}[language=C]
+int event_base_loopexit(struct event_base* base, const struct timeval* tv);
+int event_base_loopbreak(struct event_base* base);
+\end{lstlisting}
+
+The exit function says to stop after some time has elapsed; if any events are active we process them before exiting. The break function says stop as soon as we've finished the currently-being-processed active event but not any other ones that are active. Typically this would occur in a callback function of some sort, when we know we are done.
+
+Now, that code example that was delayed~\cite{libevent}:
+\begin{lstlisting}[language=C]
+void cb_func( evutil_socket_t fd, short what, void *arg ) {
+        const char *data = arg;
+        printf("Got an event on socket %d:%s%s%s%s [%s]",
+            (int) fd,
+            (what&EV_TIMEOUT) ? " timeout" : "",
+            (what&EV_READ)    ? " read" : "",
+            (what&EV_WRITE)   ? " write" : "",
+            (what&EV_SIGNAL)  ? " signal" : "",
+            data);
+}
+
+void main_loop( evutil_socket_t fd1, evutil_socket_t fd2 ){
+        struct event *ev1, *ev2;
+        struct timeval five_seconds = {5,0};
+        struct event_base *base = event_base_new();
+
+        /* The caller has already set up fd1, fd2 somehow, and make them nonblocking. */
+
+        ev1 = event_new(base, fd1, EV_TIMEOUT|EV_READ|EV_PERSIST, cb_func,(char*)"Reading event");
+        ev2 = event_new(base, fd2, EV_WRITE|EV_PERSIST, cb_func, (char*)"Writing event");
+
+        event_add(ev1, &five_seconds);
+        event_add(ev2, NULL);
+        event_base_dispatch(base);
+}
+\end{lstlisting}
+
+Alright, this demonstrates how to create an event base, create some events, add them to the pending list, and begin dispatching (waiting for events to occur). Only one thread can be dispatching a given event base at a time, but this is why we can have multiple bases.
+
+\paragraph{Cleaning up.} Finally, libevent has some global structures that are initialized once. When we're all completely done with everything, there is a global cleanup function available~\cite{libevent}:
+\begin{lstlisting}[language=C]
+void libevent_global_shutdown( )
+\end{lstlisting}
+
+This is not meant to deallocate anything that was the return value of a libevent function; those should be cleaned up normally. This should be the last function called, once all libevent stuff is done, otherwise unpredictable behaviour may occur.
+
+\paragraph{Buffered events.} For a slightly more advanced scenario, we might want to wait until we have a significant chunk of data before we're ready to process it. If we're receiving some data one character at a time, it's very wasteful to fire an event every time a whole character is received. Instead, it's better to have the event happen when a condition is fulfilled, such as having enough data available.
+
+The library does support this: \texttt{bufferevents}! A normal callback is triggered when the underlying transport (e.g., socket) is ready to be read or written; a buffer event takes place when enough data has been read or written. Buffer events really only work for TCP communication, so we'll be back to sockets. This is, to some extent, expected, because our general view of files is that they're always ``ready'', even if a read takes time to be carried out.
+
+Each buffer event has two buffers: the input and output buffer. There are also two callbacks, a read and a write callback. By default, the read callback happens whenever any data is received, and the write callback is called whenever enough data from the output buffer is sent~\cite{libevent}. These can be overridden. But you can see why this would make some sense: whenever a chunk of data is received we put it in a buffer until all the data is there; we can send data when enough data has accumulated to be sent.
+
+Every buffer event has four ``watermarks'', which are the levels that trigger some sort of happening~\cite{libevent}:
+\begin{itemize}
+	\item Read low-water mark: when a read occurs that results in the buffer being at least this full, the read callback triggers. By default, it is 0, so every chunk of data received starts the callback.
+	\item Read high-water mark: when a read occurs that leaves the buffer at this level, no more data will be copied into the buffer until data has been taken out of the buffer to get it below the level. By default, this is unlimited so libevent will try to fill up the buffer as much as possible.
+	\item Write low-water mark: when a write occurs to get to this level, the write callback occurs. This defaults to 0, so the write callback only runs if the output buffer is emptied.
+	\item Write high-water mark: strangely, does not do what you expect. It can be used for some special meaning situations, though.
+\end{itemize}
+
+We'll take a look at a buffer events example for socket communication. This means we need to know how to create a buffer event, and how to use it on a socket.
+
+\begin{lstlisting}[language=C]
+struct bufferevent* bufferevent_socket_new( struct event_base* base, evutil_socket_t fd, 
+    enum bufferevent_options options );
+void bufferevent_free( struct bufferevent* bev );
+
+typedef void (*bufferevent_data_cb)(struct bufferevent* bev, void* ctx);
+typedef void (*bufferevent_event_cb)(struct bufferevent* bev, short events, void* ctx);
+void bufferevent_setcb(struct bufferevent* bufev, bufferevent_data_cb readcb, bufferevent_data_cb writecb, bufferevent_event_cb eventcb, void* cbarg);
+
+int bufferevent_socket_connect( struct bufferevent* bev, struct sockaddr* address, int addrlen );
+\end{lstlisting}
+
+Creating a buffer event structure is fairly straightforward: specify which event base it should belong to, the file descriptor, and then you get to choose some options. There are multiple options, but the two we will consider are as follows. The first is  \texttt{BEV\_OPT\_CLOSE\_ON\_FREE}: close the socket when the buffer event is deallocated. The other is \texttt{BEV\_OPT\_THREADSAFE}: configure the buffer event to use locks, so it can be accessed concurrently from multiple threads.
+
+The deallocation function is totally self-explanatory.
+
+The definitions of data callbacks and event callbacks are a bit more complex. The return type is void, and the arguments are the buffer event structure -- sensible, and then there's a divergence. The data callback takes only some argument; it's the one provided by the user when setting up the callback (see below). The event callback has the extra parameter of events which works as it did earlier (where you say what events you are interested in).
+
+Setting the callback is relatively self explanatory: specify the buffer event, the read callback (NULL if you don't want one, or to clear one), the write callback (again, NULL if you don't want one), and the event callback. Finally, there is the callback argument (of any type) and this argument is shared between all callbacks.
+
+Then there is the connect function. This function takes the buffer event that you want to configure, and the address to connect to, as well as the size of the address. So that part is easy.
+
+Let's consider an example from~\cite{libevent} that shows how to use the buffer events:
+\begin{lstlisting}[language=C]
+#include <event2/event.h>
+#include <event2/bufferevent.h>
+#include <sys/socket.h>
+#include <string.h>
+
+void eventcb(struct bufferevent *bev, short events, void *ptr) {
+    if (events & BEV_EVENT_CONNECTED) {
+         /* We're connected to 127.0.0.1:8080.   Ordinarily we'd do
+            something here, like start reading or writing. */
+    } else if (events & BEV_EVENT_ERROR) {
+         /* An error occured while connecting. */
+    }
+}
+
+int main_loop( ) {
+    struct event_base *base;
+    struct bufferevent *bev;
+    struct sockaddr_in sin;
+
+    base = event_base_new();
+
+    memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = htonl(0x7f000001); /* 127.0.0.1 */
+    sin.sin_port = htons(8080); /* Port 8080 */
+
+    bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
+
+    bufferevent_setcb(bev, NULL, NULL, eventcb, NULL);
+
+    if (bufferevent_socket_connect(bev,
+        (struct sockaddr *)&sin, sizeof(sin)) < 0) {
+        /* Error starting connection */
+        bufferevent_free(bev);
+        return -1;
+    }
+
+    event_base_dispatch(base);
+    return 0;
+}
+\end{lstlisting}
+
+This sets up a callback that doesn't do much, but that's fine for the purpose of the example. We set up the socket connection stuff - the address and port. Then we create the buffer event, with the file descriptor as -1. This placeholder value means that at the time the buffer event is created, the file descriptor is not yet set. That makes sense, because the socket hasn't been opened yet. There's no file descriptor to set yet. Then we'll configure the callback, and launch the connect call. When the connection is established, the callback runs.
+
+By no means have we covered every possible option or tool in the libevent library. It is quite powerful and quite effective at its job. But now we have an introduction to it, and we've seen a lot of ways to do asynchronous I/O.
 
 \input{bibliography.tex}
 

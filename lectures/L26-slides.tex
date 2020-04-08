@@ -1,6 +1,6 @@
 \input{configuration}
 
-\title{Lecture 26 --- The Byzantine Generals Problem }
+\title{Lecture 26 --- Asynchronous I/O with select, poll }
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
@@ -17,708 +17,645 @@
 
 
 \begin{frame}
-	\frametitle{Istanbul was Constantinople}
+	\frametitle{Read Me A Book}
+
+	As we discussed much earlier, the \texttt{read} call is blocking, as expected.
+
+	So, your program waits for the I/O operation to be complete before continuing on to the next statements (whatever they are).
+
+	This is sometimes, but not always, sensible.
+
+	If you need the data in the next statement, you can't go on until it's there.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Waiting for the Bus}
 
 	\begin{center}
-		\includegraphics[width=\textwidth]{images/byzantium}
+		\includegraphics[width=0.9\textwidth]{images/thebus.jpg}
 	\end{center}
 
-	Credit: Wikipedia user Cplakidas
-
+	If you are waiting for the bus, do you stare off blankly into space while waiting for it to arrive?
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Unreliable, Not Malicious}
+	\frametitle{Haha, As If}
 
-	Where this crosses over into the realm of programming is in dealing with the unreliable nature of systems.
-
-	It's not that we think that somewhere out there one of the processes in the system is malicious and trying to make the system fail.
-
-	They have bugs, not ill intent.
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{The Dude Abides}
 	\begin{center}
-		\includegraphics[width=0.5\textwidth]{images/opinion.jpg}
+		\includegraphics[width=0.9\textwidth]{images/textbus.png}
 	\end{center}
 
-	We need a way to deal with the fact that not everyone agrees and sometimes messages get mixed up.
+	More likely you pull out your phone and start to use it for something.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Organization of the Army}
+	\frametitle{We Have Threads!}
 
-	There is a \alert{General} who is giving the orders.
+	Our main solution until now is threads!
 
-	There are also $n$ \alert{Lieutenants} who each are commanding a group of the Empire's troops.
+	If one thread gets blocked on the I/O the other ones can continue and is fine.
 
-	The individual troops just do what they're told so there's no further concern for their actions.
+	But maybe you don't want to use threads, or maybe you can't for a reason?
 
-	The lieutenants can communicate with one another through messages, and they get their orders from the general.
+	Some languages give you no choice, like JavaScript!
 
-	All of the lieutenants have to work together for their plan to be a success, otherwise there is chaos.
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Jump To It}
+
+	The simplest example:
+
+	\begin{lstlisting}[language=C]
+int fd = open( "example.txt", O_RDONLY | O_NONBLOCK );
+int bytes_read = read( fd, buffer, num_bytes ); /* Returns instantly! */
+close( fd );
+\end{lstlisting}
+
+	That was easy, right?
+
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{This is Easy, Right?}
+	\frametitle{There's a Catch}
 
-	No problem, you might imagine. The general tells the lieutenants what to do and they do it!
+	If we opened the file in non-blocking, the \texttt{read} call returns instantly.
 
-	And if one of the lieutenants does the wrong thing, that lieutenant is a traitor.
+	Whether or not results are ready.
+
+	The \texttt{O\_NONBLOCK} option is not helpful, because this call says we should not wait for data when there is no data available.
+
+	But a file \textit{always} has data available.
+
+	Do we know any scenarios where we don't have data always available?
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Sockets!}
+
+	If we haven't received data, we'd get blocked waiting for some data to arrive.
+
+	But we can change that behaviour on a socket if we wish, by setting the socket to be nonblocking:
+
+	\begin{lstlisting}[language=C]
+sockfd = socket( PF_INET, SOCK_STREAM, 0 );
+fcntl( sockfd, F_SETFL, O_NONBLOCK );
+\end{lstlisting}
+
+	This means that calls to \texttt{accept()}, \texttt{recv()}, or \texttt{recvfrom()} would not block.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Nonblocking Socket}
+
+	If you call those and there's no data to receive, you get back a return value of \texttt{-1} and \texttt{errno} is going to be either \texttt{EAGAIN} or \texttt{EWOULDBLOCK}.
+
+	Sadly, the specification does not say which it would be, so the fully correct approach is to check for both.
+
+	Not great, but it's how we are sure.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Server Setup}
+
+	You are writing a server application that's going to listen on several sockets.
+
+	This is a common enough scenario.
+
+	You could have different threads listening on their individual sockets but -- see the reasoning above as to why we might not have that option.
+
+	And we no longer have to!
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Wasting Our Time?}
+
+	But if we are a server and there aren't any incoming requests, what exactly are we supposed to do with our time?
+
+	If we just poll each socket using, for example, \texttt{accept()}, this amounts to tight polling and is CPU intensive and wastes the CPU's time.
+
+	What we need is a third option.
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Select...}
 
 	\begin{center}
-		\includegraphics[width=0.4\textwidth]{images/vader-traitor.jpeg}
-	\end{center}
-
-	Right?
-\end{frame}
-
-\begin{frame}
-	\frametitle{Betrayal!}
-
-	But it's not so simple, because the general can be disloyal too.
-
-	Suppose you are a disloyal general.
-
-	Your Emperor has commanded you to attack, but you want the attack to fail, but also seem like it's not your fault.
-
-	What do you do?
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Contradictory Orders It Is}
-
-	You can issue different orders to different lieutenants, they will be all confused and uncoordinated.
-
-	Oh gee darn, I guess the attack didn't go as planned!
-
-	And you can blame the lieutenants who are now dead for going too early, or something.
-
-	It's not like they can defend themselves now...
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Assessing the General's Loyalty}
-
-	A loyal general sends the same message to all lieutenants and a disloyal one sends different messages to different lieutenants.
-
-	It's key to remember that ``loyal'' really means ``functioning'' and ``disloyal'' means ``faulty''.
-
-	It's also worth noting that being in one state or the other is not permanent.
-
-	A functioning unit can be damaged, a malfunctioning one can be repaired, or a problem can be transient.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{How Much Uncertainty?}
-
-	One of the key decisions is about how much disloyalty your system can tolerate.
-
-	Given enough bad actors, things will go wrong. If everyone is disloyal, utter chaos will result.
-
-	But is it enough to tolerate one disloyal participant? Two?
-
-	The line will have to be drawn somewhere...
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Should I Stay or Should I Go Now?}
-
-	In the examples that we will discuss there are two kinds of command: attack and retreat.
-
-	In a real system the options don't have to be quite so binary.
-
-	It is possible that our system produces a tie (no matter how many participants or possible actions we have).
-
-	This usually necessitates a default action be selected.
-
-\end{frame}
-
-
-
-\begin{frame}
-	\frametitle{Disloyal General, Two Loyal Lieutenants}
-
-	\begin{center}
-		\begin{tikzpicture}
-			\node[circle,draw,fill=red, minimum size=0.5] (G) at (0, 0) {G};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L1) at (-1, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L2) at (1, -2) {L};
-			\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack};
-			\draw[-latex', thick] (G) -- (L2) node[midway, right]{Retreat};
-		\end{tikzpicture}
-	\end{center}
-
-	Red indicates disloyal; grey indicates loyal.
-
-	What are lieutenants to do?
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{He Said What?}
-
-	In the imperfect world of Byzantium the lieutenants can try to figure out if they're about to be mismanaged to literal death by communicating with one another.
-
-	If they are all on the same page then they can do what they're supposed to do; if they're not, then they will fall back on the default option.
-
-	Unfortunately, though, letting the lieutenants communicate is not a complete solution.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Whose Team Are You On}
-
-	\begin{center}
-		\begin{tikzpicture}
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (G) at (0, 0) {G};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L1) at (-1, -2) {L};
-			\node[circle,draw,fill=red, minimum size=0.5] (L2) at (1, -2) {L};
-			\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack};
-			\draw[-latex', thick] (G) -- (L2) node[midway, right]{Attack};
-			\draw[-latex', thick] (L2) -- (L1) node[midway, below]{Retreat};
-		\end{tikzpicture}
+		\includegraphics[width=0.5\textwidth]{images/sarahconnor.png}
 	\end{center}
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Do the Math}
+	\frametitle{Select!}
 
-	In general if there are $d$ disloyal participants, we will need there to be more than $3d$ participants for the loyal lieutenants to agree on what to do.
+	The third option is called \texttt{select()} -- it allows us to monitor a group of sockets, telling us about the state of each of them.
 
-	If the general is loyal, then at least $2d$ loyal lieutenants are needed to obey the orders.
+	A socket could be ready for a read, ready for a write (of small size), or whether an exception has occurred.
 
-	If the general is disloyal then $2d+1$ loyal lieutenants are needed so they can come up with a course of action.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{One Disloyal Participant}
-
-	Imagine that there is at most one disloyal participant.
-
-	If that's the case then all lieutenants should compare notes and decide on the majority course of action.
-
-	Each lieutenant compiles a little table (or array or vector, whatever) of the data received and then decide on what the majority cause of action is.
-
-	It might be simpler to just count the total number of votes, but it would make it harder to figure out later who the traitor is (if there is one).
+	So actually, select works on three sets of sockets...
 
 \end{frame}
 
+\begin{frame}[fragile]
+	\frametitle{Select Definition}
+
+	\begin{lstlisting}[language=C]
+ int select( int nfds, fd_set *readfds, fd_set *writefds, 
+     fd_set *exceptfds, struct timeval *timeout );
+\end{lstlisting}
+
+	If we call this function, we'll get blocked until something happens on one of the sockets so that it becomes ``ready''... or until we reach a timeout.
+
+	While blocked, we could also get interrupted by something (e.g., a signal).
+
+	\texttt{nfds}: the value of the highest number file descriptor plus 1.
+
+	\texttt{timeout}: pretty self-explanatory.
+
+	What about the \texttt{fd\_set} parameters?
+
+\end{frame}
 
 \begin{frame}
-	\frametitle{Two Disloyal Participants}
+	\frametitle{File Descriptor Sets}
 
-	What if we can have two disloyal participants?
+	The \texttt{fd\_set} structure can have up to 1024 file descriptors, and is actually implemented as a bitfield.
 
-	Each lieutenant sending its messages and using a majority-wins vote isn't necessarily going to work here.
+	The kernel can stop looking once we reached the last one.
 
-	It can happen: the general is disloyal and one of the lieutenants is a collaborator.
+	Well, we were going to have to figure out what the \texttt{fd\_set} means anyway.
+
+	It represents a set of file descriptors, just as the name says.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{File Descriptor Sets}
+
+	\begin{lstlisting}
+void FD_ZERO( fd_set *set ); /* Clear the set */
+void FD_SET( int fd, fd_set *set ); /* Add fd to the set */
+void FD_CLR( int fd, fd_set *set ); /* Remove fd from the set */
+int  FD_ISSET( int fd, fd_set *set); /* Tests if fd is a part of the set */ 
+\end{lstlisting}
+
+	When we create a new set, we should first initialize it with a \texttt{FD\_ZERO} call.
+
+	To add one, use \texttt{FD\_SET} with the file descriptor to add.
+
+	To remove one, use \texttt{FD\_CLR} with the file descriptor to remove.
+
+	\texttt{FD\_ISSET}: for us to see what happens after \texttt{select()} is called -- we can find out whether a given file descriptor is in a particular set or not.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{The Trio of Sets}
+
+	The \texttt{readfds} are obviously sockets we are interested in reading from.
+
+	\texttt{writefds} are accordingly those we are interested in writing from.
+
+	But what about the \texttt{exceptfds} -- this isn't Java, it's not like we're going to get a \texttt{SocketDoesNotFeelLikeDoingWorkRightNowException}.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Is My Joke Out of Date?}
 
 	\begin{center}
-		\begin{tikzpicture}
-			\node[circle,draw,fill=red, minimum size=0.5] (G) at (0, 0) {G};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L1) at (-3, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L2) at (-2, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L3) at (-1, -2) {L};
-			\node[circle,draw,fill=red, minimum size=0.5] (L4) at (0, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L5) at (1, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L6) at (2, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L7) at (3, -2) {L};
-
-			\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack~~~};
-			\draw[-latex', thick] (G) -- (L2);
-			\draw[-latex', thick] (G) -- (L3);
-			\draw[-latex', thick] (G) -- (L4);
-			\draw[-latex', thick] (G) -- (L5);
-			\draw[-latex', thick] (G) -- (L6);
-			\draw[-latex', thick] (G) -- (L7) node[midway, right]{~~Retreat};
-		\end{tikzpicture}
-	\end{center}
-
-	What can the collaborating lieutenant do to make sure that the other lieutenants don't come to an agreement?
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Two Disloyal Participants}
-
-	The lieutenants all send one another their instructions.
-
-	The disloyal lieutenant sends one message to half the other participants, and a different message to the other half.
-
-	\begin{center}
-		\begin{tikzpicture}
-			\node[circle,draw,fill=red, minimum size=0.5] (G) at (0, 0) {G};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L1) at (-3, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L2) at (-2, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L3) at (-1, -2) {L};
-			\node[circle,draw,fill=red, minimum size=0.5] (L4) at (0, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L5) at (1, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L6) at (2, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L7) at (3, -2) {L};
-
-			\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack~~~};
-			\draw[-latex', thick] (G) -- (L2);
-			\draw[-latex', thick] (G) -- (L3);
-			\draw[-latex', thick] (G) -- (L4);
-			\draw[-latex', thick] (G) -- (L5);
-			\draw[-latex', thick] (G) -- (L6);
-			\draw[-latex', thick] (G) -- (L7) node[midway, right]{~~Retreat};
-			\draw[-latex', thick] (L4.south) to [bend right] (L7.south);
-			\draw[-latex', thick] (L4.south) to [bend right] (L6.south);
-			\draw[-latex', thick] (L4.south) to [bend right] (L5.south);
-			\draw[-latex', thick] (L4.south) to [bend left] (L3.south);
-			\draw[-latex', thick] (L4.south) to [bend left] (L2.south);
-			\draw[-latex', thick] (L4.south) to [bend left] (L1.south);
-
-			\node at(-1.5, -3) {Attack};
-			\node at(1.5, -3) {Retreat};
-		\end{tikzpicture}
-
-
-	\end{center}
-	What do we decide?
-\end{frame}
-
-\begin{frame}
-	\frametitle{Uh, This Didn't Go Well}
-	Half the participants think the majority action is attack and half the participants think the majority action is retreat.
-
-	Summing up what we heard is not sufficient.
-
-	Lieutenants should also talk about what they heard from one another.
-
-	After the general issues instructions, each lieutenant should then communicate with every other to hear what the general said to them.
-
-	Then by reviewing this information, they can decide what to do.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Double Treason!}
-
-	Consider a simple example where the general is loyal and we have two traitorous lieutenants with a total of seven participants.
-
-	The general issued an order to attack.
-
-	\begin{center}
-		\begin{tikzpicture}
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (G) at (-0.33, 0) {G};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L1) at (-3, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L2) at (-2, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L3) at (-1, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L4) at (0, -2) {L};
-			\node[circle,draw,fill=red, minimum size=0.5] (L5) at (1, -2) {L};
-			\node[circle,draw,fill=red, minimum size=0.5] (L6) at (2, -2) {L};
-
-			\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack~~~};
-			\draw[-latex', thick] (G) -- (L2);
-			\draw[-latex', thick] (G) -- (L3);
-			\draw[-latex', thick] (G) -- (L4);
-			\draw[-latex', thick] (G) -- (L5);
-			\draw[-latex', thick] (G) -- (L6) node[midway, right]{~~Attack};
-		\end{tikzpicture}
+		\includegraphics[width=0.7\textwidth]{images/java-joke.png}
 	\end{center}
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Assemble Your Notes}
+	\frametitle{Exceptional States}
 
-	So each lieutenant constructs the following vector.
+	No, this is for sockets that are in an exceptional state, which usually means there is Out-Of-Band (OOB) data on a TCP socket.
 
-	The general form is as follows, where $v_{x}$ is the forwarded order we received from lieutenant $x$:
+	We didn't cover this earlier in network communication and we will also not be going into this subject now.
 
-	\begin{center}
-		\begin{tabular}{|l|l|l|l|l|l|l|l|}
-			\hline
-			General & L1      & L2      & L3      & L4      & L5      & L6      \\
-			\hline
-			?       & $v_{1}$ & $v_{2}$ & $v_{3}$ & $v_{4}$ & $v_{5}$ & $v_{6}$ \\
-			\hline
-		\end{tabular}
-	\end{center}
-
-	So if we are lieutenant 1, we complete the table as below.
-	\begin{center}
-		\begin{tabular}{|l|l|l|l|l|l|l|l|}
-			\hline
-			General & L1 & L2 & L3 & L4 & L5 & L6 \\
-			\hline
-			?       & A  & A  & A  & A  & R  & R  \\
-			\hline
-		\end{tabular}
-	\end{center}
-
-	The value for L1 is what we received from the general, but we get the remaining values from the other lieutenants.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Compare Notes Again}
-
-	Then the lieutenants just compare notes on this subject as well!
-
-	They send to one another their vectors and assemble them into a table.
-
-	\begin{center}
-		\begin{tabular}{|l|l|l|l|l|l|l|l|}
-			\hline
-			General & L1        & L2        & L3        & L4        & L5        & L6        \\
-			\hline
-			?       & $v_{1,1}$ & $v_{1,2}$ & $v_{1,3}$ & $v_{1,4}$ & $v_{1,5}$ & $v_{1,6}$ \\\hline
-			?       & $v_{2,1}$ & $v_{2,2}$ & $v_{2,3}$ & $v_{2,4}$ & $v_{2,5}$ & $v_{2,6}$ \\\hline
-			?       & $v_{3,1}$ & $v_{3,2}$ & $v_{3,3}$ & $v_{3,4}$ & $v_{3,5}$ & $v_{3,6}$ \\\hline
-			?       & $v_{4,1}$ & $v_{4,2}$ & $v_{4,3}$ & $v_{4,4}$ & $v_{4,5}$ & $v_{4,6}$ \\\hline
-			?       & $v_{5,1}$ & $v_{5,2}$ & $v_{5,3}$ & $v_{5,4}$ & $v_{5,5}$ & $v_{5,6}$ \\\hline
-			?       & $v_{6,1}$ & $v_{6,2}$ & $v_{6,3}$ & $v_{6,4}$ & $v_{6,5}$ & $v_{6,6}$ \\\hline
-		\end{tabular}
-	\end{center}
-
-	In the table each value $v_{i,j}$ is interpreted as ``Lieutenant $i$ says that Lieutenant $j$ reports the general said $v$''.
+	But you can find out if a socket is in that state if you have a reason.
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{I Agree With Myself}
+	\frametitle{Optionally}
 
-	The entries on the diagonal are redundant because of course each lieutenant agrees with itself.
+	We don't have to use all three of \texttt{readfds}, \texttt{writefds}, and \texttt{exceptfds} in a call to \texttt{select()} if we do not need them all.
 
-	Those ``redundant'' entries need to be removed from the table.
-
-	From the point of view of lieutenant 1, let's imagine the table looks like this:
-	\begin{center}
-		\begin{tabular}{|l|l|l|l|l|l|l|l|}
-			\hline
-			General & L1 & L2 & L3 & L4 & L5 & L6 \\
-			\hline
-			?       & ~  & A  & A  & A  & R  & R  \\ \hline
-			?       & A  & ~  & A  & A  & R  & R  \\ \hline
-			?       & A  & A  & ~  & A  & R  & R  \\ \hline
-			?       & A  & A  & A  & ~  & R  & R  \\ \hline
-			?       & R  & R  & R  & R  & ~  & R  \\ \hline
-			?       & R  & R  & R  & R  & R  & ~  \\ \hline
-		\end{tabular}
-	\end{center}
+	We can give in \texttt{NULL} for any we don't care about.
 
 \end{frame}
 
+
+\begin{frame}[fragile]
+	\frametitle{The Timeout}
+
+	We can specify a maximum amount of time we  are willing to wait. If nothing happens before the timeout amount of time occurs, then \texttt{select()} returns.
+
+	The format of this is a fairly simple structure \texttt{struct timeval}:
+
+	\begin{lstlisting}[language=C]
+struct timeval {
+  long tv_sec; /* seconds */
+  long tv_usec; /* microseconds */
+};
+\end{lstlisting}
+
+	If both fields of the \texttt{struct timeval} are 0, \texttt{select()} returns immediately.
+
+	If the pointer is \texttt{NULL} then we'll wait indefinitely.
+\end{frame}
+
+
 \begin{frame}
-	\frametitle{Trust In Yourself}
+	\frametitle{Change Is Painful}
 
-	Lieutenant 1 does not care what other people THINK they said; so the whole column can be replaced with what was actually said:
+	When \texttt{select()} returns, however that happened, some if not all of the parameters other than \texttt{nfds} got updated.
 
-	\begin{center}
-		\begin{tabular}{|l|l|l|l|l|l|l|l|}
-			\hline
-			General & L1 & L2 & L3 & L4 & L5 & L6 \\
-			\hline
-			?       & ~  & A  & A  & A  & R  & R  \\ \hline
-			?       & A  & ~  & A  & A  & R  & R  \\ \hline
-			?       & A  & A  & ~  & A  & R  & R  \\ \hline
-			?       & A  & A  & A  & ~  & R  & R  \\ \hline
-			?       & A  & R  & R  & R  & ~  & R  \\ \hline
-			?       & A  & R  & R  & R  & R  & ~  \\ \hline
-		\end{tabular}
-	\end{center}
+	The file descriptors passed in are modified in-place to see if they changed status.
 
-	Then we'll try to figure out the majority vote for each $j$ in the table.
+	And the \texttt{struct timeval} parameter may (but also may not) be updated to reflect how much time was left before the timeout.
 
-	So sum up each column:
-
-	\begin{center}
-		\begin{tabular}{|l|l|l|l|l|l|l|l|}
-			\hline
-			General & L1 & L2 & L3 & L4 & L5 & L6 \\
-			\hline
-			?       & A  & A  & A  & A  & R  & R  \\
-			\hline
-		\end{tabular}
-	\end{center}
+	Because different systems may or may not change this value, it is not safe to re-use and should be overwritten if you plan to use that structure again.
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Final Decision}
-	4 lieutenants think the general said attack and 2 think the general said retreat.
+	\frametitle{Check the Descriptors}
 
-	The majority wins and the attack proceeds!
+	After select has returned, then we check the file descriptors in our sets.
 
-	\begin{center}
-		\includegraphics[width=0.6\textwidth]{images/byzantine-army.jpg}
-	\end{center}
+	All of them. Yes, really.
 
-	Onward to victory, brothers and sisters!
+	The function returns when there is something to do -- but we aren't told what socket is ready.
+
+	So we would need to check each socket to see if, for example, it's ready for reading (if that's the plan).
+
+	To do that we check \texttt{FD\_ISSET} with the socket and the set to see if it's in the desired state.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Rebuild It Again}
+
+	Because the sets of file descriptors may have been modified, you probably need to rebuild them after each call, if you plan to use them again.
+
+	Let's imagine a brief example where we have a server that is going to listen on some different sockets for different services.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Socket Server}
+
+	\begin{lstlisting}[language=C]
+void listen_for_connections( int service1_sock, 
+    int service2_sock, int service3_sock ) 
+{
+  int nfds = 1 + (service1_sock > service2_sock
+    ? service1_sock > service3_sock ? service1_sock : service3_sock
+    : service2_sock > service3_sock ? service2_sock : service3_sock);
+    
+  fd_set s;
+  struct timeval tv;
+  printf( "Going to start listening for socket events.\n" );
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Socket Server}
+
+	\begin{lstlisting}[language=C]
+while( !quit ) {
+    FD_ZERO( &s );
+    FD_SET( service1_sock, &s );
+    FD_SET( service2_sock, &s );
+    FD_SET( service3_sock, &s );
+    tv.tv_sec = 30;
+    tv.tv_usec = 0;
+  
+    int res = select( nfds, &s, NULL, NULL, &tv );
+    if ( res == -1 ) { /* An error occurred */
+      printf( "An error occurred in select(): %s.\n", strerror( errno ) );
+      quit = 1;
+    } else if ( res == 0 ) { /* 0 sockets had events occur */
+      printf( "Still waiting; nothing occurred recently.\n" );
+    } else { /* Things happened */
+      if ( FD_ISSET( service1_sock, &s ) {
+        service1_activate( ); 
+      }
+      if ( FD_ISSET( service2_sock, &s ) {
+        service2_activate( ); 
+      }
+      if ( FD_ISSET( service3_sock, &s ) {
+        service3_activate( ); 
+      }
+  }
+}
+\end{lstlisting}
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Or Should I Have Used This One?}
+	\frametitle{Silly Example}
 
-	\begin{center}
-		\includegraphics[width=0.7\textwidth]{images/warhammer.png}
-	\end{center}
+	You'll notice that we check each of the sockets individually -- more than one of them could become ready at once.
 
-	This might be less historically accurate, though...
+	Now, the \texttt{activate()} calls there could take some nontrivial time.
 
-\end{frame}
+	If sockets receive data in the meantime then on the next iteration of the loop then \texttt{select()} will return immediately because data is waiting.
 
-
-\begin{frame}
-	\frametitle{Mo' Traitors, Mo' Problems}
-
-	If there was one less loyal lieutenant, though, we could have a tie here which would result in picking the default value.
-
-	If the general ordered something other than the default value (e.g., default is retreat and the order was attack) the general will not be happy about this...
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Liar, Liar, Pants on Fire}
-
-	You may have figured out that since disloyal participants can lie at any step of the equation, we can't rely on their data at all.
-
-	That's true!
-
-	In the examples in the course we know that two participants are traitors and I've said they are L5 and L6.
-
-	Therefore we could replace whatever they say with a question mark in the able rather than any particular answer, because they are liars.
-
-	In real life though, \textit{some} message is received -- attack or retreat -- and it's only later we could identify which participants are the traitors.
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{We Are Not Amused}
-
-	Remember: we aren't actually interested in determining who the traitors are.
-
-
-	The goal is just to reach a decision as a group and carry it out.
-
-
-	\begin{center}
-		\includegraphics[width=0.5\textwidth]{images/hrhqe2.jpg}
-	\end{center}
-
-
-	(In a real-life scenario, of course, things would be different!)
+	What if connections are supposed to stay open for a period of time?
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{So, Question Marks}
-	
-		Back to the example of having eight participants.
-
-
+	\frametitle{Chat Server}
 
 	\begin{center}
-		\begin{tikzpicture}
-			\node[circle,draw,fill=red, minimum size=0.5] (G) at (0, 0) {G};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L1) at (-3, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L2) at (-2, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L3) at (-1, -2) {L};
-			\node[circle,draw,fill=red, minimum size=0.5] (L4) at (0, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L5) at (1, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L6) at (2, -2) {L};
-			\node[circle,draw,fill=gray!20, minimum size=0.5] (L7) at (3, -2) {L};
-
-			\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack~~~};
-			\draw[-latex', thick] (G) -- (L2);
-			\draw[-latex', thick] (G) -- (L3);
-			\draw[-latex', thick] (G) -- (L4);
-			\draw[-latex', thick] (G) -- (L5);
-			\draw[-latex', thick] (G) -- (L6);
-			\draw[-latex', thick] (G) -- (L7) node[midway, right]{~~Retreat};
-			\draw[-latex', thick] (L4.south) to [bend right] (L7.south);
-			\draw[-latex', thick] (L4.south) to [bend right] (L6.south);
-			\draw[-latex', thick] (L4.south) to [bend right] (L5.south);
-			\draw[-latex', thick] (L4.south) to [bend left] (L3.south);
-			\draw[-latex', thick] (L4.south) to [bend left] (L2.south);
-			\draw[-latex', thick] (L4.south) to [bend left] (L1.south);
-
-			\node at(-1.5, -3) {Attack};
-			\node at(1.5, -3) {Retreat};
-		\end{tikzpicture}
-
-	\end{center}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{So, Question Marks}
-
-	Back to the example of having eight participants.
-
-	The value for L1 is what we received from the general, but we get the remaining values from the other lieutenants.
-
-	\begin{center}
-		\begin{tabular}{|l|l|l|l|l|l|l|l|}
-			\hline
-			General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
-			\hline
-			?       & A  & A  & A  & A  & R  & R  & R  \\
-			\hline
-		\end{tabular}
-	\end{center}
-
-	However, if we are lieutenant 7 our vector looks like this instead:
-
-	\begin{center}
-		\begin{tabular}{|l|l|l|l|l|l|l|l|}
-			\hline
-			General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
-			\hline
-			?       & A  & A  & A  & R  & R  & R  & R  \\
-			\hline
-		\end{tabular}
+		\includegraphics[width=\textwidth]{images/worldchat.jpg}
 	\end{center}
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Building the Table}
+	\frametitle{Let's Chat}
 
-	From the point of view of lieutenant 1 the table is formed then as follows:
+	When people want to join the chat room they send a message to a server.
+
+	The server accepts, opens the connection, \& adds the client to the chat room.
+
+	But people don't always talk.
+
+	So if nothing is happening right now there's nothing to send. So the server can use \texttt{select()} to keep an eye open for when someone has said something.
+
+	Either way, we would wait for something to happen, either on one of the sockets from a current client, or the socket for accepting incoming connections.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{New Person Here!}
+
+	If it's the socket for accepting incoming connections that activated?
+
+	Then accept the incoming connection, and add the new socket to the list that we are going to listen to.
+
+	A chat server might choose to send a notification to other clients to let them know that a new person has joined the chat.
+
+	That would be a write to the sockets that represent connected clients.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Someone Said Something}
+
+	If another socket activated, most likely someone had something to say.
+
+	So we can read from the socket that is ready to read and pass on the message that we received to all the other clients.
+
+	Except, sometimes there isn't one!
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Well, Goodbye Then...}
+
+	A socket will show up as being ready for reading if it has closed.
+
+	But the call to read will return 0 (or a negative number) if the socket has closed (i.e., the client has disconnected).
+
+	If the connection has been closed, then we should remove that socket from the list that we are interested in.
+
+	And also we sometimes send a message telling other clients that a person has left the chat.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Someone Really Did Say Something}
+
+	And when a message is received from a client, then of course the thing for the server to do is to send it on to the other clients.
+
+	The clients are waiting to receive messages and will then show them to the user when someone says something.
+
+	And then look at that: you're talking to other people on the internet!
+
+	Just remember not to give out your personal information to strangers.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{pselect}
+
+	There is also \texttt{pselect()} which has the signature:
+	\begin{lstlisting}[language=C]
+int pselect( int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, 
+            const struct timespec *timeout, const sigset_t *sigmask );
+\end{lstlisting}
+
+	\texttt{timespec} is like a timeval, but \texttt{pselect} will never alter it.
+
+	\begin{lstlisting}[language=C]
+struct timespec {
+  long tv_sec; /* seconds */
+  long tv_nsec; /* nanoseconds */
+};
+\end{lstlisting}
+
+	So, seconds and nanoseconds instead of seconds and milliseconds.
+
+	And a signal mask!
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{A Signal Mask}
+
+	We discussed the signal mask much earlier on when we talked about signals for interprocess communication.
+
+	This is the same, but it allows us to change the signal mask atomically in the same step as the call to select.
+
+	So we can choose what signals are allowed to wake us up while we are waiting for something to happen.
+
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{A Signal Mask}
+
+	\begin{lstlisting}[language=C]
+ready = pselect( nfds, &readfds, &writefds, &exceptfds, timeout, &sigmask );
+\end{lstlisting}
+
+	is equivalent to an atomic operation that does all of:
+
+	\begin{lstlisting}[language=C]
+sigset_t origmask;
+pthread_sigmask( SIG_SETMASK, &sigmask, &origmask );
+ready = select( nfds, &readfds, &writefds, &exceptfds, timeout );
+pthread_sigmask( SIG_SETMASK, &origmask, NULL );
+\end{lstlisting}
+
+	If we had tried to do the multi-step sequence then there is always the possibility that something (e.g., a signal!) could happen in between.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{I Only Wanted a Nap}
 
 	\begin{center}
-		\begin{tabular}{|l|l|l|l|l|l|l|l|}
-			\hline
-			General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
-			\hline
-			?       & ~  & A  & A  & A  & R  & R  & R  \\ \hline
-			?       & A  & ~  & A  & A  & R  & R  & R  \\ \hline
-			?       & A  & A  & ~  & A  & R  & R  & R  \\ \hline
-			?       & ?  & ?  & ?  & ~  & ?  & ?  & ?  \\ \hline
-			?       & A  & A  & A  & R  & ~  & R  & R  \\ \hline
-			?       & A  & A  & A  & R  & R  & ~  & R  \\ \hline
-			?       & A  & A  & A  & R  & R  & R  & ~  \\ \hline
-		\end{tabular}
+		\includegraphics[width=0.5\textwidth]{images/pusheen-nap.png}
 	\end{center}
 
-	The fourth row is shown as all question marks. Why?
+	It is possible to ``misuse'' a call to \texttt{select} or \texttt{pselect} as a way to make a very portable call to put the current thread to sleep.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Alternative: Poll}
+
+	There's a slightly different function that is very much like \texttt{select()} and it is called \texttt{poll()}.
+
+	Like its cousin, it is used to watch file descriptors and see if any of them are ready for an I/O operation.
+
+	\begin{lstlisting}[language=C]
+int poll( struct pollfd *fds, nfds_t nfds, int timeout );
+\end{lstlisting}
+
+	\texttt{fds}: pointer to array of  \texttt{struct pollfd}.
+
+	\texttt{ndfs}: number of items in the array.
+
+	\texttt{timeout}: milliseconds to wait.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Poll File Descriptor Type}
+
+	\begin{lstlisting}[language=C]
+struct pollfd {
+  int fd;        /* file descriptor */
+  short events;  /* requested events */
+  short revents; /* returned events */
+};
+\end{lstlisting}
+
+	\texttt{fd}: file descriptor to watch.
+
+	\texttt{events}: the events we want to wait for.
+
+	\texttt{revents}: set by the kernel so we can find out what happened.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{His Majesty the Emperor Says}
-	\begin{center}
-		\includegraphics[width=0.6\textwidth]{images/treason.jpg}
-	\end{center}
+	\frametitle{What Can We Watch For?}
 
-	Lieutenant 4 is the traitor \& could also lie about what the other lieutenants said.
+	You can look for data that's ready to read with \texttt{POLLIN}.
 
-\end{frame}
+	A socket where you can write without blocking with \texttt{POLLOUT}.
 
-\begin{frame}
-	\frametitle{Complete the Table and Vector}
+	An exception (as above) with \texttt{POLLPRI}.
 
-	Then replace the first column.
+	These can be combined with the bitwise OR operator if you want more than one.
 
-	\begin{center}
-		\begin{tabular}{|l|l|l|l|l|l|l|l|}
-			\hline
-			General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
-			\hline
-			?       & ~  & A  & A  & A  & R  & R  & R  \\ \hline
-			?       & A  & ~  & A  & A  & R  & R  & R  \\ \hline
-			?       & A  & A  & ~  & A  & R  & R  & R  \\ \hline
-			?       & A  & ?  & ?  & ~  & ?  & ?  & ?  \\ \hline
-			?       & A  & A  & A  & R  & ~  & R  & R  \\ \hline
-			?       & A  & A  & A  & R  & R  & ~  & R  \\ \hline
-			?       & A  & A  & A  & R  & R  & R  & ~  \\ \hline
-		\end{tabular}
-	\end{center}
+	The return value will be constructed as a bitwise OR of the fields as well.
 
-	Sum up each column:
+	Return values can also include: \texttt{POLLERR}, \texttt{POLLHUP}, \texttt{POLLNVAL}.
 
-	\begin{center}
-		\begin{tabular}{|l|l|l|l|l|l|l|l|}
-			\hline
-			General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
-			\hline
-			?       & A  & A  & A  & ?  & R  & R  & R  \\
-			\hline
-		\end{tabular}
-	\end{center}
+	As before, we are told something happened, but we don't know what.
 
 \end{frame}
 
-\begin{frame}
-	\frametitle{It's A Tie...}
 
-	Each of the lieutenants figures out that we have a draw and we then choose the default choice.
-
-	Well, that's grim, but it makes sense: the general issued contradictory orders and the collaborating lieutenant did the same.
-
-	But now instead of half the lieutenants charging in and dying while the others hang back and watch, everyone takes the same action.
-
-	... Even if it's not the one that helps the Empire the most.
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{More Traitors!}
-
-	If there three disloyal participants can exist in the system there's another round of data exchange that needs to take place.
-
-	Each lieutenant sends the table formed in the second round to all other lieutenants.
-
-	The more disloyalty there could be in the system, the more rounds the process will go on.
-
-	Communication grows at $n^{2}$ (well, actually worst case $dn^{2}$...)
-
-	So probably we don't tolerate large amounts of treason.
+\begin{frame}[fragile]
+	\frametitle{3-Service Example with poll}
+	\begin{lstlisting}[language=C]
+void listen_for_connections( int service1_sock, int service2_sock,
+     int service3_sock ) 
+{
+  struct pollfd pollfds[3];
+  pollfds[0].fd = service1_sock;
+  pollfds[0].events = POLLIN;
+  pollfds[1].fd = service2_sock;
+  pollfds[1].events = POLLIN;
+  pollfds[2].fd = service3_sock;
+  pollfds[2].events = POLLIN;
+ 
+  int timeout = 30 * 1000; /* 30 seconds in ms */ 
+  printf( "Going to start listening for socket events.\n" );
+\end{lstlisting}
 
 \end{frame}
 
-\begin{frame}
-	\frametitle{Trust, But Verify}
-
-	Part of the difficulty comes from the fact that lieutenants can lie about what the general said.
-
-	In the time of Byzantium, wax seals were used (hot wax is poured and then a stamp or ring was used to make an imprint on it).
-
-	In modern times messages can be signed using public-key cryptography.
-
-	Then participants can check whether the received message was genuine.
-
-	An order that does not appear genuine can be disregarded, reducing the ability of disloyal lieutenants to cause confusion.
+\begin{frame}[fragile]
+	\frametitle{3-Service Example with poll}
+	\begin{lstlisting}[language=C]
+  while( !quit ) {
+    
+    int res = poll( &pollfds, 3, timeout );
+    if ( res == -1 ) { /* An error occurred */
+      printf( "An error occurred in select(): %s.\n", strerror( errno ) );
+      quit = 1;
+    } else if ( res == 0 ) { /* 0 sockets had events occur */
+      printf( "Still waiting; nothing occurred recently.\n" );
+    } else { /* Things happened */
+      if ( pollfds[0].revents & POLLIN ) {
+        service1_activate( ); 
+      }
+      if ( pollfds[1].revents & POLLIN ) {
+        service2_activate( ); 
+      }
+      if ( pollfds[2].revents & POLLIN ) {
+        service3_activate( ); 
+      }
+  }
+}
+\end{lstlisting}
 
 \end{frame}
 
+
 \begin{frame}
-	\frametitle{Applicability}
+	\frametitle{Which is Which?}
 
-	The Byzantine Generals Problem has applicability in all kinds of systems, from space flight to cryptocurrency.
+	Ultimately both functions do the same job; it is only the specifics of the API call that make the difference.
 
-	Whenever we have multiple ``agents'' of some sort that come to their own conclusions about what to do, we can face this issue.
+	You might find one or the other to be better.
 
-	As long as we know this, we can design our system with this in mind, because pretending it's not going to happen is not a real solution...
+	Both \texttt{select} and \texttt{poll} are slow, unfortunately. They have linear characteristics.
 
+	If we want to do things more efficiently we will want to use a different tool, specifically \texttt{libevent}.
+
+	After sockets, we learned about cURL, and it turns out we can use nonblocking I/O there as well!
 
 \end{frame}
 

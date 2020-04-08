@@ -1,6 +1,6 @@
 \input{configuration}
 
-\title{Lecture 14 --- Semaphores }
+\title{Lecture 14 --- Synchronization Patterns }
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
@@ -16,504 +16,746 @@
 \end{frame}
 
 \begin{frame}
-	\frametitle{Mutual Exclusion through Messages}
+	\frametitle{Synchronization Patterns}
 
-	The earlier definition of mutual exclusion was informal.
 
-	There are additional desirable properties that will be used to evaluate any solution:
-	\begin{itemize}
-		\item Mutual exclusion must apply.
-		\item A thread that halts outside the critical section must not interfere with other threads.
-		\item It must not be possible for a thread requiring access to a critical section to be delayed indefinitely.
-		\item When no thread is in the critical section, a thread that requests access should be allowed to enter right away.
-		\item No assumptions are made about what the threads will do or the number of processors in the system.
-		\item A thread remains inside the critical section for a finite time only.
-	\end{itemize}
+	There are a number of common synchronization patterns that occur frequently and we can use semaphores to solve them.
 
+	These synchronization patterns are ways of co-ordinating threads or processes.
+
+	We have already examined serialization and mutual exclusion; there are more.
+
+	Throughout this section we will use pseudocode and something like ``Statement A1'' could be any valid statement in the program.
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Back to Springfield}
+	\frametitle{So Text Me, Maybe}
 
 	\begin{center}
-		\includegraphics[width=\textwidth]{images/springfield-plant.png}
+		\includegraphics[width=0.9\textwidth]{images/texting.jpeg}
 	\end{center}
 
 
 \end{frame}
 
 
-\begin{frame}
-	\frametitle{Back to Springfield}
-	Recall from earlier the example of the employees Alice and Bob who worked at the Springfield Nuclear Power Plant in Sector 7G.
+\begin{frame}[fragile]
+	\frametitle{Signalling}
 
-	Suppose there is a third employee at the power plant, Charlie, who works on the day shift at the same time as Alice.
+	Recall from earlier the example with Alice and Bob at the power plant.
 
-	Safety rules say that at least one of them has to monitor the safety of the reactor at all times and therefore they cannot both take lunch at the same time.
+	This was signalling.
 
-	If we cannot predict when lunch begins or how long it will last, how can Alice and Charlie co-ordinate to make sure they don't take lunch at the same time?
+	Signalling can be used in general as a way of indicating that something has happened.
 
-\end{frame}
+	Suppose we have a semaphore named \texttt{sem}, initialized to 0.
 
-\begin{frame}
-	\frametitle{At the Power Plant}
-
-	Before Alice gets up from her desk to go for lunch, she calls Charlie.
-
-	If he does answer, she may proceed.
-
-	If Charlie does not answer, Alice will know he is not at his desk.\\
-	\quad Therefore she cannot leave at the moment.
-
-	She can call again, constantly, until she reaches Charlie (busy-waiting), but this ties up a phone line nonstop and is effort intensive for Alice.
-
-	If she doesn't want to do that, at this point she has two options:\\
-	\quad Wait some period of time (perhaps 15 minutes) and call again. Or\\
-	\quad Leave a message in Charlie's voice mail box, asking him to call her back.
-
-	Then Alice can go about her work until she gets a call from Charlie and as soon as that happens, she may step out for lunch.
+	\begin{multicols}{2}
+		\textbf{Thread A}
+		\begin{verbatim}
+	1. Statement A1
+	2. post( sem )
+  \end{verbatim}
+		\columnbreak
+		\textbf{Thread B}
+		\begin{verbatim}
+	1. wait( sem )
+	2. Statement B2
+  \end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
 
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Power Plant to Computer World}
+	\frametitle{Analysis of Signalling}
 
-	Busy waiting has already been found inadequate as a solution.
+	If $B$ gets to the \texttt{wait} statement first, it will be blocked (as the semaphore is 0) and cannot proceed until someone posts on that semaphore.
 
-	It wastes CPU time that another thread could be putting to productive use.
+	When $A$ does call \texttt{post}, then $B$ may proceed.
 
-	The approach of ``wait 15 minutes and try again'' might be adequate for Alice as a human, but for the computer it is not ideal.
+	If instead $A$ gets to the \texttt{post} statement first, it will post and the semaphore value will be 1.
 
-	If $A$ fails to get in, then sleeps for 2000~ms before trying again, if $B$ is finished after 20 ms, then thread $A$ waits unnecessarily for 1980~ms.
+	Then, when $B$ gets to the \texttt{wait} statement, it can proceed without delay.
 
-	What we want is something that resembles the call-when-finished semantics of Alice leaving a message and Charlie calling her back.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Semaphore}
-
-	A semaphore is a system of signals used for communication.
-
-	Before ships had radios, when two friendly ships were in visual range, they would communicate with one another through flag semaphores.
-
-	Each ship had someone holding certain flags in a specific position.
-
-	Thus the two ships could co-ordinate at (visual range) distance.
-
-	This worked dramatically better than many alternatives (e.g., shouting).
+	Regardless of the actual order that the threads run, we are certain that statement A1 will execute before statement B2.
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Semaphore}
+	\frametitle{Rendezvous}
 
 	\begin{center}
-		\includegraphics[width=0.9\textwidth]{images/semaphore-signals.jpg}
-	\end{center}
-	\hfill Image Credit: Wikipedia user Denelson83
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{The Computer Semaphore}
-
-	The computer semaphore was invented in 1965 by Edsger Dijkstra.
-
-	He described a data structure that can be used to solve synchronization problems via messages.
-
-	Although the version we use now is not exactly the same as the original description, even 50 years later, the core idea is unchanged.
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Binary Semaphore}
-
-	The \alert{binary semaphore}: this is a variable that has two values, 0 and 1.
-
-	It can be initialized to 0 or to 1.
-
-	The semaphore has two operations: \texttt{wait} and \texttt{post}.
-
-	In the original paper, \texttt{wait} was called \texttt{P} and \texttt{post} was called \texttt{V}, but the names in common usage have become a little more descriptive.
-
-	Note: \texttt{post} is also called \texttt{signal} in many textbooks.
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Binary Semaphore: wait}
-
-	The \texttt{wait} operation on the semaphore is how a program tries to enter the critical section.
-
-	When \texttt{wait} is called, if the semaphore value is 1, set it to 0 and this thread may enter the critical section and continue.
-
-	If the semaphore is 0, some other thread is in the critical section and the current thread must \textit{wait} its turn.
-
-	The thread that called \texttt{wait} will be blocked by the operating system, just as if it asked for memory or a disk operation.
-
-	This is sometimes referred to as decrementing the semaphore (because the value changes from 1 to 0).
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Binary Semaphore: post}
-
-	The \texttt{post} (or signal) operation is how a program \textit{signals}, or indicates, it is finished with the critical section.
-
-	When this is called, if the semaphore is 1, do nothing.
-
-	If the semaphore is 0 and there is a task blocked awaiting that semaphore, that task may be unblocked.
-
-	Otherwise, set the semaphore to 1.
-
-	This is also sometimes called incrementing the semaphore.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Caffeine - the Stuff of Life?}
-
-	\begin{center}
-		\includegraphics[width=0.4\textwidth]{images/starbucks.jpg}
-	\end{center}
-	\hfill Image Credit: Brandt Kofton
-
-
-	Analogy: you like coffee, and going to a particular coffee shop because there you can get your drink exactly the way you like it.
-
-	``Half caf, no whip, extra hot, extra foam, two shot, soy milk latte.''
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Delicious Coffee}
-
-	After this beverage it may be the case that you need to use the washroom.
-
-	The washroom may be locked at such places (usually because they are worried homeless people or non-customers may use the facilities).
-
-	So to get in you will need the key, which is available by asking one of the employees.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Programmers Convert Caffeine into Code}
-
-	If nobody is currently in the washroom, you will get the key and can proceed.
-
-	If it is currently occupied, you will have to wait.
-
-	When the key is returned, if anyone is waiting, the employee will give the key to the first person in line for the washroom.
-
-	Otherwise they will put the key away behind the counter.
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Semaphores: OS Support}
-
-	Observe that the operating system is needed to make this work.
-
-	If thread $A$ attempts to wait on a semaphore that some other thread already has, it will be blocked.
-
-	The operating system knows not to schedule it to run until it is unblocked.
-
-	When thread $B$ is finished and signals the semaphore it is holding, that will unblock $A$ and allow it to run again.
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{No Checking}
-
-	The semaphore does not provide any facility to ``check'' the current value.
-
-	\begin{center}
-		\includegraphics[width=0.5\textwidth]{images/nopeeking.jpg}
+		\includegraphics[width=0.5\textwidth]{images/nasa-rendezvous.jpg}
 	\end{center}
 
-	A thread doesn't know in advance if it will block when it waits on a semaphore.
 
-	It can only give it a shot. Either it will be blocked or proceed directly.
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Rendezvous}
+
+	The rendezvous is an expansion of the signalling pattern so that it works both ways.
+
+	Two threads should be at the same point before either of them may proceed (they ``meet up'').
+
+	Suppose we have:
+
+	\begin{multicols}{2}
+		\textbf{Thread A}
+		\begin{verbatim}
+	1. Statement A1
+	2. Statement A2
+  \end{verbatim}
+		\columnbreak
+		\textbf{Thread B}
+		\begin{verbatim}
+	1. Statement B1
+	2. Statement B2
+  \end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
+
+
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Post}
+	\frametitle{Rendezvous}
 
-	When a thread posts on a semaphore, it likewise does not know if any other thread(s) are waiting on that semaphore.
+	The desirable property is that A1 should take place before B2 and that B1 should take place before A2.
 
-	There is no facility to check this, either.
+	As each thread must wait for the other, two semaphores will be needed: one to indicate that $A$ has arrived and one for $B$.
 
-	When thread $A$ signals a semaphore, we don't know what thread will continue execution.
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Semaphore: Bad Behaviour}
-
-	Nothing in the semaphore as defined protects against certain bad behaviour.
-
-	Suppose thread $C$ would like to enter the critical section.
-
-	The programmer of this task is malicious as well as impatient: ``my task is FAR too important to wait for those other processes and threads,'' he says.
-
-	He implements his code: before he waits on the semaphore, he posts on it.
-
-	Even though $A$ or $B$ might be in the critical section, the semaphore is incremented.
-
-	So he is fairly certain that his program will now get to enter the critical section.
-\end{frame}
-
-\begin{frame}
-	\frametitle{Semaphore: Bad Behaviour}
-
-	It's not foolproof: if there are other threads waiting, they might get woken up to proceed instead of $C$; much depends on the scheduler.
-
-	Nevertheless, this is really bad: one process can wreak all kinds of havoc by letting another process into the critical section.
-
-	Though the example here makes the author of thread $C$ a scheming villain, such a situation may occur if it is simply the result of a programming error.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Preventing Bad Behaviour}
-
-	The problem identified is usually solved by supplementing the basic binary semaphore.
-
-	A data structure called a \alert{mutex} is a binary semaphore with an additional rule enforced: only the thread that has called \texttt{wait} may \texttt{post} that semaphore.
-
-	Although typically when we have a mutex we use the terms \alert{lock} and \alert{unlock}.
-
-	This adds a small amount of extra bookkeeping to the semaphore, but this is a reasonable price to pay.
+	We will assign them the names \texttt{aArrived} and \texttt{bArrived} and initialize both to 0.
 
 \end{frame}
 
 \begin{frame}[fragile]
-	\frametitle{Semaphore Example: Linked List Integrity}
+	\frametitle{Rendezvous Solution 1}
 
-	\begin{lstlisting}[language=C]
-typedef struct single_node {
-  void *element;
-  struct single_node *next;
-} single_node_t;
+	A first attempt at a solution:
 
-typedef struct single_list {
-  single_node_t *head;
-  single_node_t *tail;
-  int size;
-} single_list_t;
+	\begin{multicols}{2}
+		\textbf{Thread A}
+		\begin{verbatim}
+	1. Statement A1
+	2. wait( bArrived )
+	3. post( aArrived )
+	4. Statement A2
+  \end{verbatim}
+		\columnbreak
+		\textbf{Thread B}
+		\begin{verbatim}
+	1. Statement B1
+	2. wait( aArrived )
+	3. post( bArrived )
+	4. Statement B2
+  \end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
 
 
-void single_list_init( single_list_t *list ) {
-  list->head = NULL;
-  list->tail = NULL;
-  list->size = 0;
-}
-\end{lstlisting}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Rendezvous Solution 1 Analysis}
+
+	The problem here should be obvious: thread $A$ gets to the \texttt{wait} statement and will wait until $B$ posts its arrival before it can proceed.
+
+	Thread $B$ gets to its \texttt{wait} statement and will wait until $A$ posts its arrival before it will proceed.
+
+	Unfortunately, each thread is waiting for the other to post and neither of them can get to the actual \texttt{post} statement because they are both blocked.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Deadlock}
+
+	Neither thread can proceed.
+
+	The situation can never be resolved, because there is no external force that would cause one or the other to be unblocked.
+
+	This is a situation called \alert{deadlock}, and it is a subject that will receive a great deal of examination later on.
+
+	For now, an informal definition is: all threads are permanently stuck.
+
+	Obviously, this is undesirable.
+
 \end{frame}
 
 \begin{frame}[fragile]
-	\frametitle{Semaphore Example: Linked List Integrity}
+	\frametitle{Rendezvous Solution 2}
 
-	\begin{lstlisting}[language=C]
-bool push_front( single_list_t *list, void *obj ) {
-  single_node_t *tmp = malloc( sizeof( single_node_t ) );
-  
-  if ( tmp == NULL ) {
-    return false;
-  }
-  
-  tmp->element = obj;
-  tmp->next = list->head;
-  list->head = tmp;
+	What if instead, the threads reverse the order and post first before waiting?
 
-  if ( list->size == 0 ) {
-     list->tail = tmp;
-  }
-  
-   ++( list->size );
-   return true;
-}
+	\begin{multicols}{2}
+		\textbf{Thread A}
+		\begin{verbatim}
+	1. Statement A1
+	2. post( aArrived )
+	3. wait( bArrived )
+	4. Statement A2
+  \end{verbatim}
+		\columnbreak
+		\textbf{Thread B}
+		\begin{verbatim}
+	1. Statement B1
+	2. post( bArrived )
+	3. wait( aArrived )
+	4. Statement B2
+  \end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
 
-\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Rendezvous Solution 2 Analysis}
+
+	This solution works: if $A$ gets to the rendezvous point first, it posts its arrival and waits for $B$.
+
+	If $B$ gets there first, it posts its arrival and waits for $A$.
+
+	Whichever gets there last will post and unblock the other, before it calls \texttt{wait}.
+
+	It will be able to proceed directly; the first thread to arrive already posted.
+
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Rendezvous Solution 3}
+
+	A variation on this can also work where only one thread posts first and the other thread posts second.
+
+	\begin{multicols}{2}
+		\textbf{Thread A}
+		\begin{verbatim}
+	1. Statement A1
+	2. wait( bArrived )
+	3. post( aArrived )
+	4. Statement A2
+  \end{verbatim}
+		\columnbreak
+		\textbf{Thread B}
+		\begin{verbatim}
+	1. Statement B1
+	2. post( bArrived )
+	3. wait( aArrived )
+	4. Statement B2
+  \end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Rendezvous Solution 3 Analysis}
+
+	While this solution will not result in deadlock, it is somewhat less efficient than the previous: it may require an extra switch between processes.
+
+	As long as we are certain that deadlock will not occur, a solution is acceptable.
+
+	Nevertheless, the previous solution is provably better.
+
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Using the Linked List}
+	\frametitle{Rendezvous Analysis}
 
-	If only one thread access this data structure, we do not have a problem.
+	What if we needed to add a third thread, C, to this rendezvous?
 
-	Suppose a thread tries to add an element $A$ to the list using \texttt{push\_front}.
+	What would we have to change?
 
-	Right before the increment of the \texttt{size} field there is a process switch.
 
-	At this point, the new node has been allocated and initialized, the pointers of \texttt{head} and \texttt{tail} have been updated, but \texttt{size} is 0.
+\end{frame}
+
+
+
+\begin{frame}
+	\frametitle{Waiting Our Turn...}
 
 	\begin{center}
-		\includegraphics[width=0.25\textwidth]{images/linkedlist1.png}
+		\includegraphics[width=0.9\textwidth]{images/waiting-in-line.jpg}
 	\end{center}
 
 \end{frame}
 
+
+\begin{frame}[fragile]
+	\frametitle{Mutual Exclusion}
+
+	We saw previously the motivation and concept of mutual exclusion through messages in the linked list example.
+
+	The general form in pseudocode is of course:
+
+	\begin{multicols}{2}
+		\textbf{Thread A}
+		\begin{verbatim}
+	1. wait( mutex )
+	2. critical section
+	3. post( mutex )
+  \end{verbatim}
+		\columnbreak
+		\textbf{Thread B}
+		\begin{verbatim}
+	1. wait( mutex )
+	2. critical section
+	3. post( mutex )
+  \end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
+
+
+\end{frame}
+
 \begin{frame}
-	\frametitle{Using the Linked List}
+	\frametitle{Mutual Exclusion}
 
-	Now, the second thread executes and wants to add $B$ to the linked list.
+	The mutex semaphore is originally initialized to 1.
 
-	In the conditional statement, \texttt{list->size == 0} evaluates to true.
+	Whichever thread gets to the \texttt{wait} statement first will proceed immediately and not be blocked at all.
 
-	Thus, the \texttt{tail} pointer is updated.
+	If the semaphore were initialized to 0 then neither thread could ever get to the \texttt{post} statement or ever get into the critical section (deadlock).
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Symmetric vs. Asymmetric Solutions}
+
+	Threads $A$ and $B$ are identical here.
+
+	This is a \alert{symmetric} solution.
+
+	It is easier to make predictions about the behaviour of the threads when they all do the same thing.
+
+	If the different threads have different sections of code, they are \alert{asymmetric}.
+
+	The symmetric solutions very often scale well.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Multiplex}
+	In addition to the binary semaphore, we also discussed the general semaphore.
+
+	If the general semaphore is initialized to $n$, then at most $n$ threads can be in the critical section at a time.
+
+	Example: restaurants have a certain number of tables and seats.
+
+	If more people wish to dine than there are seats available, those customers must wait until some seats become available (other customers leave).
+
+	Restaurants generally want to pack in as many seats as possible, but fire safety regulations set a maximum occupancy for a given space.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Multiplex}
+
+	Suppose that the system has a problem that when too many concurrent database requests are happening.
+
+	The queries become slow and eventually time out.
+
+	A potential solution is to protect all database accesses with a binary semaphore, so only one database query can run at any time.
+
+	Analysis may reveal that this is too restrictive a policy; perhaps we can execute 5 queries concurrently without any slowdown.
+
+	Then initialize the semaphore with a value of 5, allowing at most 5 threads into the critical section at any time.
+
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Multiplex}
+
+
+	This is a symmetric solution, so it will work for arbitrarily many threads.
+
+	\textbf{Thread \textit{K}}\vspace{-6em}
+	\begin{verbatim}
+	1. wait( mutex )
+	2. critical section
+	3. post( mutex )
+  \end{verbatim}
+	\vspace{-2em}
+
+	This looks exactly like the solution for mutual exclusion, as it should.
+
+	The only difference is how many threads can enter the critical section at a time.
+
+
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{That's One Kind of Barrier}
 
 	\begin{center}
-		\includegraphics[width=0.35\textwidth]{images/linkedlist2.png}
+		\includegraphics[width=0.9\textwidth]{images/fence-barrier.jpg}
+	\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Barrier}
+
+	The barrier pattern is a generalization of the rendezvous pattern;\\
+	\quad A way of having more than two threads meet up at the same point.
+
+	Given $n$ threads, each of which knows that the total number of threads is $n$.
+
+	When the first $n-1$ threads arrive, they should wait until the $n$th arrives.
+
+	As a solution we might consider a variable to keep track of the number of threads that have reached the appropriate point.
+
+	This variable is shared data; modification of it should be in a critical section.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Barrier}
+
+	Thus we will have a semaphore, initialized to 1, called \texttt{mutex} to protect that counter.
+
+	Then we will have a second semaphore, \texttt{barrier} that will be the place where threads wait until the $n$th thread arrives.
+
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Barrier Solution 1}
+
+	\textbf{Thread \textit{K}}\vspace{-10em}
+	\begin{verbatim}
+	1. wait( mutex )
+	2. count++
+	3. post( mutex )
+	4. if count == n
+	5.     post( barrier )
+	6. end if
+	7. wait( barrier )
+  \end{verbatim}
+	\vspace{-2em}
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Barrier Solution 1 Analysis}
+
+	When the $n$th thread arrives, it unlocks the barrier and then may proceed.
+
+	If there is more than one thread waiting at the barrier, the first thread will be unblocked when the $n$th thread posts on it.
+
+	There are no other \texttt{post} statements!
+
+	The other threads waiting are stuck, waiting for a post that never comes.
+
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Barrier Solution 2}
+
+	\begin{center}
+		\includegraphics[width=0.7\textwidth]{images/oprah.jpg}
 	\end{center}
 
 
 \end{frame}
 
+
+\begin{frame}[fragile]
+	\frametitle{Barrier Solution 2}
+
+	The $n$th thread to arrive should post $n-1$ times:
+
+	\textbf{Thread \textit{K}}\vspace{-6em}
+	\begin{verbatim}
+	1. wait( mutex )
+	2. count++
+	3. post( mutex )
+	4. if count == n
+	5.     for i from 1 to  n
+	6.         post( barrier )
+	7.     end for
+	8. end if
+	9. wait( barrier )
+  \end{verbatim}
+	\vspace{-2em}
+
+
+
+
+\end{frame}
+
 \begin{frame}
-	\frametitle{Using the Linked List}
+	\frametitle{Barrier Solution 2 Analysis}
 
-	When the first thread gets to run again, it will resume where it left off.
+	This allows all $n$ threads to proceed (none get stuck), but it is less than ideal.
 
-	It increments the \texttt{size} integer, leaving the final state: \texttt{head} and \texttt{tail} both point to element $B$, even though there is element $A$ in the list.
+	The thread that runs last is very likely the lowest priority thread.
 
+	When it posts on the semaphore, the thread that has just been unblocked will be the next to run.
+
+	Then the system switches back, at some later time, to the thread currently unblocking all the others.
+
+	Worst case, $2n$ process switches, when it could be accomplished with $n$.
+
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Barrier Solution 3}
+
+	Have each thread unblock the next:
+
+	\textbf{Thread \textit{K}}\vspace{-6em}
+	\begin{verbatim}
+	1. wait( mutex )
+	2. count++
+	3. post( mutex )
+	4. if count == n
+	5.     post( barrier )
+	6. end if
+	7. wait( barrier )
+	8. post( barrier )
+  \end{verbatim}
+	\vspace{-2em}
+
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{This Has a Name!}
 	\begin{center}
-		\includegraphics[width=0.35\textwidth]{images/linkedlist3.png}
+		\includegraphics[width=0.9\textwidth]{images/nyc-subway-turnstile.jpg}
 	\end{center}
 
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Inconsistent State}
-
-	This is an \alert{inconsistent state}.
-
-	The linked list has two elements in it but the \texttt{tail} pointer is wrong.
-
-	An attempt to remove an element from the list will reveal the problem.
-
-	Remove the front element? Check if \texttt{head} and \texttt{tail} are equal. That may give the mistaken impression that $B$ is the last element in the list. We lost $A$!
-
-	Or the \texttt{head} pointer will be updated but \texttt{tail} will still point to $B$ even after it has been freed, which can result in a segmentation fault or invalid access.
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Semaphore Syntax}
-
-	The linked list problem just discussed can be solved easily if a semaphore is employed.
-
-	Binary semaphores are useful, and we can generalize this concept to what is known as a \textit{counting} or \textit{general} semaphore.
-
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{General Semaphores}
+	\frametitle{Barrier Solution 3 Analysis: The Turnstile}
 
-	If a thread attempts to wait on a semaphore and the decrement operation makes the integer value negative, the calling thread is blocked.
+	This pattern (wait followed immediately by post) is called a \alert{turnstile}.
 
-	If initialized with 5 and the current value is 2, a thread that waits on that general semaphore will not be blocked.
+	The analogy should be familiar to anyone who has travelled by subway.\\
+	\quad A turnstile allows one person at a time to go through.
 
-	In some operating systems there is no distinction between binary and counting semaphores (create a general semaphore with a value of 1).
+	A turnstile pattern allows one thread at a time to proceed through, but can be locked to bar all threads from proceeding.
+
+	Initially the turnstile in the above example is locked, and the $n$th thread unlocks it and permits all $n$ threads to go through.
 
 \end{frame}
 
 \begin{frame}[fragile]
-	\frametitle{Semaphore Syntax}
+	\frametitle{Barrier Solution 3 Analysis}
 
-	The syntax we will use is as follows:
+	In this solution we are reading the value of \texttt{count}, a shared variable, without the protection of a semaphore.
 
-	\begin{lstlisting}[language=C]
-sem_init( sem_t* semaphore, int shared, int initial_value);
-sem_destroy( sem_t* semaphore )
-sem_wait( sem_t* semaphore )
-sem_post( sem_t* semaphore )
-\end{lstlisting}
+	Is this dangerous?
 
-\end{frame}
+	Yes, but the alternative is, in this specific instance, worse.
 
-\begin{frame}[fragile]
-	\frametitle{Applying the Semaphore to the Linked List}
+	Consider this instead:
 
-	\begin{lstlisting}[language=C]
-typedef struct single_node {
-  void *element;
-  struct single_node *next;
-} single_node_t;
-
-typedef struct single_list {
-  single_node_t *head;
-  single_node_t *tail;
-  int size;
-  sem_t sem;
-} single_list_t;
-
-void single_list_init( single_list_t *list ) {
-  list->head = NULL;
-  list->tail = NULL;
-  list->size = 0;
-
-  sem_init( &( list->sem ), 0, 1 );
-}
-\end{lstlisting}
+	\textbf{Thread \textit{K}}\vspace{-2em}
+	\begin{verbatim}
+	1. wait( mutex )
+	2. count++
+	3. if count == n
+	4.     post( barrier )
+	5. end if
+	6. wait( barrier )
+	7. post( barrier )
+	8. post( mutex )
+  \end{verbatim}
+	\vspace{-2em}
 
 \end{frame}
 
-\begin{frame}[fragile]
-	\frametitle{Applying the Semaphore to the Linked List}
+\begin{frame}
+	\frametitle{Barrier Solution 3A Analysis}
 
-	\begin{lstlisting}[language=C]
-bool push_front( single_list_t *list, void *obj ) {
-  single_node_t *tmp = malloc( sizeof( single_node_t ) );
-  
-  if ( tmp == NULL ) { return false; }  
-  tmp->element = obj;
+	The problem here is deadlock once again.
 
-  sem_wait( &( list->sem ) ); {  
-    tmp->next = list->head;
-    list->head = tmp;
+	The first thread waits on \texttt{mutex} and then goes to wait on the \texttt{barrier} semaphore.
 
-    if ( list->size == 0 ) {
-       list->tail = tmp;
-    }
-    ++( list->size );
-  
-  } sem_post( &( list->sem ) );
-  return true;
-}
-\end{lstlisting}
+	At this point, the first thread is blocked.
+
+	When a second thread comes along, it will wait on \texttt{mutex} but can get no further because the first thread has not posted on it.
 
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Applying the Semaphore to the Linked List}
+	\frametitle{Barrier Solution 3A Analysis}
 
-	The critical section here just encloses the modification of the shared linked list.
+	The counter will be 1, but cannot get past 1.
 
-	In theory one might put the wait and signal operations at the start and end of the entire function, respectively.
+	The condition of \texttt{count} equalling $n$ can never be true.
 
-	This is, however, suboptimal: it forces unnecessary waiting.
+	Thus, all the threads are stuck.
 
-	Including the call to \texttt{malloc} is especially bad; the memory allocation itself can block if insufficient memory is available.
+	This is a common source of deadlock: blocking on a semaphore while inside a critical region.
 
 \end{frame}
+
+\begin{frame}
+	\frametitle{Reusable Barrier}
+
+	The barrier solution we have is good.
+
+	The way it is implemented now, \texttt{count} can increase but never decrease.
+
+	Once the barrier is open, it can never be closed again.
+
+	Programs very often do the same thing repeatedly, so a one-time use barrier is not ideal; it would be better to have a reusable barrier.
+
+	Idea: Decrement \texttt{count} after the rendezvous has taken place.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Reusable Barrier Solution 1}
+
+	\textbf{Thread \textit{K}}\vspace{-2em}
+	\begin{verbatim}
+	 1. wait( mutex )
+	 2. count++
+	 3. post( mutex )
+	 4. if count == n
+	 5.     post( turnstile )
+	 6. end if
+	 7. wait( turnstile )
+	 8. post( turnstile )
+	 9. [critical point]
+	10. wait( mutex )
+	11. count--
+	12. post( mutex )
+	13. if count == 0
+	14.     wait( turnstile )
+	15. end if
+  \end{verbatim}
+	\vspace{-2em}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Reusable Barrier Solution 1 Analysis}
+
+	There are two problems with the above implementation.
+
+	Suppose thread $n-1$ is about to execute line 4 and then there is a process switch and the $n$th thread comes to this point.
+
+	Both of them will find that \texttt{count} is equal to $n$ and therefore both threads will post the turnstile.
+
+	The same problem occurs on line 13.
+
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Reusable Barrier Solution 2}
+
+	\textbf{Thread \textit{K}}\vspace{-2em}
+	\begin{verbatim}
+	 1. wait( mutex )
+	 2. count++
+	 3. if count == n
+	 4.     post( turnstile )
+	 5. end if
+	 6. post( mutex )
+	 7. wait( turnstile )
+	 8. post( turnstile )
+	 9. [critical point]
+	10. wait( mutex )
+	11. count--
+	12. if count == 0
+	13.     wait( turnstile )
+	14. end if
+	15. post( mutex )
+  \end{verbatim}
+	\vspace{-2em}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Reusable Barrier Solution 2 Analysis}
+
+	This solves the problem previously identified by putting the checks of \texttt{count} inside the critical section controlled by \texttt{mutex}.
+
+	Suppose one particular thread gets through the second mutex but is running in a loop and gets back through the first mutex again.
+
+	This would be like one thread being one ``lap'' ahead of the others.
+
+	We can prevent this by having two turnstiles: first all threads wait at the first turnstile until the last gets there and lets them through.
+
+	Then all threads wait at a second turnstile until the last gets there and lets them all through again.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Reusable Barrier Visually}
+
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/reusable-barrier.png}
+	\end{center}
+
+	This solution can also be called a \alert{two-phase barrier} because all threads have to wait twice: once at each turnstile.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Reusable Barrier Solution 3}
+	\vspace{-0.5em}
+	\textbf{Thread \textit{K}}\vspace{-0.5em}
+	\begin{verbatim}
+	 1. wait( mutex )
+	 2. count++
+	 3. if count == n
+	 4.     wait( turnstile2 )
+	 5.     post( turnstile1 )
+	 6. end if
+	 7. post( mutex )
+	 8. wait( turnstile1 )
+	 9. post( turnstile1 )
+	10. [critical point]
+	11. wait( mutex )
+	12. count--
+	13. if count == 0
+	14.     wait( turnstile1 )
+	15.     post( turnstile2 )
+	16. end if
+	17. post( mutex )
+	18. wait( turnstile2 )
+	19. post( turnstile2 )
+  \end{verbatim}
+	\vspace{-2em}
+
+
+\end{frame}
+
 
 \end{document}
 

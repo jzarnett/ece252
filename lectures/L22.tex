@@ -2,393 +2,109 @@
 
 \begin{document}
 
-\lecture{ 22 --- Advanced Concurrency Problems }{\term}{Jeff Zarnett}
+\lecture{ 22 --- Of Asgard \& Hel }{\term}{Jeff Zarnett}
 
-\section*{Get a Pizza This!}
-Let's consider a more advanced concurrency problem. In~\cite{lbs} it's called the ``Cigarette Smokers Problem'', but smoking is bad for you so it's going to be the ``Pizza Makers Problem''. Pizza, while not exactly health food, is amazing. Delicious, delicious pizza.
+\section*{Norse Mythology}
+Everything came into creation in the gap between fire and ice, and the World Tree (Yggdrasil) connects the nine worlds. Asgard is the home of the \AE sir, the Norse gods. Helheim, or simply Hel, is the underworld where the dead go upon their death. In Hel or Asgard (it's not entirely clear), there is Valhalla, hall of the honoured dead. Those who die in battle and are judged worthy will be carried to Valhalla by the Valkyries. There they will reside until they are called upon to aid in Odin's fight with the wolf Fenrir in Ragnar\"ok\footnote{German: G\"otterd\"ammerung - ``Twilight of the gods''}, the doom of the gods\footnote{Spoiler alert: this isn't going to end well for Odin.}. For the curious, humans live in the ``middle realm'', Midg\aa rd, surrounded by the serpent Jormungand, who will fight against Thor in  Ragnar\"ok. Thor will kill the serpent, but the serpent's poison will also finish off Thor\footnote{Sorry if I've just spoiled the plot of a Marvel movie.}.
 
-A new show to be hosted by some famous TV chef personality is being pitched, and you're going to write a simulation of it. The show is about making pizza. A pizza requires three ingredients: dough, sauce, and cheese. All three ingredients are necessary to make a pizza (otherwise it does not meet the definition of a pizza).
+Aside from my obvious passion about the subject, why are we talking about Norse Mythology? We're going to examine some very useful tools for programming called Valgrind and Helgrind (also Cachegrind). Note that the -grind endings on those are pronounced like ``grinned''. Where do they take their names from? Valgrind is the gateway to Valhalla; a gate that only the worthy can pass. Helgrind is the gateway to, well, Hel. Which despite being the source of the English word ``Hell'', is not the place where sinners go. It's just the place where the dead go.
 
-Each contestant has an unlimited supply of one ingredient. Contestant A has an unlimited supply of dough, Contestant B has an unlimited supply of sauce, and Contestant C has an unlimited supply of cheese. Each contestant needs to get the two ingredients they do not have and then can make a pizza. They will continue to (try to) make pizza in a loop until time is up. At the beginning of the episode, the host places two different random ingredients out. Contestants can signal the host to ask for more ingredients, but they should not do so unless they actually need some. Each time the host is woken up (signalled), he again places two different random ingredients out. When an ingredient is placed on the table, the host posts on the associated semaphore. For example, if the host puts out cheese and sauce, then the host posts on both \texttt{cheese} and \texttt{sauce}.
+But all of these, in program form, are analysis tools for your (usually) C and \Cpp programs. They are absolute murder on performance, but they are wonderful for finding errors in your program. To use them you will start the tool of your choice and instruct it to invoke your program. The target program then runs under the ``supervision'' of the tool. This results in running dramatically slower than normal, but you get additional checks and monitoring of the program. It's important to enable debugging symbols in your compile (\texttt{-g} option if using \texttt{gcc}) if you want stack traces to be useful.
 
-In this scenario, there are resources provided by some external system and the contestants are processes that want resources. But we shouldn't be wasteful: resources should only be requested when they are needed and processes should take only what they need. Applications should only wake up if they can do something useful.
+This lecture is unlike the others in this course, in that it mostly revolves around in-class demonstrations. So if you missed it, well, you will need to play around with Valgrind/Helgrind yourself to see what it does. Fortunately, that is the next in-class exercise!
 
-There are some restrictions, though, and they could make the problem either impossible or trivial. In the impossible version, you can't modify what the host does (which is sensible, because you don't control the other system) but you also cannot use conditional (if) statements, which is pretty ridiculous. In the trivial version, the host tells which contestants whose turn it is, which is boring but also unrealistic, because again it requires the host system to know too much about the contestants. The interesting version has just the restriction that we can't control the host behaviour~\cite{lbs}. And he is a TV chef personality, after all, they do wacky things.
+\subsection*{Valgrind (or Memcheck) }
+Valgrind is the base name of the project and by default it runs the memcheck tool. The purpose of memcheck is to look into all memory reads, writes, and to intercept and analyze every call to \texttt{malloc}/\texttt{free} and \texttt{new}/\texttt{delete}. Thus, memcheck will check all memory accesses and allocations/deallocations, and can find problems like:
+\begin{itemize}
+	\item Accessing uninitialized memory
+	\item Reading off the end of an array
+	\item Memory leaks (failing to free allocated memory)
+	\item Incorrect freeing of memory (double free calls or a mismatch)
+	\item Incorrect use of C standard functions like \texttt{memcpy}
+	\item Using memory after it's been freed.
+	\item Asking for an invalid number of bytes in an allocation (negative\textinterrobang)
+\end{itemize}
 
-Consider the following solution. All semaphores start at 0, except for \texttt{host} which starts as 1 (so the host will run the first time). Does this work?
+These errors will be reported to the console when they occur. Ideally, this will help you find the source of the problem. Ideally, you're going to see this:
+\begin{verbatim}
+==8476== All heap blocks were freed -- no leaks are possible
+\end{verbatim}
 
-\begin{multicols}{3}
-	\textbf{Contestant A}
-	\begin{lstlisting}
-wait( sauce )
-get_sauce()
-wait( cheese )
-get_cheese()
-make_pizza( )
-post( host )
-\end{lstlisting}
-	\columnbreak
-	\textbf{Contestant B}
-	\begin{lstlisting}
-wait( dough )
-get_dough()
-wait( cheese )
-get_cheese()
-make_pizza( )
-post( host )
-\end{lstlisting}
-	\columnbreak
-	\textbf{Contestant C}
-	\begin{lstlisting}
-wait( sauce )
-get_sauce()
-wait( dough )
-get_dough()
-make_pizza( )
-post( host )
-\end{lstlisting}
-\end{multicols}
+Okay, everything going perfectly is unlikely in anything other than a small program.  If you take the program's suggestion to use \verb+--leak-check=full+ then you end up with a bit more detail about where memory was allocated. It can't tell you where the call to \texttt{free} should go, only where the memory that isn't freed was allocated.
 
-No. Deadlock can easily occur. Suppose the host puts out sauce and dough. If contestant B takes the dough and contestant A takes the sauce, then both of them are blocked and nobody can proceed and nobody gets pizza.
+From the Valgrind FAQ, how to read the leak summary:
+\begin{itemize}
+	\item \textbf{Definitely lost}: a clear memory leak. Fix it.
+	\item \textbf{Indirectly lost}: a problem with a pointer based structure (e.g., you've lost the head of the linked list, but the rest of the list is indirectly lost.) Generally, fixing the definitely lost items should be enough to clear up the indirectly lost stuff.
+	\item \textbf{Possibly lost}: the program is leaking memory unless weird things are going on with pointers where you're pointing them to the middle of an allocated block.
+	\item \textbf{Still reachable}: this is memory that was still allocated that might otherwise have been freed, but references to it exist so it at least wasn't lost.
+	\item \textbf{Suppressed}: you can configure the tool to ignore things and those will appear in the suppressed category.
+\end{itemize}
 
-Part of the problem here is that a contestant doesn't have a good way to assess what the ingredients are before going up there. And once there, if it finds that the ingredients match someone else's needs, we don't call that contestant over. That would be clever, but to make this work we would need a way to ``check'' what ingredients are there and semaphores don't let us do that. If we want to do that, we'd have to break the rule about not modifying the host's behaviour. Can we work with what we have?
+Still, it's also important to learn what to ignore (or what's out of our hands). The stack trace that we see will point us at the cause of the problem. Sometimes, though, we end up with something where there's very little involvement of our own program: it's thread creation or a library or similar. What do we do?
 
-Imagine now that each contestant gets a helper. The job of the helper is to, well, help their contestant to make pizza by figuring out whose turn it is. For this there are boolean variables \texttt{dough\_present}, \texttt{sauce\_present}, and \texttt{cheese\_present} that are all initialized to \texttt{false}. They are protected by a semaphore (called \texttt{mutex}). The helpers update that variable, and based on the information available, signal which contestant should come up to the table and take ingredients. Each contestant now has a semaphore (such as \texttt{contestantA} for contestant A) which the helpers will post on. Contestants are still responsible for telling the host to put out more ingredients.
+Well -- we have to consider carefully if there's anything we can do about it. In a library, there might be an associated cleanup call that we have forgotten to use. Or maybe not, and the problem is beyond our ability to fix. You will have to consider carefully and use your judgement! Sorry. I know it's much better when there's a clear yes or no, but software is complex.
 
-\begin{multicols}{3}
-	\textbf{Helper 1}
-	\begin{lstlisting}
-wait( sauce )
-wait( mutex )
-if dough_present  
-  dough_present = false;
-  post( contestantC )
-else if cheese_present
-  cheese_present = false;
-  post( contestantA )
-else
-  sauce_present = true;
-end if  
-post( mutex )
-\end{lstlisting}
-	\columnbreak
-	\textbf{Helper 2}
-	\begin{lstlisting}
-wait( dough )
-wait( mutex )
-if sauce_present  
-  sauce_present = false;
-  post( contestantC )
-else if cheese_present
-  cheese_present = false;
-  post( contestantB )
-else
-  dough_present = true;
-end if  
-post( mutex )
-\end{lstlisting}
-	\columnbreak
-	\textbf{Helper 3}
-	\begin{lstlisting}
-wait( cheese )
-wait( mutex )
-if dough_present  
-  dough_present = false;
-  post( contestantB )
-else if sauce_present
-  sauce_present = false;
-  post( contestantA )
-else
-  cheese_present = true;
-end if  
-post( mutex )
-\end{lstlisting}
-\end{multicols}
+We'll take some time to do some examples that show the kind of error that Valgrind reports; both those we can do something with and those that are outside our control.
 
-So let's analyze Helper 1. Each of the other helpers does the same thing but for a different ingredient. In this case, the helper is woken up when sauce is placed on the table. It then locks the mutex so that it can manipulate the shared variables of what ingredients are present. Now we decide what to do here. If the current helper is the first one to run, then all the variables will be false, so we'll end up at the else block and just set \texttt{sauce\_present} to true and then let the next helper run. If \texttt{dough\_present} is true, then Helper 2 has already run and we know that dough is present on the table. With both sauce and dough present, we know that the ingredients present match the needs of Contestant C. If \texttt{cheese\_present} is true then Helper 3 has already run and the ingredients present match the needs of Contestant A.
+\subsection*{Helgrind}
+The purpose of Helgrind is to detect errors in the use of POSIX pthreads. In a way, Helgrind is a pretty neat tool for improving performance, even though it doesn't actually directly speed anything up. When we take a single-threaded program and split it off into a multithreaded program, we may introduce a lot of errors (or at least, introduce the possibility of a lot of errors). Truthfully, humans are not very good at parallel thinking; we are very much sequential. But a program that is fast and wrong is probably less useful than one that is slow and correct. Can we make it faster and still have it be correct? That's the goal of Helgrind: after you parallelize your code, it will do some automatic checking of the code to determine where, if anywhere, there are concurrency problems. It can't prove that your program is correct (if only) but it can at least catch some of the common problems you might introduce when writing a parallel program. Helgrind classifies errors into three basic categories:
 
-Obviously, each of the other helpers will signal the appropriate contestant based on its assessment of the state of the ingredients.
+\begin{enumerate}[noitemsep]
+	\item Misuses of the pthreads API;
+	\item Lock ordering problems; and
+	\item Data races.
+\end{enumerate}
 
-\begin{multicols}{3}
-	\textbf{Contestant A}
-	\begin{lstlisting}
-wait( contestantA )
-get_sauce()
-get_cheese()
-make_pizza( )
-post( host )
-\end{lstlisting}
-	\columnbreak
-	\textbf{Contestant B}
-	\begin{lstlisting}
-wait( contestantB )
-get_dough()
-get_cheese()
-make_pizza( )
-post( host )
-\end{lstlisting}
-	\columnbreak
-	\textbf{Contestant C}
-	\begin{lstlisting}
-wait( contestantC )
-get_sauce()
-get_dough()
-make_pizza( )
-post( host )
-\end{lstlisting}
-\end{multicols}
+The first category does not require much explanation. These are just some programming errors related to the pthread API calls. Some examples from~\cite{helgrind}:
 
-The contestant code is pretty much trivial now: wait until a helper signals, then go take your ingredients and make a pizza. Once the pizza is in the oven, indicate that you are ready for more ingredients.
-
-The generalized version of the problem is what happens when the host puts out ingredients periodically, without a need to be signalled to ask for more. How do we modify the solution to deal with that?
-
-Obviously if there is no longer a need for the contestants to signal that they want more resources then the \texttt{post( host )} statements in the contestant code has to be removed. But what about the helpers?
-
-Instead of boolean variables to indicate the presence or absence of an ingredient what we need instead is an integer counter to know how many there are. So let's call them \texttt{num\_dough}, \texttt{num\_sauce}, and \texttt{num\_cheese}, and they all start as zero.
-
-\begin{multicols}{3}
-	\textbf{Helper 1}
-	\begin{lstlisting}
-wait( sauce )
-wait( mutex )
-if num_dough > 0  
-  num_dough--
-  post( contestantC )
-else if num_cheese > 0
-  num_cheese--
-  post( contestantA )
-else
-  num_sauce++
-end if  
-post( mutex )
-\end{lstlisting}
-	\columnbreak
-	\textbf{Helper 2}
-	\begin{lstlisting}
-wait( dough )
-wait( mutex )
-if num_sauce > 0  
-  num_sauce--
-  post( contestantC )
-else if num_cheese > 0
-  num_cheese--
-  post( contestantB )
-else
-  num_dough++
-end if  
-post( mutex )
-\end{lstlisting}
-	\columnbreak
-	\textbf{Helper 3}
-	\begin{lstlisting}
-wait( cheese )
-wait( mutex )
-if num_dough > 0 
-  num_dough--
-  post( contestantB )
-else if num_sauce > 0
-  num_sauce--
-  post( contestantA )
-else
-  num_cheese++
-end if  
-post( mutex )
-\end{lstlisting}
-\end{multicols}
-
-Now instead of setting the variables to true and false, the variables tracking the ingredients are incremented and decremented. Otherwise not much has changed. This pattern is referred to as the ``scoreboard''~\cite{lbs} -- there are variables keeping track of the state of the system which are viewable from all threads. As threads go about their actions, they take a look at the current state (the scoreboard) and decide how to act based on that.
-
-\section*{The Barbershop Problem}
-Consider the ``Barbershop Problem'', originally proposed by Dijkstra. A variant of this appears in~\cite{osc}. A barbershop is a place where customers get their hair cut. A barbershop consists of a waiting area with $n$ chairs, and a barber chair.
-
-If there are no customers to be served, the barber goes to sleep. If a customer enters the barbershop and all chairs are occupied, then the customer leaves the shop. If the barber is busy, but chairs are available, then the customer sits in one of the free chairs. If the barber is asleep, the customer wakes up the barber.
-
-Customer threads should call \texttt{get\_hair\_cut()} when it is their turn. If the shop is full, the customer should \texttt{return} (exit/leave). The barber thread will call \texttt{cut\_hair}. The barber can cut only one person's hair at a time, so there should be exactly one thread calling \texttt{get\_hair\_cut()} concurrently. You can assume that external forces cause customers to appear and the barber to keep working (so you do not need to write any loops). Assume \texttt{n} is initialized to an appropriate value.
-
-We need an integer counter for customers waiting called \texttt{customers} that starts at 0. We will also have a mutex for controlling access to \texttt{customers} called \texttt{mutex} (it obviously starts at 1). Finally, two semaphores, \texttt{customer} and \texttt{barber} that both start at 0.
-
-As for the solution:
-\begin{multicols}{2}
-	\textbf{Customer}
-	\begin{lstlisting}
-wait( mutex )
-if customers == n+1
-    signal( mutex )
-    return
-end if
-customers++
-signal( mutex )
-
-signal( customer )
-wait( barber )
-get_hair_cut()
-
-wait( mutex )
-customers--
-signal( mutex )
-\end{lstlisting}
-	\columnbreak
-	\textbf{Barber}
-	\begin{lstlisting}
-wait( customer )
-signal( barber )
-cut_hair()
-  \end{lstlisting}
-\end{multicols}
+\begin{itemize}[noitemsep]
+	\item Unlocking a mutex that is unlocked;
+	\item Deallocation of memory with a locked mutex in it; or
+	\item Thread exit while holding a lock.
+\end{itemize}
+\ldots and many more.
 
 
-The barber code is much simpler, so let's start there. The barber waits for there to be a customer. When there is one, the barber calls the customer forward by signalling on \texttt{barber}, and then cuts hair. Simple enough.
-
-As for the customer, \texttt{customers} is shared data, so its access should be protected by \texttt{mutex}. If we find that the number of customers is already $n$ -- that is, the waiting area is full, the customer should leave. But not without unlocking \texttt{mutex}! If the customer forgot to do that then no more customers could enter. That's a problem. Otherwise the count of customers is increased and the customer signals the semaphore \texttt{customer}. This will wake up the barber, if the barber is sleeping, but also indicates the number of customers waiting. Then the customer must wait for the barber. When the customer gets called forward by the barber, the customer can get their hair cut. Finally, when leaving, the customer decrements the number of customers counter.
-
-Let's look over this for a risk of deadlock. We don't see anywhere, really, the nested-waits pattern that usually indicates trouble. There isn't really any scenario where a customer can get blocked waiting for another customer or the barber, and the barber code is very simple.
-
-As for starvation, it also won't happen. Assuming there are actually customers, the barber will have work to do. And the customers will wait for a finite period before they get their hair cut. The size of the waiting area is limited so we expect that a customer doesn't get delayed indefinitely. It is possible for them to wait quite a while, though, but they will eventually get a turn.
-
-We can maybe say that customers who give up in frustration are disappointed but that's better than making them wait forever. If they are told they won't get service today, they can go to a different barbershop or come again some other time. That's why there's the limit on the waiting area at all. In the scenario, the barber is only human and can only cut so many people's hair in a day. The exact number will vary based on how long each hair cut takes, which depends on the person whose hair is being cut. But there is a limit of some sort: at some point the barber will go home. And only so many people can fit into the waiting room anyway: if there are too many, then nobody can move around (and this violates fire code!).
-
-This is actually a good lesson for services in general. They have a certain capacity, and when things are overloaded it's helpful to tell clients that they are unable to take any more requests right now. Clients can then choose what to do (and it's usually either ``wait a while and try again'' or ``go to a different service''). And you can! If the game that you want to play requires a server and all servers are busy, you can play a different game (or go outside, or who knows what!).
-
-
-\subsection*{Chemistry: Building H$_{2}$O}
-There are two kinds of thread, \texttt{oxygen()} and \texttt{hydrogen()}. As you will recall from basic chemistry, water, H$_{2}$O, requires two hydrogen modules and one oxygen module. To assemble the desired molecule (water) a group rendezvous pattern is needed to make each thread wait until all ingredients are present in the correct amounts. As each thread passes the barrier, it should call the function \texttt{bond()} which makes the water. Our solution must function so that all threads for one molecule invoke \texttt{bond()} before any of the threads from the next molecule do.
-
-To clarify, if an oxygen thread arrives at the barrier when no hydrogen threads are present, it has to wait for two hydrogen threads to arrive. If a hydrogen thread arrives a the barrier when no other threads are waiting, it has to wait for an oxygen thread and another hydrogen thread. It is not necessary for the threads to know what other threads they are matched with, as long as the correct elements are present in the correct proportions.
-
-In the example, we'll assume the \texttt{oxygen} and \texttt{hydrogen} threads are created and started correctly and in the correct proportions. The code for the creation of those two types of threads is not shown for space reasons. The reusable two-phase barrier from earlier has also been converted into C code.
-
-The oxygen queue and hydrogen queue start as ``locked'' so we'll only signal the threads when they are going to proceed. Before that we have a scoreboard pattern, where threads take a look at the state of the system and decide what to do.
+The second category of errors should be familiar to you from earlier as a source of potential deadlock.
 
 \begin{multicols}{2}
-	\begin{lstlisting}[firstline=0, language=C]
-int oxygen;
-int hydrogen;
-pthread_mutex_t barrier_mutex;
-sem_t turnstile;
-int barrier_count;
-int barrier_N;
-sem_t bond;
-sem_t oxygen_queue;
-sem_t hydrogen_queue;
-
-void barrier_enter( ) {
-  pthread_mutex_lock( &barrier_mutex );
-  barrier_count++;
-  if ( barrier_count == barrier_N ) {
-    sem_post( &turnstile );
-  }
-  pthread_mutex_unlock( &barrier_mutex );
-  sem_wait( &turnstile );
-  sem_post( &turnstile );            
-}
-
-void barrier_exit( ) {
-  pthread_mutex_lock( &barrier_mutex );
-  barrier_count--;
-  if ( barrier_count == 0 ) {
-    sem_wait( &turnstile );
-  }
-  pthread_mutex_unlock( &barrier_mutex );
-}
-
-
-\end{lstlisting}
+	\textbf{Thread P}\vspace{-2em}
+	\begin{verbatim}
+	 1. wait( a ) 
+	 2. wait( b )
+	 3. [critical section]
+	 4. signal( a )
+	 5. signal( b )
+  \end{verbatim}
 	\columnbreak
-	\begin{lstlisting}[language=C]
-int main( void ) {
-  oxygen = 0;
-  hydrogen = 0;
-  barrier_count = 0;
-  barrier_N = 3;
-
-  pthread_mutex_init( &barrier_mutex, NULL );
-  sem_init( &barrier_turnstile, 0, 0 );
-  
-  sem_init( &bond, 0, 1 );
-  sem_init( &oxygen_queue, 0, 0 );
-  sem_init( &hydrogen_queue, 0, 0 ); 
-
-  /* Creation of oxygen and hydrogen threads
-   not shown for space reasons */
-
-  pthread_mutex_destroy( &barrier_mutex );
-  sem_destroy( &barrier_turnstile );
-  sem_destroy( &bond );
-  sem_destroy( &oxygen_queue );
-  sem_destroy( &hydrogen_queue );   
-
-  pthread_exit( 0 );
-}
-
-\end{lstlisting}
+	\textbf{Thread Q}\vspace{-2em}
+	\begin{verbatim}
+	 1. wait( b ) 
+	 2. wait( a )
+	 3. [critical section]
+	 4. signal( b )
+	 5. signal( a )
+  \end{verbatim}
 \end{multicols}
+\vspace{-2em}
 
-\begin{multicols}{2}
-	\begin{lstlisting}[language=C]
-void* oxygen( void* ignore ) {
-  sem_wait( &bond );
-  oxygen++;
-  
-  if( hydrogen >= 2 ){
-    sem_post( &hydrogen_queue );
-    sem_post( &hydrogen_queue );
-    hydrogen -= 2;
-    sem_post( &oxygen_queue );
-    oxygen--;
-  } else {
-    sem_post( &bond );
-  }
-  
-  sem_wait( &oxygen_queue );
-  bond();
+In this case, if the interleaving of these happens to work out in a couple of particular ways, then we get deadlock because thread P holds mutex \texttt{a} and thread Q holds mutex \texttt{b} and each waits for the mutex that the other one has. The example is slightly silly, of course, because it's super easy to see.
 
-  barrier_enter();
-  barrier_exit();
+Helgrind builds a directed graph of lock acquisitions. When a thread acquires a lock, Helgrind checks to see whether a cycle exists. If so, then there is potential for a deadlock~\cite{helgrind}. Helgrind will report as an error the initial order (the first order seen is the one viewed as ``correct'') and the ``incorrect'' order that is the source of the potential problem. Really, though, all that matters is consistency---following the same order. You may change either of the acquisition orders to match the other. 
 
-  sem_post( &bond );
-  
-  pthread_exit( NULL )
-}
+How does Helgrind work? It examines the use of the standard threading primitives---lock, unlock, signal/post, wait, etc. Anything that implies there might be an ordering between events is taken and added to a directed acyclic graph that represents these dependencies. If memory is accessed from two different threads and there is no path through this directed acyclic graph that indicates an ordering, then Helgrind reports a race~\cite{helgrind}. Obviously, at least one of these accesses must be a write. (Recall: there is no read after read dependency).
+
+Also cool: you can ask Helgrind to try to tell you about variable names (if it can) with the command line option \texttt{--read-var-info=yes}. Then it will tell you something interesting like:
+
+\begin{lstlisting}
+==10454== Location 0x60104c is 0 bytes inside global var "var"
+==10454== declared at datarace.c:3
 \end{lstlisting}
-	\columnbreak
-	\begin{lstlisting}[language=C]
-void* hydrogen( void* ignore ) {
-  sem_wait( &bond );
-  hydrogen++;
-  
-  if( hydrogen >= 2 && oxygen >= 1 )
-    sem_post( &hydrogen_queue );
-    sem_post( &hydrogen_queue );
-    hydrogen -= 2;
-    sem_post( &oxygen_queue );
-    oxygen--;
-  } else {
-    sem_post( &bond );
-  }
-  
-  sem_wait( &hydrogen_queue );
-  bond();
-  
-  barrier_enter();
-  barrier_exit();
-  
-  pthread_exit( NULL )
-}
-\end{lstlisting}
-\end{multicols}
 
+These will give you indications of where you need to introduce synchronization of some kind (semaphore, mutex, condition variable, etc). The authors of Helgrind assume that if it tells you where the problem is, you will figure out what variables are affected and how to properly prevent data races. You might find this frustrating, in the sense of a serial complainer who thinks that he or she can just moan about what's wrong without bringing forward any suggestions about how to fix the problems.
 
-Let's analyze the solution then, starting with oxygen threads. When it enters, it waits on the \texttt{bond} semaphore, which in this case is used somewhat like a mutex. If there are at least two hydrogen threads waiting, then, we can unblock two of them, signal the oxygen queue, and update the counters. If there are not two hydrogens waiting, then we just signal \texttt{bond} so that the next thread will arrive. Then the thread can get in line at the oxygen queue.
-
-The hydrogen code is more or less the same, but the if-condition is different since it's not enough for 1 hydrogen to be present (we need at least two). If we have what we need, signal the queues to release the needed molecules, and we are ready to go. If not, get in line.
-
-When threads are released from the oxygen queue and hydrogen queue respectively, they proceed forward to the \texttt{bond()} step, and afterwards there is a barrier enter followed by exit to wait for all of them to be finished. All we really need is for all three threads to be done with \texttt{bond()} before they can exit so the barrier enter and exit happen one after the other.
-
-Now it may be that when a thread arrives it unblocks some thread ahead of it in line. So if the oxygen that arrives is the 2nd oxygen and there is already one waiting ahead of it, that first one proceeds. That's okay -- one molecule of water is as good as any other so we don't really care which oxygen ends up in its composition.
-
-It is a little strange that the hydrogen threads don't post on \texttt{bond}. Isn't this a problem? It turns out no, because the oxygen threads post on it unconditionally. The reasoning on this is not too complicated. When a thread arrives but the water molecule cannot be formed, whether it is oxygen or hydrogen, a post on \texttt{bond} takes place. If, however, the thread arriving is the last one necessary for bonding to take place, then one oxygen and two hydrogen proceed. Whoever waited on \texttt{bond} does not matter, as long as one of the threads that went into the water molecule posts on it before leaving. As the chemical composition of water has one oxygen, the job is assigned to this molecule. If we put it in hydrogen we might post on it twice.
-
-These are by no means all the concurrency problems in the world. There are many more in~\cite{lbs} that could be considered. But for now we will leave it here, before  we get into really obscure problems...
+We'll again take some time to examine some examples of each category of problem (as time allows). 
 
 \input{bibliography.tex}
 
