@@ -1,6 +1,6 @@
 \input{configuration}
 
-\title{Lecture 15 --- Synchronization Patterns }
+\title{Lecture 15 --- The Producer-Consumer Problem }
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
@@ -15,746 +15,548 @@
 
 \end{frame}
 
-\begin{frame}
-	\frametitle{Synchronization Patterns}
-
-
-	There are a number of common synchronization patterns that occur frequently and we can use semaphores to solve them.
-
-	These synchronization patterns are ways of co-ordinating threads or processes.
-
-	We have already examined serialization and mutual exclusion; there are more.
-
-	Throughout this section we will use pseudocode and something like ``Statement A1'' could be any valid statement in the program.
-
-\end{frame}
-
 
 \begin{frame}
-	\frametitle{So Text Me, Maybe}
+	\frametitle{Monty Python and the Holy Compiler}
 
 	\begin{center}
-		\includegraphics[width=0.9\textwidth]{images/texting.jpeg}
+		\includegraphics[width=0.4\textwidth]{images/three-riddles.jpg}
 	\end{center}
 
+	The producer-consumer problem, the readers-writers problem, and the dining philosophers problem.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Produce and Consume}
+
+	First: the producer-consumer problem, also sometimes called the bounded-buffer-problem.
+
+	Two processes share a common buffer that is of fixed size.
+
+	One process is the producer: it generates data and puts it in the buffer.
+
+	The other is the consumer: it takes data out of the buffer.
+
+	This problem can be generalized to have $p$ producers and $c$ consumers.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Consume, Obey}
+
+	Rules:
+	\begin{itemize}
+		\item The buffer is of capacity \texttt{BUFFER\_SIZE}.
+		\item Cannot write into a full buffer
+		\item Cannot read from an empty buffer
+	\end{itemize}
+
+	To keep track of the number of items in the buffer, we will have some variable \texttt{count}.
+
+	This is a shared variable, so we need a mutex for it.
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-	\frametitle{Signalling}
+	\frametitle{Are We There Yet?}
 
-	Recall from earlier the example with Alice and Bob at the power plant.
+	If busy-waiting is permitted, we can get away with one mutex.
 
-	This was signalling.
-
-	Signalling can be used in general as a way of indicating that something has happened.
-
-	Suppose we have a semaphore named \texttt{sem}, initialized to 0.
-
-	\begin{multicols}{2}
-		\textbf{Thread A}
-		\begin{verbatim}
-	1. Statement A1
-	2. post( sem )
+	Shown below is one loop iteration for each of the producer \& consumer.
+		{\small
+			\begin{multicols}{2}
+				\textbf{Producer}
+				\begin{verbatim}
+	 1. [produce item]
+	 2. added = false
+	 3. while added is false
+	 4.    wait( mutex )
+	 5.    if count < BUFFER_SIZE
+	 6.        [add item to buffer]
+	 7.        count++
+	 8.        added = true
+	 9.    end if
+	10.    post( mutex )
+	11. end while
   \end{verbatim}
-		\columnbreak
-		\textbf{Thread B}
-		\begin{verbatim}
-	1. wait( sem )
-	2. Statement B2
+				\columnbreak
+				\textbf{Consumer}
+				\begin{verbatim}
+	 1. removed = false
+	 2. while removed is false
+	 3.    wait( mutex )
+	 4.    if count > 0
+	 5.        [remove item from buffer]
+	 6.        count--
+	 7.        removed = true
+	 8.    end if
+	 9.    post( mutex )
+	10. end while
+	11. [consume item]
   \end{verbatim}
-	\end{multicols}
-	\vspace{-2em}
-
+			\end{multicols}
+			\vspace{-2em}
+		}
 
 \end{frame}
 
+
 \begin{frame}
-	\frametitle{Analysis of Signalling}
+	\frametitle{No Busy-Waiting}
 
-	If $B$ gets to the \texttt{wait} statement first, it will be blocked (as the semaphore is 0) and cannot proceed until someone posts on that semaphore.
+	While this accomplishes what we want, it is inefficient.
 
-	When $A$ does call \texttt{post}, then $B$ may proceed.
+	Let's add a new rule that says we want to avoid busy-waiting.
 
-	If instead $A$ gets to the \texttt{post} statement first, it will post and the semaphore value will be 1.
+	The producer gets blocked if there are no available spaces.
 
-	Then, when $B$ gets to the \texttt{wait} statement, it can proceed without delay.
-
-	Regardless of the actual order that the threads run, we are certain that statement A1 will execute before statement B2.
+	The consumer gets blocked if there's nothing to consume.
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Rendezvous}
+	\frametitle{When You Lose Track of the Number of Sets...}
 
 	\begin{center}
-		\includegraphics[width=0.5\textwidth]{images/nasa-rendezvous.jpg}
-	\end{center}
-
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Rendezvous}
-
-	The rendezvous is an expansion of the signalling pattern so that it works both ways.
-
-	Two threads should be at the same point before either of them may proceed (they ``meet up'').
-
-	Suppose we have:
-
-	\begin{multicols}{2}
-		\textbf{Thread A}
-		\begin{verbatim}
-	1. Statement A1
-	2. Statement A2
-  \end{verbatim}
-		\columnbreak
-		\textbf{Thread B}
-		\begin{verbatim}
-	1. Statement B1
-	2. Statement B2
-  \end{verbatim}
-	\end{multicols}
-	\vspace{-2em}
-
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Rendezvous}
-
-	The desirable property is that A1 should take place before B2 and that B1 should take place before A2.
-
-	As each thread must wait for the other, two semaphores will be needed: one to indicate that $A$ has arrived and one for $B$.
-
-	We will assign them the names \texttt{aArrived} and \texttt{bArrived} and initialize both to 0.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Rendezvous Solution 1}
-
-	A first attempt at a solution:
-
-	\begin{multicols}{2}
-		\textbf{Thread A}
-		\begin{verbatim}
-	1. Statement A1
-	2. wait( bArrived )
-	3. post( aArrived )
-	4. Statement A2
-  \end{verbatim}
-		\columnbreak
-		\textbf{Thread B}
-		\begin{verbatim}
-	1. Statement B1
-	2. wait( aArrived )
-	3. post( bArrived )
-	4. Statement B2
-  \end{verbatim}
-	\end{multicols}
-	\vspace{-2em}
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Rendezvous Solution 1 Analysis}
-
-	The problem here should be obvious: thread $A$ gets to the \texttt{wait} statement and will wait until $B$ posts its arrival before it can proceed.
-
-	Thread $B$ gets to its \texttt{wait} statement and will wait until $A$ posts its arrival before it will proceed.
-
-	Unfortunately, each thread is waiting for the other to post and neither of them can get to the actual \texttt{post} statement because they are both blocked.
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Deadlock}
-
-	Neither thread can proceed.
-
-	The situation can never be resolved, because there is no external force that would cause one or the other to be unblocked.
-
-	This is a situation called \alert{deadlock}, and it is a subject that will receive a great deal of examination later on.
-
-	For now, an informal definition is: all threads are permanently stuck.
-
-	Obviously, this is undesirable.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Rendezvous Solution 2}
-
-	What if instead, the threads reverse the order and post first before waiting?
-
-	\begin{multicols}{2}
-		\textbf{Thread A}
-		\begin{verbatim}
-	1. Statement A1
-	2. post( aArrived )
-	3. wait( bArrived )
-	4. Statement A2
-  \end{verbatim}
-		\columnbreak
-		\textbf{Thread B}
-		\begin{verbatim}
-	1. Statement B1
-	2. post( bArrived )
-	3. wait( aArrived )
-	4. Statement B2
-  \end{verbatim}
-	\end{multicols}
-	\vspace{-2em}
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Rendezvous Solution 2 Analysis}
-
-	This solution works: if $A$ gets to the rendezvous point first, it posts its arrival and waits for $B$.
-
-	If $B$ gets there first, it posts its arrival and waits for $A$.
-
-	Whichever gets there last will post and unblock the other, before it calls \texttt{wait}.
-
-	It will be able to proceed directly; the first thread to arrive already posted.
-
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Rendezvous Solution 3}
-
-	A variation on this can also work where only one thread posts first and the other thread posts second.
-
-	\begin{multicols}{2}
-		\textbf{Thread A}
-		\begin{verbatim}
-	1. Statement A1
-	2. wait( bArrived )
-	3. post( aArrived )
-	4. Statement A2
-  \end{verbatim}
-		\columnbreak
-		\textbf{Thread B}
-		\begin{verbatim}
-	1. Statement B1
-	2. post( bArrived )
-	3. wait( aArrived )
-	4. Statement B2
-  \end{verbatim}
-	\end{multicols}
-	\vspace{-2em}
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Rendezvous Solution 3 Analysis}
-
-	While this solution will not result in deadlock, it is somewhat less efficient than the previous: it may require an extra switch between processes.
-
-	As long as we are certain that deadlock will not occur, a solution is acceptable.
-
-	Nevertheless, the previous solution is provably better.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Rendezvous Analysis}
-
-	What if we needed to add a third thread, C, to this rendezvous?
-
-	What would we have to change?
-
-
-\end{frame}
-
-
-
-\begin{frame}
-	\frametitle{Waiting Our Turn...}
-
-	\begin{center}
-		\includegraphics[width=0.9\textwidth]{images/waiting-in-line.jpg}
-	\end{center}
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Mutual Exclusion}
-
-	We saw previously the motivation and concept of mutual exclusion through messages in the linked list example.
-
-	The general form in pseudocode is of course:
-
-	\begin{multicols}{2}
-		\textbf{Thread A}
-		\begin{verbatim}
-	1. wait( mutex )
-	2. critical section
-	3. post( mutex )
-  \end{verbatim}
-		\columnbreak
-		\textbf{Thread B}
-		\begin{verbatim}
-	1. wait( mutex )
-	2. critical section
-	3. post( mutex )
-  \end{verbatim}
-	\end{multicols}
-	\vspace{-2em}
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Mutual Exclusion}
-
-	The mutex semaphore is originally initialized to 1.
-
-	Whichever thread gets to the \texttt{wait} statement first will proceed immediately and not be blocked at all.
-
-	If the semaphore were initialized to 0 then neither thread could ever get to the \texttt{post} statement or ever get into the critical section (deadlock).
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Symmetric vs. Asymmetric Solutions}
-
-	Threads $A$ and $B$ are identical here.
-
-	This is a \alert{symmetric} solution.
-
-	It is easier to make predictions about the behaviour of the threads when they all do the same thing.
-
-	If the different threads have different sections of code, they are \alert{asymmetric}.
-
-	The symmetric solutions very often scale well.
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Multiplex}
-	In addition to the binary semaphore, we also discussed the general semaphore.
-
-	If the general semaphore is initialized to $n$, then at most $n$ threads can be in the critical section at a time.
-
-	Example: restaurants have a certain number of tables and seats.
-
-	If more people wish to dine than there are seats available, those customers must wait until some seats become available (other customers leave).
-
-	Restaurants generally want to pack in as many seats as possible, but fire safety regulations set a maximum occupancy for a given space.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Multiplex}
-
-	Suppose that the system has a problem that when too many concurrent database requests are happening.
-
-	The queries become slow and eventually time out.
-
-	A potential solution is to protect all database accesses with a binary semaphore, so only one database query can run at any time.
-
-	Analysis may reveal that this is too restrictive a policy; perhaps we can execute 5 queries concurrently without any slowdown.
-
-	Then initialize the semaphore with a value of 5, allowing at most 5 threads into the critical section at any time.
-
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Multiplex}
-
-
-	This is a symmetric solution, so it will work for arbitrarily many threads.
-
-	\textbf{Thread \textit{K}}\vspace{-6em}
-	\begin{verbatim}
-	1. wait( mutex )
-	2. critical section
-	3. post( mutex )
-  \end{verbatim}
-	\vspace{-2em}
-
-	This looks exactly like the solution for mutual exclusion, as it should.
-
-	The only difference is how many threads can enter the critical section at a time.
-
-
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{That's One Kind of Barrier}
-
-	\begin{center}
-		\includegraphics[width=0.9\textwidth]{images/fence-barrier.jpg}
+		\includegraphics[width=0.7\textwidth]{images/counting.jpeg}
 	\end{center}
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Barrier}
+	\frametitle{Use Semaphores To Count}
 
-	The barrier pattern is a generalization of the rendezvous pattern;\\
-	\quad A way of having more than two threads meet up at the same point.
+	Use 2 general semaphores, each with maximum value of \texttt{BUFFER\_SIZE}.
 
-	Given $n$ threads, each of which knows that the total number of threads is $n$.
+	\texttt{items}: starts at 0 and represents how many spaces in the buffer are full.
 
-	When the first $n-1$ threads arrive, they should wait until the $n$th arrives.
-
-	As a solution we might consider a variable to keep track of the number of threads that have reached the appropriate point.
-
-	This variable is shared data; modification of it should be in a critical section.
-
+	\texttt{spaces}: starts at \texttt{BUFFER\_SIZE} and represents the number of spaces in the buffer that are currently empty.
 
 \end{frame}
 
-\begin{frame}
-	\frametitle{Barrier}
-
-	Thus we will have a semaphore, initialized to 1, called \texttt{mutex} to protect that counter.
-
-	Then we will have a second semaphore, \texttt{barrier} that will be the place where threads wait until the $n$th thread arrives.
-
-
-\end{frame}
 
 \begin{frame}[fragile]
-	\frametitle{Barrier Solution 1}
+	\frametitle{Producer-Consumer with Waiting}
 
-	\textbf{Thread \textit{K}}\vspace{-10em}
-	\begin{verbatim}
-	1. wait( mutex )
-	2. count++
-	3. post( mutex )
-	4. if count == n
-	5.     post( barrier )
-	6. end if
-	7. wait( barrier )
+	\begin{multicols}{2}
+		\textbf{Producer}
+		\begin{verbatim}
+	 1. [produce item]
+	 2. wait( spaces )
+	 3. [add item to buffer]
+	 4. post( items )
   \end{verbatim}
+		\columnbreak
+		\textbf{Consumer}
+		\begin{verbatim}
+	 1. wait( items )
+	 2. [remove item from buffer]
+	 3. post( spaces )
+	 4. [consume item]
+  \end{verbatim}
+	\end{multicols}
 	\vspace{-2em}
 
+	Does this work?
+
+	Are there any implicit assumptions?
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Barrier Solution 1 Analysis}
+	\frametitle{Assumptions made? I assume so...}
 
-	When the $n$th thread arrives, it unlocks the barrier and then may proceed.
+	(1) The actions of adding an item to the buffer and removing an item from the buffer add to and remove from the ``next'' space.
 
-	If there is more than one thread waiting at the barrier, the first thread will be unblocked when the $n$th thread posts on it.
+	(2) There is exactly one producer and one consumer in the system.
 
-	There are no other \texttt{post} statements!
-
-	The other threads waiting are stuck, waiting for a post that never comes.
-
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Barrier Solution 2}
-
-	\begin{center}
-		\includegraphics[width=0.7\textwidth]{images/oprah.jpg}
-	\end{center}
+	If we have two producers, for example, they might be trying to write into the same space at the same time, and this would be a problem.
 
 
 \end{frame}
 
 
 \begin{frame}[fragile]
-	\frametitle{Barrier Solution 2}
+	\frametitle{Mmmmmmmulti-Consume!}
 
-	The $n$th thread to arrive should post $n-1$ times:
+	To generalize this solution to allow multiple producers and multiple consumers, we need a \texttt{mutex}.
 
-	\textbf{Thread \textit{K}}\vspace{-6em}
-	\begin{verbatim}
-	1. wait( mutex )
-	2. count++
-	3. post( mutex )
-	4. if count == n
-	5.     for i from 1 to  n
-	6.         post( barrier )
-	7.     end for
-	8. end if
-	9. wait( barrier )
+	\begin{multicols}{2}
+		\textbf{Producer}
+		\begin{verbatim}
+	 1. [produce item]
+	 2. wait( spaces )
+	 3. wait( mutex )
+	 4. [add item to buffer]
+	 5. post( mutex )
+	 6. post( items )
   \end{verbatim}
+		\columnbreak
+		\textbf{Consumer}
+		\begin{verbatim}
+	 1. wait( items )
+	 2. wait( mutex )
+	 3. [remove item from buffer]
+	 4. post( mutex )
+	 5. post( spaces )
+	 6. [consume item]
+  \end{verbatim}
+	\end{multicols}
 	\vspace{-2em}
 
+	Does this work?
 
-
+	Anything... worrying?
 
 \end{frame}
 
+
 \begin{frame}
-	\frametitle{Barrier Solution 2 Analysis}
+	\frametitle{Cancel Red Alert}
 
-	This allows all $n$ threads to proceed (none get stuck), but it is less than ideal.
+	The hint that we might have a problem is one \texttt{wait} statement inside another.
 
-	The thread that runs last is very likely the lowest priority thread.
+	But it doesn't guarantee a problem...
 
-	When it posts on the semaphore, the thread that has just been unblocked will be the next to run.
-
-	Then the system switches back, at some later time, to the thread currently unblocking all the others.
-
-	Worst case, $2n$ process switches, when it could be accomplished with $n$.
-
+	We should be able to reason through why there is (or isn't) a problem.
 
 \end{frame}
 
 \begin{frame}[fragile]
-	\frametitle{Barrier Solution 3}
+	\frametitle{Alternative Solution: PC}
 
-	Have each thread unblock the next:
-
-	\textbf{Thread \textit{K}}\vspace{-6em}
-	\begin{verbatim}
-	1. wait( mutex )
-	2. count++
-	3. post( mutex )
-	4. if count == n
-	5.     post( barrier )
-	6. end if
-	7. wait( barrier )
-	8. post( barrier )
-  \end{verbatim}
-	\vspace{-2em}
-
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{This Has a Name!}
-	\begin{center}
-		\includegraphics[width=0.9\textwidth]{images/nyc-subway-turnstile.jpg}
-	\end{center}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Barrier Solution 3 Analysis: The Turnstile}
-
-	This pattern (wait followed immediately by post) is called a \alert{turnstile}.
-
-	The analogy should be familiar to anyone who has travelled by subway.\\
-	\quad A turnstile allows one person at a time to go through.
-
-	A turnstile pattern allows one thread at a time to proceed through, but can be locked to bar all threads from proceeding.
-
-	Initially the turnstile in the above example is locked, and the $n$th thread unlocks it and permits all $n$ threads to go through.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Barrier Solution 3 Analysis}
-
-	In this solution we are reading the value of \texttt{count}, a shared variable, without the protection of a semaphore.
-
-	Is this dangerous?
-
-	Yes, but the alternative is, in this specific instance, worse.
-
-	Consider this instead:
-
-	\textbf{Thread \textit{K}}\vspace{-2em}
-	\begin{verbatim}
-	1. wait( mutex )
-	2. count++
-	3. if count == n
-	4.     post( barrier )
-	5. end if
-	6. wait( barrier )
-	7. post( barrier )
-	8. post( mutex )
-  \end{verbatim}
-	\vspace{-2em}
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Barrier Solution 3A Analysis}
-
-	The problem here is deadlock once again.
-
-	The first thread waits on \texttt{mutex} and then goes to wait on the \texttt{barrier} semaphore.
-
-	At this point, the first thread is blocked.
-
-	When a second thread comes along, it will wait on \texttt{mutex} but can get no further because the first thread has not posted on it.
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Barrier Solution 3A Analysis}
-
-	The counter will be 1, but cannot get past 1.
-
-	The condition of \texttt{count} equalling $n$ can never be true.
-
-	Thus, all the threads are stuck.
-
-	This is a common source of deadlock: blocking on a semaphore while inside a critical region.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Reusable Barrier}
-
-	The barrier solution we have is good.
-
-	The way it is implemented now, \texttt{count} can increase but never decrease.
-
-	Once the barrier is open, it can never be closed again.
-
-	Programs very often do the same thing repeatedly, so a one-time use barrier is not ideal; it would be better to have a reusable barrier.
-
-	Idea: Decrement \texttt{count} after the rendezvous has taken place.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Reusable Barrier Solution 1}
-
-	\textbf{Thread \textit{K}}\vspace{-2em}
-	\begin{verbatim}
-	 1. wait( mutex )
-	 2. count++
-	 3. post( mutex )
-	 4. if count == n
-	 5.     post( turnstile )
-	 6. end if
-	 7. wait( turnstile )
-	 8. post( turnstile )
-	 9. [critical point]
-	10. wait( mutex )
-	11. count--
-	12. post( mutex )
-	13. if count == 0
-	14.     wait( turnstile )
-	15. end if
-  \end{verbatim}
-	\vspace{-2em}
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Reusable Barrier Solution 1 Analysis}
-
-	There are two problems with the above implementation.
-
-	Suppose thread $n-1$ is about to execute line 4 and then there is a process switch and the $n$th thread comes to this point.
-
-	Both of them will find that \texttt{count} is equal to $n$ and therefore both threads will post the turnstile.
-
-	The same problem occurs on line 13.
-
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Reusable Barrier Solution 2}
-
-	\textbf{Thread \textit{K}}\vspace{-2em}
-	\begin{verbatim}
-	 1. wait( mutex )
-	 2. count++
-	 3. if count == n
-	 4.     post( turnstile )
-	 5. end if
+	\begin{multicols}{2}
+		\textbf{Producer}
+		\begin{verbatim}
+	 1. [produce item]
+	 2. wait( mutex )
+	 3. wait( spaces )
+	 4. [add item to buffer]
+	 5. post( items )
 	 6. post( mutex )
-	 7. wait( turnstile )
-	 8. post( turnstile )
-	 9. [critical point]
-	10. wait( mutex )
-	11. count--
-	12. if count == 0
-	13.     wait( turnstile )
-	14. end if
-	15. post( mutex )
   \end{verbatim}
+		\columnbreak
+		\textbf{Consumer}
+		\begin{verbatim}
+	 1. wait( mutex )
+	 2. wait( items )
+	 3. [remove item from buffer]
+	 4. post( spaces )
+	 5. post( mutex )
+	 6. [consume item]
+  \end{verbatim}
+	\end{multicols}
 	\vspace{-2em}
 
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Reusable Barrier Solution 2 Analysis}
-
-	This solves the problem previously identified by putting the checks of \texttt{count} inside the critical section controlled by \texttt{mutex}.
-
-	Suppose one particular thread gets through the second mutex but is running in a loop and gets back through the first mutex again.
-
-	This would be like one thread being one ``lap'' ahead of the others.
-
-	We can prevent this by having two turnstiles: first all threads wait at the first turnstile until the last gets there and lets them through.
-
-	Then all threads wait at a second turnstile until the last gets there and lets them all through again.
-
+	Does this work?
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Reusable Barrier Visually}
+	\frametitle{The Tiny Details...}
 
-	\begin{center}
-		\includegraphics[width=\textwidth]{images/reusable-barrier.png}
-	\end{center}
+	This solution does have the deadlock problem!
 
-	This solution can also be called a \alert{two-phase barrier} because all threads have to wait twice: once at each turnstile.
+	Imagine at the start of execution, the buffer is empty and the consumer runs first...
+
+	Do you see the problem now?
+
+	This could also happen with the producer.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Problems are Only Sometimes a Problem}
+
+	If this solution were implemented, it wouldn't guarantee a deadlock occurs.
+
+	In fact, it probably works fine most of the time.
+
+
+	Once, however, we have found one scenario that can lead to deadlock, there is no need to look for other failure cases.
+
+	We can replace this solution with a better one.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{P-C Example}
+
+	\begin{lstlisting}[language=C]
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <semaphore.h>
+
+#define BUFFER_SIZE 20
+sem_t spaces;
+sem_t items;
+int counter = 0;
+int* buffer;
+
+int produce() {
+  ++counter;
+  return counter;
+} 
+
+void consume( int value ) {
+  printf("Consumed %d.\n", value);
+}
+\end{lstlisting}
 
 \end{frame}
 
 \begin{frame}[fragile]
-	\frametitle{Reusable Barrier Solution 3}
-	\vspace{-0.5em}
-	\textbf{Thread \textit{K}}\vspace{-0.5em}
-	\begin{verbatim}
-	 1. wait( mutex )
-	 2. count++
-	 3. if count == n
-	 4.     wait( turnstile2 )
-	 5.     post( turnstile1 )
-	 6. end if
-	 7. post( mutex )
-	 8. wait( turnstile1 )
-	 9. post( turnstile1 )
-	10. [critical point]
-	11. wait( mutex )
-	12. count--
-	13. if count == 0
-	14.     wait( turnstile1 )
-	15.     post( turnstile2 )
-	16. end if
-	17. post( mutex )
-	18. wait( turnstile2 )
-	19. post( turnstile2 )
-  \end{verbatim}
-	\vspace{-2em}
+	\frametitle{P-C Example}
 
+	\begin{lstlisting}[language=C]
+void* producer( void* arg ) {
+  int pindex = 0;
+  while( counter < 10000 ) {
+    int v = produce();
+    sem_wait( &spaces );
+    buffer[pindex] = v;
+    pindex = (pindex + 1) % BUFFER_SIZE;
+    sem_post( &items );
+  }
+  pthread_exit( NULL );
+}
+
+void* consumer( void* arg ) {
+  int cindex = 0;
+  int ctotal = 0;
+  while( ctotal < 10000 ) {
+    sem_wait( &items );
+    int temp = buffer[cindex];
+    buffer[cindex] = -1;
+    cindex = (cindex + 1) % BUFFER_SIZE;
+    sem_post( &spaces );
+    consume( temp );
+    ++ctotal;
+  }
+  pthread_exit( NULL );
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{P-C Example}
+
+	\begin{lstlisting}[language=C]
+int main( int argc, char** argv ) {
+  buffer = malloc( BUFFER_SIZE * sizeof( int ) );
+  for ( int i = 0; i < BUFFER_SIZE; i++ ) {
+    buffer[i] = -1;
+  }  
+  sem_init( &spaces, 0, BUFFER_SIZE );
+  sem_init( &items, 0, 0 );
+
+  pthread_t prod;
+  pthread_t con;
+
+  pthread_create( &prod, NULL, producer, NULL );
+  pthread_create( &con, NULL, consumer, NULL );
+  pthread_join( prod, NULL );
+  pthread_join( con, NULL );
+
+  free( buffer );
+  sem_destroy( &spaces );
+  sem_destroy( &items );
+  pthread_exit( 0 );
+}
+
+\end{lstlisting}
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Before We Go On}
+
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/stop-hammertime.jpg}
+	\end{center}
 
 \end{frame}
+
+
+\begin{frame}
+	\frametitle{Mutex Syntax}
+
+	We should take a moment to learn about the syntax of the pthread mutex.
+
+	While it is possible, of course, to use a semaphore as a mutex, frequently we will use the more specialized tool for this task.
+
+	In fact, it's generally good practice to use the more specialized tool.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Mutex Syntax}
+
+	The structure representing the mutex is of type \texttt{pthread\_mutex\_t}.
+
+	\begin{lstlisting}[language=C]
+pthread_mutex_init( pthread_mutex_t *mutex, pthread_mutexattr_t *attributes )
+\end{lstlisting}
+
+	\texttt{mutex}: the mutex to intiialize.
+
+	\texttt{attributes}: the attributes; \texttt{NULL} is fine for defaults.
+
+	Shortcut if you do not want to set attributes:
+
+	\begin{lstlisting}[language=C]
+pthread_mutex_t mymutex = PTHREAD_MUTEX_INITIALIZER;
+\end{lstlisting}
+
+	By default, the mutex is created as unlocked.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Lock and Unlock}
+
+	\begin{lstlisting}[language=C]
+pthread_mutex_lock( pthread_mutex_t *mutex )
+pthread_mutex_trylock( pthread_mutex_t *mutex ) /* Returns 0 on success */
+pthread_mutex_unlock( pthread_mutex_t *mutex )
+\end{lstlisting}
+
+	Unlock is self-explanatory.
+
+	\texttt{pthread\_mutex\_lock} is blocking.
+
+	\texttt{pthread\_mutex\_trylock} is nonblocking.
+
+	Trylock will come up again soon when we look at another classical synchronization problem.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Destroy the Mutex}
+
+	\begin{lstlisting}[language=C]
+pthread_mutex_destroy( pthread_mutex_t *mutex )
+\end{lstlisting}
+
+	Destroy is also self-explanatory.
+
+	An attempt to destroy the mutex may fail if the mutex is currently locked.
+
+	Attempting to destroy a locked one results in undefined behaviour.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Multiple Producer-Consumer Example}
+	\begin{lstlisting}[language=C]
+#include <stdlib.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <math.h>
+#include <semaphore.h>
+
+#define BUFFER_SIZE 100
+int buffer[BUFFER_SIZE];
+int pindex = 0;
+int cindex = 0;
+sem_t spaces;
+sem_t items;
+pthread_mutex_t mutex;
+
+int produce( int id ) {
+  int r = rand();
+  printf("Producer %d produced %d.\n", id, r);
+  return r;
+}
+
+void consume( int id, int number ) {
+  printf("Consumer %d consumed %d.\n", id, number);
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Multiple Producer-Consumer Example}
+	\begin{lstlisting}[language=C]
+void* producer( void* arg ) {
+  int* id = (int*) arg;
+  for(int i = 0; i < 10000; ++i) {
+    int num = produce(*id); 
+    sem_wait( &spaces );
+    pthread_mutex_lock( &mutex );
+    buffer[pindex] = num;
+    pindex = (pindex + 1) % BUFFER_SIZE;
+    pthread_mutex_unlock( &mutex );
+    sem_post( &items );
+  }
+  free( arg );
+  pthread_exit( NULL );
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Multiple Producer-Consumer Example}
+	\begin{lstlisting}[language=C]
+
+void* consumer( void* arg ) {
+  int* id = (int*) arg;
+  for(int i = 0; i < 10000; ++i) {
+    sem_wait( &items );
+    pthread_mutex_lock( &mutex );
+    int num = buffer[cindex];
+    buffer[cindex] = -1;
+    cindex = (cindex + 1) % BUFFER_SIZE;
+    pthread_mutex_unlock( &mutex );
+    sem_post( &spaces );
+    consume( *id, num );
+  }
+  free( id );
+  pthread_exit( NULL );
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Multiple Producer-Consumer Example}
+	\begin{lstlisting}[language=C]
+int main( int argc, char** argv ) {
+  sem_init( &spaces, 0, BUFFER_SIZE );
+  sem_init( &items, 0, 0 );  
+  pthread_mutex_init( &mutex, NULL );
+
+  pthread_t threads[20];
+
+  for( int i = 0; i < 10; i++ ) {
+    int* id = malloc(sizeof(int));
+    *id = i;
+    pthread_create(&threads[i], NULL, producer, id);
+  }
+  for( int j = 10; j < 20; j++ ) {
+    int* jd = malloc(sizeof(int));
+    *jd = j-10;
+    pthread_create(&threads[j], NULL, consumer, jd);
+  }
+  for( int k = 0; k < 20; k++ ){  
+    pthread_join(threads[k], NULL);
+  }
+  sem_destroy( &spaces );
+  sem_destroy( &items );
+  pthread_mutex_destroy( &mutex );
+  pthread_exit( 0 );
+}
+\end{lstlisting}
+\end{frame}
+
 
 
 \end{document}

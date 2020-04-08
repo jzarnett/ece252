@@ -1,6 +1,6 @@
 \input{configuration}
 
-\title{Lecture 27 --- Concurrency in File Systems }
+\title{Lecture 27 --- Asynchronous I/O with cURL }
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
@@ -15,582 +15,553 @@
 
 \end{frame}
 
-
 \begin{frame}
-	\frametitle{Concurrency in File Systems}
+	\frametitle{Using cURL}
 
-	We need to peel back the interface a bit and have at least a high-level understanding of their implementation.
+	We've already seen that network communication is a great example of a way that you could use asynchronous I/O.
 
-	File can be of arbitrary size (although in a particular file system there may be a limit).
+	You can start a network request and move on to creating more without waiting for the results of the first one.
 
-	They have to be allocated on disk according to some strategy.
+	For requests to different recipients, it certainly makes sense to do this.
+
+	And yet, we've seen that while socket programming is important and necessary, for a lot of situations we prefer to use cURL.
 
 \end{frame}
 
-\begin{frame}
-	\frametitle{Contiguous Allocation}
-	Contiguous: a file occupies a set of contiguous blocks on disk.
-
-	So a file is allocated, starting at block $b$ and is $n$ blocks in size, the file takes up blocks $b, b+1, b+2, ..., b+(n-1)$.
-
-	This is advantageous, because if we want to access block $b$ on disk, accessing $b+1$ requires no head movement, so seek time is nonexistent to minimal.
-
-\end{frame}
 
 \begin{frame}
-	\frametitle{Contiguous Allocation}
+	\frametitle{Curl Multi}
 
-	All that we need to maintain are $b$ and $n$: the start location and length of the file.
-
-	Both sequential and direct access are very easy: the first block of a file is at $b$.
-
-	To access a block $i$ at some offset into the file, it's at the base address $b$ plus $i$.
-
-	Checking if the access is valid is also an easy operation: if $i < n$ then it is valid.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Contiguous Allocation}
-
+	Curl:
 	\begin{center}
-		\includegraphics[width=0.6\textwidth]{images/disk-contiguous.png}
+		\includegraphics[width=0.2\textwidth]{images/curling.jpg}
 	\end{center}
 
-\end{frame}
-
-\begin{frame}
-	\frametitle{Contiguous Allocation}
-
-
-	If we need a memory block of size $N$:\\
-	\quad (1) can we find a contiguous block of $N$ or greater to meet that allocation?\\
-	\quad (2) if there is more than one block, which one do we choose?
-
-	As before, we suffer the problem of external fragmentation, plus a bit of internal fragmentation in the last block of the file.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Contiguous Allocation}
-
-	Another problem: how much space is a file going to take?
-
-	If it is just a copy-paste operation, the copy is the same size as the original.
-
-	When a user opens a new document, how big will it be?
-
-	If we allocate too little space, we may be able to tack on space at the end, or that block may be allocated, forcing us to move the file and reallocate it.
-
-	If the value we choose is too large, then significant space will be wasted for small files (and many files tend to be relatively small).
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Linked Allocation}
-
-	Linked allocation is a solution to the problems of contiguous allocation.
-
-	Instead of a file being all in consecutive blocks, we maintain a linked list of the blocks, and the blocks themselves may be located anywhere on the disk.
-
-	The directory listing just has a pointer to the first and last blocks (head and tail of the linked list).
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Linked Allocation}
-
-	If a new file is created, it will be created with size zero and the head and tail pointers are null.
-
-	When a new block is needed, it can come from anywhere and will just be added to the linked list.
-
-	Thus, compaction and relocation are not really an issue.
-
-	Unfortunately, however, accessing block $i$ of a file is no longer as simple as computing an offset from the first block; it requires following $i$ pointers (a pain).
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Linked Allocation}
-
+	Curl Multi:
 	\begin{center}
-		\includegraphics[width=0.6\textwidth]{images/disk-linked.png}
+		\includegraphics[width=0.2\textwidth]{images/curling.jpg}
+		\includegraphics[width=0.2\textwidth]{images/curling.jpg}
+		\includegraphics[width=0.2\textwidth]{images/curling.jpg}
+		\includegraphics[width=0.2\textwidth]{images/curling.jpg}
+		\includegraphics[width=0.2\textwidth]{images/curling.jpg}
 	\end{center}
 
-\end{frame}
-
-\begin{frame}
-	\frametitle{Linked Allocation}
-
-	A possible solution to the problem of following so many pointers (and the overhead of maintaining so many) is to group up the blocks into \alert{clusters}.
-
-	A cluster is comprised of, say, four blocks.
-
-	Then we waste less memory maintaining pointers and it improves disk accesses because there is less seeking back and forth to various disk locations.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Indexed Allocation}
-
-	If we stuck to pure linked allocation, we still have the problem that accessing some part in the middle of the file is a pain.
-
-	We have to follow and retrieve a lot of pointers to the different blocks.
-
-	The idea of indexed allocation is to take all the pointers and put them into one location: an index block.
-
-
-\end{frame}
-
-
-
-\begin{frame}
-	\frametitle{Indexed Allocation}
-
-	So, the first block of the file contains a whole bunch of pointers.
-
-	To get to block $i$, just go to index $i$ of the index block and we can get the location of block $i$ much more efficiently than we could in linked allocation.
-
-	All pointers to blocks start as null, and when we add a new block, add its corresponding entry into the index block.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Indexed Allocation}
-
-	\begin{center}
-		\includegraphics[width=0.6\textwidth]{images/disk-indexed.png}
-	\end{center}
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Block Size}
-
-	Like many of the other systems we have examined, there is a need to make a decision about the size of a block.
-
-	If a file needs only 1-2 blocks, one whole block is allocated for the pointers which contains only 1-2 entries.
-
-	That suggests we want the index to be small, but what if we need more pointers than fit into one block? There are a few mechanisms for this.
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Block Size}
-
-	What if we need more pointers than fit into one block?
-
-	\begin{enumerate}
-		\item \textbf{Linked Scheme}
-		\item \textbf{Multilevel Index}
-		\item \textbf{Combined Scheme}
-	\end{enumerate}
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{UNIX inodes}
-
-	A visual representation of an inode.
-
-	\begin{center}
-		\includegraphics[width=0.6\textwidth]{images/unix-inode.png}
-	\end{center}
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{UNIX inodes}
-
-	\begin{center}
-		\includegraphics[width=0.7\textwidth]{images/yodawg.jpg}
-	\end{center}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Partial Locking}
-
-	Previously: \texttt{flock(}) to lock a file, and this locks the entire file.
-
-	Using \texttt{fcntl}, we can lock only a part of a file.
-
-	This is referred to as \alert{record locking}.
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Partial Locking}
-
-	Locking just a part of the file allows for more concurrency!
-
-	\begin{lstlisting}[language=C]
-int fcntl( int file_descriptor, int command, ... /* struct flock * flockptr */ )
-\end{lstlisting}
-
-	We need to provide one \texttt{struct flock} and a \texttt{command}.
-
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Struct Flock}
-
-	The \texttt{struct flock} has the following definition:
-	\begin{lstlisting}[language=C]
-struct flock {
-  short  l_type;   /* F_RDLCK, F_WRLCK, or F_UNLCK */
-  short  l_whence; /* SEEK_SET, SEEK_CUR, or SEEK_END */
-  off_t  l_start;  /* offset in bytes, relative to l_whence */
-  off_t  l_len;    /* length, in bytes; 0 means lock to EOF */
-  pid_t  l_pid;    /* returned with F_GETLK */
-};
-\end{lstlisting}
-
-	About \texttt{l\_type}: the types of lock are read and write.
-
-	Compatibility matrix: reads are compatible with reads; writes with nothing.
-
-	To unlock, use \texttt{F\_UNLCK}.
-
-	This is vulnerable to deadlock...
+	\hfill Photo Credit: J. Bourassa
 
 \end{frame}
 
 \begin{frame}[fragile]
-	\frametitle{Struct Flock}
+	\frametitle{cURL Easy}
 
-	The \texttt{struct flock} has the following definition:
-	\begin{lstlisting}[language=C]
-struct flock {
-  short  l_type;   /* F_RDLCK, F_WRLCK, or F_UNLCK */
-  short  l_whence; /* SEEK_SET, SEEK_CUR, or SEEK_END */
-  off_t  l_start;  /* offset in bytes, relative to l_whence */
-  off_t  l_len;    /* length, in bytes; 0 means lock to EOF */
-  pid_t  l_pid;    /* returned with F_GETLK */
-};
-\end{lstlisting}
+	Quick Recap of the Easy interface:
 
-	\texttt{l\_whence}: where does the offset begin?
-
-	It is possible for a locked region to extend past the end of the file.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Das war ein Befehl!}
-
-	For \texttt{command}, our choices are~\cite{apunix}:
-	\begin{itemize}
-		\item \texttt{F\_GETLK}
-		\item \texttt{F\_SETLK}
-		\item \texttt{F\_SETLKW}
-	\end{itemize}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Unlocking and Combining Locks}
-
-	When unlocking a region, just as for locking, you can specify what part of the file you would like to unlock.
-
-	Partial unlocking is unusual, but why not?
-
-	The system will combine or split locks as appropriate,
-
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Lock Usage Example}
-
-	\begin{lstlisting}[language=C]
-int write_lock_file( int file_descriptor ) {
-
-  struct flock fl;
-  fl.l_type = F_WRLOCK;
-  fl.l_start = 0;
-  fl.l_whence = SEEK_SET;
-  fl.l_len = 0;
-  
-  return fcntl( fd, F_SETLK, &fl );
-}
-
-int unlock_file( int file_descriptor ) {
-
-  struct flock fl;
-  fl.l_type = F_UNLCK;
-  fl.l_start = 0;
-  fl.l_whence = SEEK_SET;
-  fl.l_len = 0;
-  
-  return fcntl( fd, F_SETLK, &fl );
-}
-\end{lstlisting}
-
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Knock Knock}
-
-	Checking if a given part of a file is locked:
-
-
-	\begin{lstlisting}[language=C]
-int fd = open ( "example.txt", O_RDONLY );
-struct flock lock;
-
-lock.l_type = F_RDLOCK;
-lock.l_start = 1024;
-lock.l_whence = SEEK_SET;
-lock.l_len = 256;
-
-fcntl( fd, F_GETLK, &lock );
-if ( lock.l_type == F_UNLCK ) {
-	/* Lock is unlocked; we may proceed */
-} else if ( lock.l_type = F_WRLOCK ) {
-  /* File is write locked by a different process */
-  printf( "File locked by process ID %d.\n", lock.l_pid );
-  return -1;
-}
-\end{lstlisting}
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Orders, Captain?}
-
-	Checking on things with \texttt{F\_GETLK} is really for information purposes only.
-
-	``Read the value and then whatever operation you'd like to do next'' is not
-	atomic.
-
-	Instead, use the command \texttt{F\_SETLK} and actually try to set the lock.
-
-	If -1 is returned then locking was not successful.
-
-	Or, if the plan is to wait, use \texttt{F\_SETLKW} as one would expect.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Immutability is for Cowards}
-
-	\texttt{fcntl} changes some values of the \texttt{struct lock}!
-
-	If you wanted to re-use it you need to make sure to reset it as appropriate.
-
-	You can use the same \texttt{struct lock} later to unlock the thing that you locked, just do so carefully.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{SPLITTERS!}
-	\begin{center}
-		\includegraphics[width=0.6\textwidth]{images/jpf.jpg}
-	\end{center}
-
-	Sometimes the name you want is taken...
-
-	\texttt{lockf}: a simplified way of locking a file.
-
-	While \texttt{fcntl} is more flexible, sometimes all we need is the simple version.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Locking, Simplified}
-
-	\begin{lstlisting}[language=C]
-int lockf( int file_descriptor, int command, off_t length );
-\end{lstlisting}
-
-	The command options can be:
-	\begin{itemize}
-		\item \texttt{F\_LOCK}
-		\item \texttt{F\_TLOCK}
-		\item \texttt{F\_ULOCK}
-		\item \texttt{F\_TEST}
-	\end{itemize}
-
-	The length is an offset, and is based off the current position in the file.
-
-	If zero is provided then it locks the whole file.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Close up for the Day}
-
-	The file is automatically unlocked when the file descriptor is closed.
-
-	And, on some systems \texttt{lockf} just calls \texttt{fcntl} but on some others they use different mechanisms.
-
-	So don't mix and match.
-
-	If you lock a file with one function, unlock it with the matching one.
-
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{There are Rules}
-
-	It is noteworthy that both kinds of lock are ``advisory'' only.
-
-	It only is really effective if everyone involved in accessing the shared resource follows the proper protocol and checks if access is permitted or not.
-
-	Mandatory locks do exist, but are hard to use and are not recommended.
-
-	The notes link to why you shouldn't!
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{I am become Lock}
-
-	We can use the very existence of a file as a way of controlling concurrency.
-
-	For example, \texttt{git} places a file \texttt{index.lock} in a particular directory to indicate that an operation is in progress.
-
-	Thus two different \texttt{git} clients do not operate on the same repository at the same time.
-
-\end{frame}
-
-
-
-\begin{frame}
-	\frametitle{Open Sesame?}
-
-	If we want to check, we just try to \texttt{open()} the file, but unless we are careful this can lead to a problem if two processes want to create the file.
-
-	If they both call \texttt{open}, they both might succeed. To get around this, we need to use the \texttt{flags} parameter
-
-\end{frame}
-
-
-
-\begin{frame}[fragile]
-	\frametitle{File Operations}
-	\begin{lstlisting}[language=C]
-int open(const char *filename, int flags); 
-int rename(const char *old_filename, const char *new_filename);
-int remove(const char *filename); 
-\end{lstlisting}
-
-	When opening a file the following flags may be used for the \texttt{flags} parameter (and can be combined with bitwise OR, the \texttt{|} operator):
-
-	{\scriptsize
-	\begin{tabular}{l|l}
-		\textbf{Value}     & \textbf{Meaning}                                                                                 \\ \hline
-		\texttt{O\_RDONLY} & Open the file read-only                                                                          \\ \hline
-		\texttt{O\_WRONLY} & Open the file write-only                                                                         \\ \hline
-		\texttt{O\_RDWR}   & Open the file for both reading and writing                                                       \\ \hline
-		\texttt{O\_APPEND} & Append information to the end of the file                                                        \\ \hline
-		\texttt{O\_TRUNC}  & Initially clear all data from the file                                                           \\ \hline
-		\texttt{O\_CREAT}  & Create the file                                                                                  \\ \hline
-		\texttt{O\_EXCL}   & If used with \texttt{O\_CREAT}, the caller MUST create the file; if the file exists it will fail \\
-	\end{tabular}
-	}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Lock-File Behaviour}
-
-	Team-up \texttt{open} and \texttt{rename} to get lock-like behaviour between different programs that share nothing except a common file system.
-
-	The \texttt{open} call should be used to create the lock file, and fail if the file already exists.
-
-	If we want we can use \texttt{remove} to delete the lock file if we want to let the next process try, but there's an alternative option: \texttt{rename}.
-
-	The \texttt{rename} function is also atomic!
-
-	To lock: change the name; to unlock, change it back!
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Using a File as a Lock}
 	\begin{lstlisting}[language=C]
 #include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <pthread.h>
-#define NUM_THREADS 10
-
-int lock_fd;
-int shared = 0;
-
-void* run( void* arg ) {
-  int* id = (int*) arg;
-  while( rename( "file.lock", "file.locked" ) == -1 ) {
-    printf("Thread %d waiting.\n", *id); 
-  }
-  printf("Thread %d in critical section.\n", *id);
-  printf("Shared incremented from %d", shared);
-  shared++;
-  printf(" to %d.\n", shared);
-  rename("file.locked", "file.lock"); /* Unlock */
-
-  free( arg );
-  pthread_exit(NULL);
-}
-\end{lstlisting}
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Using a File as a Lock}
-	\begin{lstlisting}[language=C]
-void* writer( void* arg ) {
-  /* Write data implementation not shown */
-  pthread_exit(NULL);
-}
-
+#include <curl/curl.h>
+ 
 int main( int argc, char** argv ) {
-  lock_fd = open( "file.lock", O_CREAT | O_EXCL );  
-  if (lock_fd == -1 ) {
-   printf( "File creation failed.\n");
-   return -1;
+  CURL *curl;
+  CURLcode res;
+ 
+  curl_global_init(CURL_GLOBAL_DEFAULT);
+ 
+  curl = curl_easy_init();
+  if( curl ) {
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/" );
+    res = curl_easy_perform( curl );
+    
+  if( res != CURLE_OK ) {
+      fprintf(stderr, "curl_easy_perform() failed: %s\n", 
+      curl_easy_strerror(res));
+    }
+    curl_easy_cleanup(curl);
   }
-
-  pthread_t threads[NUM_THREADS];
-  for (int i = 0; i < NUM_THREADS; i++) {
-    int * id = malloc( sizeof( int ) );
-    *id = i;
-    pthread_create( &threads[i], NULL, run, id );
-  }
-  for (int i = 0; i < NUM_THREADS; i++) {
-    pthread_join( threads[i], NULL );
-  }
-  close( lock_fd );
-  remove( "file.lock" );
-
+ 
+  curl_global_cleanup();
   return 0;
 }
 \end{lstlisting}
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{cURL Multi}
+
+	The call to \texttt{curl\_easy\_perform()} is blocking and we wait for the curl execution to take place.
+
+	We want to change that!
+
+	The tool for this is the ``multi handle'' - this is a structure that lets us have more than one curl easy handle.
+
+	And rather than waiting, we can start them and then check on their progress.
+
 \end{frame}
 
 
+\begin{frame}
+	\frametitle{Some Things Don't Change}
+
+	There are still the global initialization and cleanup functions.
+
+	The structure for the new multi-handle type is \texttt{CURLM}.
+
+	It is initialized with the \texttt{curl\_multi\_init()} function.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Climb Aboard}
+
+	Once we have a multi handle, we can add easy handles -- however many we need -- to the multi handle.
+
+	Creation of the easy handle is the same as it is when being used alone - use \texttt{curl\_easy\_init()} to create it.
+
+	Then we can set however many options on this we need.
+
+	Then, we add the easy handle to the multi handle with \texttt{curl\_multi\_add\_handle( CURLM* cm, CURL* eh )}.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{BOM-BART-MENT!}
+	\begin{center}
+		\includegraphics[width=0.7\textwidth]{images/Bombardment.png}
+	\end{center}
+	\hfill Image Credit: The Simpsons
+
+	We can dispatch all easy handles at once with\\
+	\texttt{curl\_multi\_perform( CURLM* cm, int* still\_running )}.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Still Running}
+
+	The second parameter is a pointer to an integer that is updated with the number of the easy handles in that multi handle that are still running.
+
+	If it's down to 0, then we know that they are all done.
+
+	If it's nonzero it means that some of them are still in progress.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Asking is Okay}
+
+	This does mean that we're going to call\texttt{curl\_multi\_perform()} more than once.
+
+	Doing so doesn't restart or interfere with anything that was already in progress.
+
+	We can check as often as we would like -- but we should be doing something useful rather than polling... right?
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Naps Are Okay}
+
+	Suppose we've run out of things to do though. What then?
+
+	\begin{lstlisting}[language=C]
+curl_multi_wait( CURLM *multi_handle, struct curl_waitfd extra_fds[], 
+    unsigned int extra_nfds, int timeout_ms, int *numfds )} . 
+\end{lstlisting}
+
+	\texttt{multi\_handle}: the multi handle to watch.
+
+	\texttt{extra\_fds}: an array of extra file descriptors to watch (NULL).
+
+	\texttt{extra\_nfds}: how many extra file descriptors there are (0).
+
+	\texttt{timeout\_ms} timeout in ms... clearly...
+
+	\texttt{numfds} updated with the number of ``interesting'' events that occurred.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Meanwhile...}
+
+	In the meantime though, the perform operations are happening, and so are whatever callbacks we have set up (if any).
+
+	And as the I/O operation moves through its life cycle, the state of the easy handle is updated appropriately.
+
+	Each easy handle has an associated status message as well as a return code.
+
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Both of them?}
+	\begin{center}
+		\includegraphics[width=0.4\textwidth]{images/yoda-two.jpg}
+	\end{center}
+
+	The message could be, for example ``done'', but does that mean finished with success or finished with an error?
+\end{frame}
+
+\begin{frame}
+	\frametitle{Both of them?}
+	We can ask about the status of the request using \texttt{curl\_multi\_info\_read( CURLM* cm, int* msgs\_left )}.
+
+	This returns a pointer to information ``next'' easy handle, if there is one.
+
+	The return value is a pointer to a struct of type \texttt{CURLMsg}.
+
+	Along side this, the parameter \texttt{msgs\_left} is updated to say how many messages remain.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Read Your E-mails!}
+
+	We will therefore check the \texttt{CURLMsg} message to see what happened and make sure all is well.
+
+	If our message that we got back with the info read is called \texttt{m}, What we are looking for is that the \texttt{m->msg} is equal to \texttt{CURLMSG\_DONE} -- request completed.
+
+	If not, this request is still in progress and we aren't ready to evaluate whether it was successful or not.
+
+	If done, we should look at the return code in and the result, in \texttt{m->data.result}.
+
+	If it is \texttt{CURLE\_OK} then everything succeeded. If anything else, it indicates an error.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Remove Easy Handle}
+
+	When a handle has finished, you need to remove it from the multi handle.
+
+	A pointer to it is inside the \texttt{CURLMsg} under \texttt{m->easy\_handle}.
+
+	Removed with \texttt{curl\_multi\_remove\_handle( CURLM* cm, CURL* eh )}.
+
+	Once removed, clean it up with: \texttt{curl\_easy\_cleanup( CURL* eh )}.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Clean the Multi}
+
+	There is the multi cleanup function \texttt{curl\_multi\_cleanup( CURLM * cm ) }.
+
+	The last step, as before, is to use the global cleanup function.
+
+	After that we are done.
+
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{cURL Multi Example}
+
+	\begin{lstlisting}[language=C]
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <curl/multi.h>
+
+#define MAX_WAIT_MSECS 30*1000 /* Wait max. 30 seconds */
+
+const char *urls[] = {
+  "http://www.microsoft.com",
+  "http://www.yahoo.com",
+  "http://www.wikipedia.org",
+  "http://slashdot.org"
+};
+#define CNT 4
+
+size_t cb(char *d, size_t n, size_t l, void *p) {
+  /* take care of the data here, ignored in this example */
+  return n*l;
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{cURL Multi Example}
+
+	\begin{lstlisting}[language=C]
+void init( CURLM *cm, int i ) {
+  CURL *eh = curl_easy_init();
+  curl_easy_setopt( eh, CURLOPT_WRITEFUNCTION, cb );
+  curl_easy_setopt( eh, CURLOPT_HEADER, 0L );
+  curl_easy_setopt( eh, CURLOPT_URL, urls[i] );
+  curl_easy_setopt( eh, CURLOPT_PRIVATE, urls[i]) ;
+  curl_easy_setopt( eh, CURLOPT_VERBOSE, 0L );
+  curl_multi_add_handle( cm, eh );
+}
+
+int main( int argc, char** argv ) {
+    CURLM *cm = NULL;
+    CURL *eh = NULL;
+    CURLMsg *msg = NULL;
+    CURLcode return_code = 0;
+    int still_running = 0; 
+    int msgs_left = 0;
+    int http_status_code;
+    const char *szUrl;
+
+    curl_global_init( CURL_GLOBAL_ALL );
+    cm = curl_multi_init( );
+    
+    for ( int i = 0; i < CNT; ++i ) {
+        init( cm, i );
+    }
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{cURL Multi Example}
+
+	\begin{lstlisting}[language=C]
+    curl_multi_perform( cm, &still_running );
+
+    do {
+        int numfds = 0;
+        int res = curl_multi_wait( cm, NULL, 0, MAX_WAIT_MSECS, &numfds );
+        if( res != CURLM_OK ) {
+            fprintf( stderr, "error: curl_multi_wait() returned %d\n", res );
+            return EXIT_FAILURE;
+        }
+        curl_multi_perform( cm, &still_running );
+
+    } while( still_running );
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{cURL Multi Example}
+
+	\begin{lstlisting}[language=C]
+    while ( ( msg = curl_multi_info_read( cm, &msgs_left ) ) ) {
+        if ( msg->msg == CURLMSG_DONE ) {
+            eh = msg->easy_handle;
+            return_code = msg->data.result;
+            if ( return_code != CURLE_OK ) {
+                fprintf( stderr, "CURL error code: %d\n", msg->data.result );
+                curl_multi_remove_handle( cm, eh );
+                curl_easy_cleanup( eh );
+                continue;
+            }
+            http_status_code = 0;
+            szUrl = NULL;
+            curl_easy_getinfo( eh, CURLINFO_RESPONSE_CODE, &http_status_code );
+            curl_easy_getinfo( eh, CURLINFO_PRIVATE, &szUrl );
+
+            if( http_status_code == 200 ) {
+                printf( "200 OK for %s\n", szUrl ) ;
+            } else {
+                fprintf( stderr, "GET of %s returned http status code %d\n",
+                     szUrl, http_status_code );
+            }
+            curl_multi_remove_handle( cm, eh );
+            curl_easy_cleanup( eh );
+        } else {
+            fprintf( stderr, "error: after curl_multi_info_read(), CURLMsg=%d\n",
+                 msg->msg );
+        }
+    }
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{cURL Multi Example}
+
+	\begin{lstlisting}[language=C]
+    curl_multi_cleanup( cm );
+    curl_global_cleanup();
+    return 0;
+}
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Recycle, Reduce, Reuse}
+
+	\begin{center}
+		\includegraphics[width=0.3\textwidth]{images/recycle.png}
+	\end{center}
+	\hfill Image Credit: Wikipedia user Krdan
+
+	Can we re-use an easy handle rather than destroy and create a new one?
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Recycle, Reduce, Reuse}
+
+	The official docs say that you can re-use one.
+
+	But you have to remove it from the multi handle and then re-add it.
+
+	... presumably after having changed anything that you want to change about that handle.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Always Running}
+
+	You could have a situation where there are constantly handles in progress.
+
+	You might never be at a situation where there are no messages left.
+
+	And that is okay.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Scaling This}
+
+	The developer claims that you can have multiple thousands of connections in a single multi handle.
+
+	60k ought to be enough for anyone!
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{cURL + select}
+	\begin{center}
+		\includegraphics[width=0.55\textwidth]{images/harold.jpg}
+	\end{center}
+
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{cURL + select}
+
+	Well, alright, if you insist...
+
+	The first part of using cURL with select is of course setting up your multi handle and adding all of the easy handles to that.
+
+	Once you've done that, you can ask cURL to prep things for you:
+
+	\begin{lstlisting}[language=C]
+CURLMcode curl_multi_fdset( CURLM *multi_handle, fd_set *read_fd_set,
+    fd_set *write_fd_set, fd_set *exc_fd_set, int *max_fd );
+\end{lstlisting}
+
+	It takes as arguments, the multi handle, and then pointers to the \texttt{fd\_set}s.
+
+	It's the responsibility of the caller to set these to zero with \texttt{FD\_ZERO} first.
+
+	The function is kind enough to tell you what the maximum file descriptor is.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{cURL + select}
+
+	\begin{lstlisting}[language=C]
+fd_set fdr;
+fd_set fdw;
+fd_set fde;
+FD_ZERO( &fdr );
+FD_ZERO( &fdw );
+FD_ZERO( &fde );
+int maxfd = -1;
+
+CURLMCode res = curl_multi_fdset( cm, &fdr, &fdw, &fde, &maxfd );
+\end{lstlisting}
+
+	When calling select we still have to put a \texttt{+1} on the max file descriptor, but that is no big deal.
+
+	The missing element is the timeout. For that there is another function:
+
+	\begin{lstlisting}[language=C]
+CURLMcode curl_multi_timeout( CURLM *multi_handle, long *timeout );
+\end{lstlisting}
+
+	Unfortunately, though, this returns a \texttt{long}...
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Guys, Why Can't You Get Along...}
+
+	So you have to do the math yourself.
+
+	Use this!
+
+	\begin{lstlisting}[language=C]
+struct timeval timeout;
+long timeo;
+ 
+curl_multi_timeout( cm, &timeo );
+if(timeo < 0) {
+  /* no set timeout, use a default */
+  timeo = 980;
+}
+ 
+timeout.tv_sec = timeo / 1000;
+timeout.tv_usec = (timeo % 1000) * 1000;
+\end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Are We Forgetting Something?}
+
+	But we aren't ready to call \texttt{select} yet -- we haven't started any of the transfers  that use the sockets.
+
+	For that we use \texttt{curl\_multi\_perform} just as in the earlier example.
+
+	We can do that before or after setting up what we need for select.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Waking Up From a Nap}
+
+	When we wake up, it is because something happened.
+
+	We still use \texttt{curl\_multi\_info\_read} to find out what's going on with a given easy handle and find out its status and also find out how many are still running.
+
+	As with the earlier code where we used \texttt{select} on sockets directly, we have to remember to reset (repopulate) the values.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Select Headaches}
+
+	One of the other problems with \texttt{select} is that you are limited in the number of file descriptors because you could overflow the bitmasks.
+
+	But even if you don't, this really does not scale, so you would be better off using the regular curl multi call.
+
+	As far as I can see it's better in pretty much every way.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Poll? Nope}
+
+	Can we use cURL with \texttt{poll}? Generally, no.
+
+	Long story short: don't.
+
+\end{frame}
+
+
+
+
 \end{document}
+

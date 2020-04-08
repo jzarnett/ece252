@@ -2,253 +2,169 @@
 
 \begin{document}
 
-\lecture{ 10 --- Pipes and Shared Memory}{\term}{Jeff Zarnett}
+\lecture{ 10 --- Threads }{\term}{Jeff Zarnett}
 
-\section*{IPC: Same System}
+\section*{Threads}
 
-In addition to the message-passing mechanisms thus far seen (signals, network), we can also use pipes and shared memory. Pipes share some significant similarity with both message-passing and shared memory, so it makes for a nice way to transition from one to the other.
+Not very long ago we discussed what makes a process. A process has three major components: an executable program, the data created or needed by the program, and the execution context of the program (files opened, resources allocated, et cetera). A process has at least one \textit{thread}, and can have many.
 
-\subsection*{UNIX Pipes}
+The term ``thread'' is a short form of \textit{Thread of Execution}. A thread of execution is a sequence of executable commands that can be scheduled to run on the CPU. Threads also have some state (where in the sequence of executable commands the program is) and some local variables. Most programs you have written until now probably had only one thread; that is, your program's code is executed one statement at a time, sequentially in some order.
 
-In UNIX, we can create a \textit{pipe} to set up communication between a producer and consumer. The producer writes in one end of the pipe and the consumer receives it on the other. This is unidirectional, so if bidirectional communication is desired, two pipes must be used (going in different directions). The UNIX method for creating a pipe is \texttt{pipe} and it is constructed with the call \texttt{pipe( int fileDescriptors[])} where \texttt{fileDescriptors[0]} is the read-end and \texttt{fileDescriptors[1]} is the write-end~\cite{osc}. Yes, \texttt{fileDescriptors} means that UNIX thinks of a pipe as a file (UNIX thinks \textit{everything} is a file...) even though it is in memory.
+A multithreaded program is one that uses more than one thread, at least some of the time. When a program is started, it begins with an initial thread (where the \texttt{main} function is) and that main thread can create some additional threads if needed. Note that threads can be created and destroyed within a program dynamically: a thread can be created to handle a specific background task, like writing changes to the database, and will terminate when it is done. Or a created thread might be persistent.
 
-\begin{center}
-	\includegraphics[width=0.5\textwidth]{images/unix-pipe.png}\\
-	A UNIX Pipe~\cite{osc}.
-\end{center}
+In a process that has multiple threads, each thread has its own~\cite{osi}:
+\begin{enumerate}
+	\item Thread execution state (like process state: running, ready, blocked...).
+	\item Saved thread context when not running.
+	\item Execution stack.
+	\item Local variables.
+	\item Access to the memory and resources of the process (shared with all threads in that process).
+\end{enumerate}
 
-The pipe itself is a block of main memory that is interpreted as a circular queue, and each entry in the queue is fixed in size and usually one character. The sender may place the message into the queue in small chunks, but the receiver gets data one character at a time. Thus, the sender and receiver need to know when the message is finished. This may be through the use of a designated termination character (e.g., the line feed or null character), or the message may begin with an explicit value of the number of characters the message will be~\cite{mte241}.
-
-A UNIX pipe may be stored on disk. When this happens, we call it a \textit{named pipe}. Unless we make it a named pipe, a pipe exists only as long as the processes are communicating. Furthermore, regular pipes depend on file descriptors, so a parent-child relationship is required to get the descriptors from one process to another. The named pipe, however, might be used by any process and will persist even after the creating process has terminated. Another nice bonus of named pipes is that they can be bidirectional, so we do not need two pipes for communication to go in both directions. With that said, communication can only go in one direction at a time; if concurrent communication is required, a second pipe is needed after all.
-
-You may have worked with pipes on the UNIX command line. A command like \texttt{ cat fork.c | less } creates a pipe that takes the output of the \texttt{cat} program and delivers it as input to the program \texttt{less} which allows for scrolling and pagination of that data.
-
-\paragraph{UNIX Pipes: Code Example}
-
-Let's consider an example from~\cite{osc} that combines the pipe concept with what we've seen before: using \texttt{fork} to spawn a new child process and then setting up a communication pipe between the parent and child. We will send a message ``Greetings'' from the parent to the child.
-
-\begin{lstlisting}[language=C]
-#include <sys/types.h> 
-#include <stdio.h> 
-#include <string.h> 
-#include <unistd.h>
-
-#define BUFFER_SIZE 25
-#define READ_END 0 
-#define WRITE_END 1
-
-int main( int argc, char** argv ) {
-  char write_msg[BUFFER_SIZE] = "Greetings"; 
-  char read_msg[BUFFER_SIZE];
-  int fd[2];
-  pid_t pid;
-
-  if (pipe(fd) == -1) {
-    fprintf(stderr,"Pipe failed");
-    return 1;
-  }
-  
-  pid = fork();
-  if (pid < 0) { /* error occurred */ 
-    fprintf(stderr, "Fork Failed"); 
-    return 1;
-  }
-
-  if (pid > 0) { /* parent process */
-    /* close the unused end of the pipe */ 
-    close(fd[READ_END]);
-    
-    /* write to the pipe */
-    write(fd[WRITE_END], write_msg, strlen(write_msg));
-    
-    /* close the write end of the pipe */
-    close(fd[WRITE_END]);
-    
-  } else { /* child process */
-    /* close the unused end of the pipe */ 
-    close(fd[WRITE_END]);
-    
-    /* read from the pipe */
-    read(fd[READ_END], read_msg, BUFFER_SIZE); 
-    printf("read %s",read_msg);
-     /* close the write end of the pipe */
-     close(fd[READ_END]);
-  }
-  return 0;
-}
-\end{lstlisting}
-
-In some of the runs of this program we sometimes get a random character after the ``Greetings'' message. What gives? Remember that in C a string is NULL terminated. So a \texttt{printf} routine with a \texttt{\%s} qualifier will just keep going until it gets to a 0-byte somewhere. We are supposed to put the null terminator where it belongs, but this may not suffice. When we have a buffer (as we do here), it makes sense to initialize the buffer to 0. So, in this code, we should add a call to \texttt{memset} to initialize the \texttt{read\_msg} variable to 0s.
-
-If we wanted to create a named pipe, the system call for that is \texttt{mkfifo} (make first-in-first-out) because sometimes a named pipe is called a FIFO. As it is a file, it can be manipulated with the usual UNIX file system calls: \texttt{open}, \texttt{read}, \texttt{write}, and \texttt{close}~\cite{osc}.
-
-
-\subsection*{Shared Memory}
-Conceptually, the idea of shared memory is very simple. A particular region of memory is designated as being shared between multiple processes, all of whom may read and write to that location. To share an area of memory, the OS must be notified.
-
-Normally, a region of memory is associated with exactly one process (its owner) and that process may read and write that location, but other processes may not. If a second process attempts to do so, the operating system will intervene and that will be an error. If a process wants to designate memory as shared, it needs to tell the operating system it is okay for the other process to have access to that area. Furthermore, the OS needs to know that the memory is referenced by two processes: if the first one terminates and is reaped, the memory may still be in use by the second process, so that previously-shared region should not be considered free as long as the second process is still using it. Once the area of memory is shared, when either process attempts to access it, it is just a normal memory access. The kernel is only involved in the setup and cleanup of that shared area.
-
-This situation is shown in the diagram below.
+Or, to represent this visually:
 
 \begin{center}
-	\includegraphics[width=0.2\textwidth]{images/shared-memory.png}\\
-	A view of memory when a block is designated as shared~\cite{osc}.
+	\includegraphics[width=0.625\textwidth]{images/mthread2.png}\\
+	A single threaded and a multithreaded process compared side-by-side~\cite{osc}.
 \end{center}
 
-Note that in the diagram the shared memory area appears in between the memory for processes $A$ and $B$; this is not necessarily the case (the shared block could be anywhere). It tends to be in the block for the process that creates the shared memory in the first place. This makes sense, because Process $A$ will request the memory from the operating system and then ask the OS to consider a particular block $A$ already owns to be shared.
+All the threads of a process share the state and resources of the process. If one thread opens a file, other threads in that process can also access that file.
 
-When a section of memory is shared, there exists the possibility that one process will overwrite another's changes. To prevent this sort of problem, we will need a mechanism for co-ordination... a subject we will return to later.
+The way programs are written now, there are few if any that are not in some way multithreaded. One common way of dividing up the program into threads is to separate the user interface from a time-consuming action. Consider a file-transfer program. If the user interface and upload function share a thread, once a file upload has started, the user will not be able to use the UI anymore (and Windows will put the dreaded ``(Not Responding)'' at the end of its dialog title), even to click the button that cancels the upload. For some reason, users hate that.
 
-Suppose we want to share a section of memory. We need to obtain a \textit{key} that identifies a specific memory segment. The way to obtain the key is the same as we previously discussed for message-passing: Either using the constant \texttt{IPC\_PRIVATE}, or creating the key with the ``file to key'' function found in \texttt{sys/ipc.h}~\cite{lpi}:
-\begin{lstlisting}[language=C]
-key_t ftok( char *pathname, int proj )
-\end{lstlisting}
+We have two options for how to alleviate this problem: when an upload is ready to start, we can call \texttt{fork} and create a new process to do the upload, or we can spawn  new thread. In either case, the newly created entity will handle the upload of the file. The UI remains responsive, because the UI thread is not waiting for the upload function to complete.
 
-The functions we need are in \texttt{sys/shm.h}. The workflow for using shared memory is as follows (with details obviously after) ~\cite{lpi}:
+\subsection*{Motivation for Threads}
+
+Why choose threads rather than creating a new process? The primary, but not sole, motivation is performance:
+\begin{enumerate}
+	\item Creating a new thread is much faster than creating a new process. In fact, thread creation is on the order of ten times faster~\cite{machThreads}.
+	\item Terminating and cleaning up a thread is faster than terminating and cleaning up a process.
+	\item It takes less time to switch between two threads within the same process (because less data needs to be stored/restored). In Solaris, for example, switching between processes is about five times slower than switching between threads~\cite{osc}.
+	\item Because threads share the same memory space, for two threads to communicate, they do not have to use any of the IPC mechanisms; they can just communicate directly. This is a bigger item than it might seem like, because inter-task communication can be very expensive.
+	\item As in the file transfer program, use of threads allows the program to be responsive even when a part of the program is blocked.
+\end{enumerate}
+
+This last advantage, background work, is one of four common examples of the uses of threads in a general purpose operating system~\cite{insideOS2}:
+\begin{enumerate}
+	\item \textbf{Foreground and Background Work:} as already examined, the ability to run something in the background to keep the program responsive.
+	\item \textbf{Asynchronous processing}: for example, to protect against power failure or a crash, a word processor may write the document data in main memory to disk periodically. This can be done as a background task so it does not disrupt the user's workflow. You've probably experienced this in Microsoft Word, for example, if a document is ``recovered''.
+	\item \textbf{Speed of Execution:} a multithreaded program can get more done in the same amount of time. Just as the OS can run a different program when the executing program gets blocked (say, on a disk read), if one thread is blocked, another thread may execute. But also, we probably have a computer with many cores, so we can put them all to use.
+	\item \textbf{Modular Structure:} a program that does several different things may be given structure through threads. Threads have specific ``jobs'' and they each step in and do their job when it is appropriate for them to do so.
+\end{enumerate}
+
+There are some drawbacks, however: there is no protection between threads in the same process: so one thread can easily mess with the memory being used by another thread. This once again brings us to the subject of co-ordination, which will follow the discussion of threads.
+
+Also, if any thread encounters an error (such as a division by zero or Segmentation Fault), the whole process might be terminated by the operating system. If the program has multiple processes for different parts, then the other processes will not be affected; if the program has multiple threads and they all share the same process, then any thread encountering an error might bring all of them to a halt.
+
+
+\subsection*{Thread States}
+Each individual thread will have its own state. We said earlier that a process may have seven states, but the model for thread state will be the somewhat simpler five-state model. If a process is blocked, we don't really care why, even if the OS does. Hence the five-state model, reproduced once again below:
+
+\begin{center}
+	\includegraphics[width=0.85\textwidth]{images/5-state-model.png}\\
+	State diagram for the five-state model.
+\end{center}
+
+The transitions work the same way as the state transitions for a process. As with a process, a thread in any state can transition to terminated even though that is not shown on the diagram. When a process is terminated, all its threads are terminated, regardless of what state it is in. The example we started with, the file transfer upload being cancelled, is an example of termination we should consider: thread cancellation.
+
+
+\section*{POSIX Threads}
+
+The term \texttt{pthread} refers to the POSIX standard (also known as the IEEE 1003.1c standard) that defines thread behaviour in UNIX and UNIX-like systems (Linux, Mac OS X, Solaris...). This is a specification document that says how threads should behave. This standard lets code for one UNIX-like system (e.g., Solaris) run easily on another (e.g., Linux). The POSIX standard for pthreads defines something like 100 function calls, but we need not examine all of them. Let us focus on a few of the important ones and we can see they have some similarity to what we saw with parent and child processes~\cite{mos}:
+
 \begin{itemize}
-	\item Create a new shared memory segment -- \texttt{shmget}.
-	\item Attach the shared memory segment (add the shared segment to the process calling attach) -- \texttt{shmat}.
-	\item Then the process can use the shared memory.
-	\item Detach, from the shared memory segment (like deallocation, if forgotten then it will happen automatically when a process ends) -- \texttt{shmdt}.
-	\item Delete the shared memory segment (after all currently attached processes have detached), done by one process only -- \texttt{shmctl}.
+	\item \texttt{pthread\_create} -- Create a new thread. This works a lot like \texttt{fork}.
+	\item \texttt{pthread\_exit} -- Terminate the calling thread. This is like \texttt{exit} in that it ends execution and returns a value.
+	\item \texttt{pthread\_join} -- Wait for a specific thread to exit. This is like \texttt{wait}: the caller cannot proceed until the thread it is waiting for calls \texttt{pthread\_exit}. Note that it is an error to join a thread that has already been joined.
+	\item \texttt{pthread\_detach} -- If we want to make it so that a thread cannot be joined, then we can make it a ``detached'' thread with this function.
+	\item \texttt{pthread\_yield} -- Release the CPU and let another thread run. As they all belong to the same program, we expect that threads want to co-operate rather then compete for CPU time and threads can make decisions about when it would be ideal to let some other thread run instead.
+	\item \texttt{pthread\_attr\_init} -- Create and initialize a thread's attributes. The attributes contain things like the priority of the thread. (``After you, sir.'' ``Oh no, after you.'')
+	\item \texttt{pthread\_attr\_destroy} -- Remove a thread's attributes. Free up the memory holding the thread's attributes. This does not terminate the threads.
+	\item \texttt{pthread\_cancel} -- Signal cancellation to a thread; this can be asynchronous or deferred, depending on the thread's attributes.
+	\item \texttt{pthread\_testcancel} -- A thread can check to see if it has been cancelled. If that is the case, this function terminates the calling thread.
 \end{itemize}
 
-The functions are:
+This list of functions gives us an overview of the toolkit we have, but we need to elaborate with some examples to fully understand how they work.
+
+\paragraph{Creating a New Thread.}
+
+When we want to start a new thread, we have to say what that new thread is supposed to do. The function signature for \texttt{pthread\_create} looks like:
 
 \begin{lstlisting}[language=C]
-int shmget( key_t key, size_t size, int shmflg );
-void* shmat( int shmid, const void* shmaddr, int shmflg );
-int shmdt( const void* shmaddr );
-int shmctl( int shmid, int cmd, struct shmid_ds *buf )
+pthread_create( pthread_t *thread, const pthread_attr_t * attr, void *(*start_routine)( void * ), void *arg );
 \end{lstlisting}
 
-To create a shared memory segment, or get a reference to an existing one, we use \texttt{shmget}. The first argument is the key, which can be either the result of a \texttt{ftok()} call or the constant \texttt{IPC\_PRIVATE}. The second argument is obviously the number of bytes the shared memory should be. The third argument is the access permissions that follow the UNIX permission standards, e.g. \texttt{0600}.
+Where: \texttt{thread} is a pointer to a \texttt{pthread} identifier and will be assigned a value when the thread is created. The attributes \texttt{attr} may contain various characteristics (but you may supply \texttt{NULL} if you want the defaults). The third parameter is the function to run, but it requires a little more explanation.The last parameter, \texttt{arguments} is the argument passed to the \texttt{start\_routine}. But that second last one is weird.
 
-The flags can also add \texttt{IPC\_CREAT} (if no segment with the given key exists, create it) and \texttt{IPC\_EXCL} (if ``create'' was used, fail if a segment with the given key exists). These are be combined with the permissions, and each other, with bitwise OR operator, like opening a file.
+The \texttt{start\_routine} parameter is the name of any function that takes a single untyped pointer and returns an untyped pointer. That is, the function signature has to match those two conditions. The name of the function (and the name of the argument) can be anything you like. See the example below:
 
-The return value of the function is the integer identifier of the shared memory segment. Given this identifier, it's possible to then attach that segment: add the shared memory to the running process.
-
-When calling \texttt{shmat}, the first argument is the ID of the shared memory returned by \texttt{shmget}. The second parameter is where to put the memory, but in this case you should always use NULL and let the kernel decide where to put it. If you don't, your program may not work as expected on different machines (or even at different times!) because that memory might be in use. As for flags, we could use \texttt{SHM\_RDONLY} which would prevent writing (actually an attempt would result in a segmentation fault)~\cite{lpi}.
-
-The return value of the call to \texttt{shmat} is a standard C pointer, containing the address of the shared memory. That's how we know where it is. Now we can read or write (if allowed) the data. At this point we are able to use the shared memory just like any other memory. Nothing special is needed -- no read or write calls -- just read and assign variables like any other memory.
-
-Of course, a process that wants to attach to the memory has to know the key (or ID) to find it. If we created the segment ourselves, we obviously know where it is. But presumably you want some other process to have it as well. If two processes use the same input values for \texttt{ftok()} they will get the same result, so that's one method. Or, if a parent attaches a shared memory segment and then calls \texttt{fork()}, the child inherits the shared memory segments, so it's is already set up.
-
-When we are done with a segment we can detach from it with \texttt{shmdt}, and it takes as an argument the value returned by \texttt{shmat}. It could have been the ID value, in my opinion, but this works as well. If we forget to do this, then it will happen automatically at process termination, but it is good programming practice to deallocate memory when you no longer need it, and similarly to detach from a shared memory segment when we are done.
-
-To delete a shared memory segment, we use \texttt{shmctl}. This function can do a lot more than delete it, such as modify properties of the data structure that is used to control shared memory. But we just need to, at a minimum, delete the segment. To do so, call the function with the shared memory ID, and the command is \texttt{IPC\_RMID} (``remove ID''). We must leave the last argument as \texttt{NULL} for this deletion.
-
-Using the \texttt{shmctl} function with the deletion command doesn't (immediately) the segment. As long as it's still attached somewhere, the memory can't be cleaned up. In this respect, it's like a file in UNIX -- if it's open then it can't be removed until the last process closes it. In Linux it's possible to attach to a still-existing segment if it's been marked for deletion, but this is not consistent behaviour across all UNIX systems and should not be done~\cite{lpi}.
-
-
-Consider a minimal (working) example where shared memory is employed to deliver a message from a child process to a parent.
 \begin{lstlisting}[language=C]
-#define _XOPEN_SOURCE
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/shm.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/wait.h>
+void* do_something( void* start_params )
+\end{lstlisting}
 
-int main( int argc, char** argv ) { 
 
-    int shmid = shmget( IPC_PRIVATE, 32, IPC_CREAT | 0666  );  
+After the new thread has been created, the process has two threads in it. The OS makes no guarantee about which thread will be executing after the new one is created; this is a matter of scheduling. It could be either of the threads of the process, both of them at the same time, or a different process entirely.
 
-    int pid = fork();
-    if ( pid > 0 ) { /* Parent */
-        waitpid( pid, NULL, 0 );
-        void* mem = shmat( shmid, NULL, 0 );
-        printf("The message the parent received from the child is %s.\n", (char*) mem );
-        shmdt( mem );
-        shmctl( shmid, IPC_RMID, NULL );
-    } else if ( pid == 0 ) { /* Child */
-        void* mem = shmat( shmid, NULL, 0 );
-        memset( mem, 0, 32 );
-        sprintf( mem, "Hello World" );
-        shmdt( mem );
-    }   
+Our experience with C-like languages suggests it is normal to have a single return value from a function, but usually we can have multiple input parameters. It seems limiting to be able to put in just one. There are two ways to get around this: with an array or with structures. In the case of the array, the argument provided to \texttt{pthread\_create} is just a pointer to the array. This is also, incidentally, how you can get multiple return values out of a function in Java or C\# (\texttt{public Object[] foo()}), but I don't recommend it as a good programming practice. The other way to do it is to use the \texttt{struct}, defining a structure for the parameter type and one for the return type.
 
-    return 0;
+The function that is to run in the new thread must expect a pointer to the arguments and then it will need to be cast to the appropriate (actual) type:
+\begin{lstlisting}[language=C]
+void* function( void * void_arg ) {
+  parameters_t *arguments = (parameters_t*) args;
+  /* continue after this */
 }
 \end{lstlisting}
 
-Perhaps you have a small security concern: can anyone who knows the key or shared memory ID attach to my shared memory? No -- it's only possible to attach to memory segments of your own processes. A process run by user j999doe can only attach to memory shared by another process run by that user. The owner can reassign ownership with the \texttt{shmctl()} call, but this is beyond the scope of the course.
+This does imply that the caller of the \texttt{pthread\_create} function has to know what kind of argument is expected in the function being called. That is fairly normal; we do have to know what the arguments mean when we pass them in to any function, but in this case we don't have the ``hints'' that the types provide.
 
+What about the thread attributes? They can be used to set whether a thread is detached or joinable, scheduling policy, etc. By default, new threads are usually joinable (that is to say, that some other thread can call \texttt{pthread\_join} on them). As noted before, it is a logical error to attempt multiple joins on the same thread. To prevent a thread from ever being joined, it can be created in the detached state (or the method \texttt{pthread\_detach} can be called on a joinable thread). Trying to join a detached thread is also a logical error~\cite{pthreads}. For virtually all scenarios that we will consider in this course the default values will be fine.
 
-\paragraph{Alternatively: \texttt{mmap}.} An alternative approach for shared memory involves the use of \texttt{mmap()}, a function nominally used to map a file into memory. This is neat -- it would allow us to map some disk file to a buffer, so when we fetch data from that buffer, the data is read and when we write into the buffer the data is written to the file. It allows us to read and write files as if they were memory accesses. Very convenient. But we can also use this for IPC, hence its introduction here. But first, the functions need to be introduced. As in~\cite{apunix}:
+Once we do that, the new thread we created is running. It does whatever its code does, so everything proceeds as expected, until of course the thread gets to the end. Usually, it will terminate with \texttt{pthread\_exit}. The use of \texttt{pthread\_exit} is not the only way that a thread may be terminated. Sometimes we want the thread to persist (hang around), but if we want to get a return value from the thread, then we need it to exit.
+
+\paragraph{Returning Values.} If a thread has no return values, it can just \texttt{return NULL;} which will have the same effect as \texttt{pthread\_exit} and send \texttt{NULL} back to the thread that has joined it. If the function that is called as a task returns normally rather than calling the exit routine, the thread will still be terminated.
+
+Another way a thread might terminate is if the \texttt{pthread\_cancel} function is called with it as the target. As before, if the termination is deferred rather than asynchronous, the thread is responsible for cleaning up after itself before it stops.
+
+A thread may also be terminated indirectly: if the entire process is terminated or if \texttt{main} finishes first (without calling \texttt{pthread\_exit} itself). Indeed, \texttt{main} can use \texttt{pthread\_exit} as the last thing that it does. Without that, \texttt{main} will not wait for other, unjoined threads to finish and they will all get suddenly terminated. If \texttt{main} calls \texttt{pthread\_exit} then it will be blocked until the threads it has spawned have finished~\cite{pthreads}.
+
+\paragraph{Collecting Returned Values.} Like the \texttt{wait} system call, the \texttt{pthread\_join} is how we get a value out of the spawned thread:
 
 \begin{lstlisting}[language=C]
-void* mmap( void* address, size_t length, int protection, int flag, int fd, off_t offset );
-int mprotect( void* address, size_t length, int prot );
-int msync( void* address, size_t length, int flags );
-int munmap( void* address, size_t length );
+pthread_join( pthread_t thread, void** retval );
 \end{lstlisting}
 
-The first argument is the address for where you want the mapped region to go in memory; unless you have a very good reason to do otherwise, let the system choose by supplying \texttt{NULL}. The next argument is the number of bytes we want to map. The third argument is the protection rules --- read, write execute, and none -- that apply (details below). The flag argument indicates the mode that the memory will be mapped in. The second-last argument is the file descriptor of the file we wish to map, and the last argument is the offset from the start of the file where the segment begins.
-
-The return value is a pointer to the starting address of the memory area where the file is mapped.
-
-Okay, so about the protection flags: valid values are \texttt{PROT\_NONE}, \texttt{PROT\_READ}, \texttt{PROT\_WRITE}, and \texttt{PROT\_EXECUTE}, which can be combined using the bitwise OR operator (as always). The read, write, and execute ones look as expected, but whatever flags you choose have to be consistent with how the file was opened with \texttt{open}. So you can't use \texttt{open} as readonly and then somehow use \texttt{mmap} with the write flag. And \texttt{PROT\_NONE} forbids all access; any attempt to access that memory results in a segmentation fault.
-
-Digression: why would you ever use \texttt{PROT\_NONE}? What's the point of mapping a segment of the file and then forbidding all access...?  A possible use of this is to put ``guards'' at the start and end of a region of memory. If the process accidentally goes outside the bounds, then a segmentation fault is generated, thus enforcing the ends of the area~\cite{lpi}.
-
-And lastly, you have two flag options. The first is \texttt{MAP\_PRIVATE} -- modifications are not visible to other processes mapping the same file and are not written out to the underlying file. The other is \texttt{MAP\_SHARED} -- modifications are visible to other processes and are written to the underlying file (although perhaps not instantly -- there is a function to make sure we all agree).
-
-As you can imagine, the private option is for when we just want to work with a file ourselves and the shared option is for use in an IPC scenario.
-
-\begin{center}
-	\includegraphics[width=0.5\textwidth]{images/memory-mapped-file.png}\\
-	Conceptual diagram of a memory mapped file~\cite{apunix}.
-\end{center}
-
-If we wish to change the protection rules for a section, we use \texttt{mprotect}, which takes as arguments the address, the size, and the new access rules.
-
-When a piece of the file is loaded in memory in the shared mode, file changes are not necessarily written out to the underlying file immediately. This is (partly) a performance enhancement but can mean that not everybody agrees on the content of the file because a change has not yet been written to disk. For this, the \texttt{msync} function is used: the address and length parameters are self explanatory. For flags we'll just say use \texttt{MS\_SYNC} which makes this a blocking call. There are other more advanced options but we will not discuss that here. Also, this function does nothing if the file is mapped in private.
-
-Finally, when we're done with a segment, we can unmap it with \texttt{munmap}, which takes the same arguments of the address and length. A segment would be unmapped automatically when a process exits, but as always it is polite to unmap it as soon as you know that you are done with it.
-
-Let's do a quick example. Suppose I have a file \texttt{example.txt} that contains the text ``This is sample text.'' We are going to overwrite it with ``It is now overwritten'' in a child process and the parent will see the updated message.
+The first parameter specifies the thread that you want to join. The second parameter is... wait... two stars? What we are looking for is a pointer to a void pointer. That is, we are going to supply a pointer that the join function will update to be pointing to the value returned by that function. Typically we supply the address of a pointer. This will be hopefully clearer in the example:
 
 \begin{lstlisting}[language=C]
-#define _XOPEN_SOURCE
-#include <stdio.h>
 #include <stdlib.h>
-#include <sys/shm.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/mman.h>
+#include <stdio.h>
+#include <pthread.h>
+
+void * run( void * argument ) { 
+  char* a = (char*) argument;
+  printf("Provided argument is %s!\n", a); 
+  int * return_val = malloc( sizeof( int )); 
+  *return_val = 99; 
+  pthread_exit( return_val );
+}
 
 int main( int argc, char** argv ) { 
-
-    int fd = open( "example.txt", O_RDWR );
-    
-    struct stat st; 
-    stat( "example.txt", &st );
-    ssize_t size = st.st_size;
-    void* mapped = mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0 );  
-    
-    int pid = fork();
-    if ( pid > 0 ) { /* Parent */
-        waitpid( pid, NULL, 0 );
-        printf("The new content of the file is: %s.\n", (char*) mapped);
-        munmap( mapped, size );
-    } else if ( pid == 0 ) { /* Child */
-       memset( mapped, 0, size ); /* Erase what's there */
-       sprintf( mapped, "It is now Overwritten");
-       /* Ensure data is synchronized */
-       msync( mapped, size, MS_SYNC );
-       munmap( mapped, size );
-    }
-    close( fd );
-    return 0;
+  if (argc != 2) {
+      printf("Invalid args.\n");
+      return -1; 
+  }
+  pthread_t t;
+  void* vr; 
+  
+  pthread_create( &t, NULL, run, argv[1] );
+  pthread_join( t, &vr );
+  int* r = (int*) vr; 
+  printf("The other thread returned %d.\n", *r);
+  free( vr );
+  pthread_exit( 0 );
 }
 \end{lstlisting}
-
-The example works acceptably in the sense that we successfully overwrite the data with the new data and the parent process sees the change. But things get weird if we tried to write fewer bytes than the original message was. In general, the mapped area size cannot change. So if we want to write more data than is in the file, we can't make the content of the file larger (and things look strange when we write fewer). In Linux there is the \texttt{mremap} call but this is not portable (ie does not work on all systems). But this would be great for something like sorting an array, wouldn't it? The sorted array is the same size as the input and we could share the work...
 
 \input{bibliography.tex}
 

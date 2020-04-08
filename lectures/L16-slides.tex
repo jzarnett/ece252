@@ -1,9 +1,9 @@
 \input{configuration}
+\usepackage{multirow}
 
-\title{Lecture 16 --- The Producer-Consumer Problem }
+\title{Lecture 16 --- The Readers-Writers Problem }
 
-\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
-\institute{Department of Electrical and Computer Engineering \\
+\author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}\institute{Department of Electrical and Computer Engineering \\
 	University of Waterloo}
 \date{\today}
 
@@ -15,548 +15,724 @@
 
 \end{frame}
 
-
 \begin{frame}
-	\frametitle{Monty Python and the Holy Compiler}
+	\frametitle{Reader/Writer Locks}
+	Reads don't interfere with one another so we can let them run in parallel!
+
+	But sometimes writes occur, and nobody can read when this happens.
 
 	\begin{center}
-		\includegraphics[width=0.4\textwidth]{images/three-riddles.jpg}
+		\includegraphics[width=0.8\textwidth]{images/groupreading.jpg}
 	\end{center}
+	\hfill Image Credit: Understood.org
+\end{frame}
 
-	The producer-consumer problem, the readers-writers problem, and the dining philosophers problem.
+\begin{frame}
+	\frametitle{Reader/Writer Rules}
+
+
+	\begin{enumerate}
+		\item Any number of readers may be in the critical section simultaneously.
+		\item Only one writer may be in the critical section (and when it is, no readers are allowed).
+	\end{enumerate}
+
+
+	This is very often how file systems work.
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Produce and Consume}
+	\frametitle{With Variation}
 
-	First: the producer-consumer problem, also sometimes called the bounded-buffer-problem.
+	This is similar to, but distinct from, the general mutual exclusion problem and the producer-consumer problem.
 
-	Two processes share a common buffer that is of fixed size.
+	Readers do not modify the data (consumers do take things out of the buffer, modifying it).
 
-	One process is the producer: it generates data and puts it in the buffer.
+	If any thread could read or write the shared data structure, we would have to use the general mutual exclusion solution.
 
-	The other is the consumer: it takes data out of the buffer.
+	Allowing multiple readers can permit better performance!
 
-	This problem can be generalized to have $p$ producers and $c$ consumers.
+	And there are many scenarios where updates are rare but reads are common.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Consume, Obey}
+	\frametitle{Readers-Writers Solution 1}
+	Let us keep track of the number of readers at any given time with \texttt{readers}.
 
-	Rules:
-	\begin{itemize}
-		\item The buffer is of capacity \texttt{BUFFER\_SIZE}.
-		\item Cannot write into a full buffer
-		\item Cannot read from an empty buffer
-	\end{itemize}
+	We will need a way of protecting this variable from concurrent modifications, so there will have to be a binary semaphore \texttt{mutex}.
 
-	To keep track of the number of items in the buffer, we will have some variable \texttt{count}.
+	We will also need one further semaphore, \texttt{roomEmpty}.
 
-	This is a shared variable, so we need a mutex for it.
-
+	A writer has to wait for the room to be empty (i.e., \texttt{wait} on the \texttt{roomEmpty} semaphore) before it can enter.
 \end{frame}
+
 
 
 \begin{frame}[fragile]
-	\frametitle{Are We There Yet?}
-
-	If busy-waiting is permitted, we can get away with one mutex.
-
-	Shown below is one loop iteration for each of the producer \& consumer.
-		{\small
-			\begin{multicols}{2}
-				\textbf{Producer}
-				\begin{verbatim}
-	 1. [produce item]
-	 2. added = false
-	 3. while added is false
-	 4.    wait( mutex )
-	 5.    if count < BUFFER_SIZE
-	 6.        [add item to buffer]
-	 7.        count++
-	 8.        added = true
-	 9.    end if
-	10.    post( mutex )
-	11. end while
-  \end{verbatim}
-				\columnbreak
-				\textbf{Consumer}
-				\begin{verbatim}
-	 1. removed = false
-	 2. while removed is false
-	 3.    wait( mutex )
-	 4.    if count > 0
-	 5.        [remove item from buffer]
-	 6.        count--
-	 7.        removed = true
-	 8.    end if
-	 9.    post( mutex )
-	10. end while
-	11. [consume item]
-  \end{verbatim}
-			\end{multicols}
-			\vspace{-2em}
-		}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{No Busy-Waiting}
-
-	While this accomplishes what we want, it is inefficient.
-
-	Let's add a new rule that says we want to avoid busy-waiting.
-
-	The producer gets blocked if there are no available spaces.
-
-	The consumer gets blocked if there's nothing to consume.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{When You Lose Track of the Number of Sets...}
-
-	\begin{center}
-		\includegraphics[width=0.7\textwidth]{images/counting.jpeg}
-	\end{center}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Use Semaphores To Count}
-
-	Use 2 general semaphores, each with maximum value of \texttt{BUFFER\_SIZE}.
-
-	\texttt{items}: starts at 0 and represents how many spaces in the buffer are full.
-
-	\texttt{spaces}: starts at \texttt{BUFFER\_SIZE} and represents the number of spaces in the buffer that are currently empty.
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Producer-Consumer with Waiting}
+	\frametitle{Readers-Writers Solution 1}
 
 	\begin{multicols}{2}
-		\textbf{Producer}
+		\textbf{Writer}
 		\begin{verbatim}
-	 1. [produce item]
-	 2. wait( spaces )
-	 3. [add item to buffer]
-	 4. post( items )
+	 1. wait( roomEmpty )
+	 2. [write data]
+	 3. post( roomEmpty )
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
   \end{verbatim}
 		\columnbreak
-		\textbf{Consumer}
-		\begin{verbatim}
-	 1. wait( items )
-	 2. [remove item from buffer]
-	 3. post( spaces )
-	 4. [consume item]
-  \end{verbatim}
-	\end{multicols}
-	\vspace{-2em}
-
-	Does this work?
-
-	Are there any implicit assumptions?
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Assumptions made? I assume so...}
-
-	(1) The actions of adding an item to the buffer and removing an item from the buffer add to and remove from the ``next'' space.
-
-	(2) There is exactly one producer and one consumer in the system.
-
-	If we have two producers, for example, they might be trying to write into the same space at the same time, and this would be a problem.
-
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Mmmmmmmulti-Consume!}
-
-	To generalize this solution to allow multiple producers and multiple consumers, we need a \texttt{mutex}.
-
-	\begin{multicols}{2}
-		\textbf{Producer}
-		\begin{verbatim}
-	 1. [produce item]
-	 2. wait( spaces )
-	 3. wait( mutex )
-	 4. [add item to buffer]
-	 5. post( mutex )
-	 6. post( items )
-  \end{verbatim}
-		\columnbreak
-		\textbf{Consumer}
-		\begin{verbatim}
-	 1. wait( items )
-	 2. wait( mutex )
-	 3. [remove item from buffer]
-	 4. post( mutex )
-	 5. post( spaces )
-	 6. [consume item]
-  \end{verbatim}
-	\end{multicols}
-	\vspace{-2em}
-
-	Does this work?
-
-	Anything... worrying?
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Cancel Red Alert}
-
-	The hint that we might have a problem is one \texttt{wait} statement inside another.
-
-	But it doesn't guarantee a problem...
-
-	We should be able to reason through why there is (or isn't) a problem.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Alternative Solution: PC}
-
-	\begin{multicols}{2}
-		\textbf{Producer}
-		\begin{verbatim}
-	 1. [produce item]
-	 2. wait( mutex )
-	 3. wait( spaces )
-	 4. [add item to buffer]
-	 5. post( items )
-	 6. post( mutex )
-  \end{verbatim}
-		\columnbreak
-		\textbf{Consumer}
+		\textbf{Reader}
 		\begin{verbatim}
 	 1. wait( mutex )
-	 2. wait( items )
-	 3. [remove item from buffer]
-	 4. post( spaces )
-	 5. post( mutex )
-	 6. [consume item]
+	 2. readers++
+	 3. if readers == 1
+	 4.     wait( roomEmpty )
+	 5. end if
+	 6. post( mutex )
+	 7. [read data]
+	 8. wait( mutex )
+	 9. readers--
+	10. if readers == 0
+	11.     post( roomEmpty )
+	12. end if
+	13. post( mutex )
   \end{verbatim}
 	\end{multicols}
 	\vspace{-2em}
 
-	Does this work?
+\end{frame}
+
+\begin{frame}
+	\frametitle{Readers-Writers Solution 1 Analysis}
+
+	The first reader that arrives encounters the situation that the room is empty, so it ``locks'' the room (waiting on the \texttt{roomEmpty} semaphore).
+
+	That will prevent writers from entering the room.
+
+	Additional readers do not check if the room is empty; they just proceed to enter.
+
+	When the last reader leaves the room, it indicates that the room is empty (``unlocking it'' to allow a writer in).
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{The Tiny Details...}
+	\frametitle{Readers-Writers Solution 1 Analysis}
 
-	This solution does have the deadlock problem!
-
-	Imagine at the start of execution, the buffer is empty and the consumer runs first...
-
-	Do you see the problem now?
-
-	This could also happen with the producer.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Problems are Only Sometimes a Problem}
-
-	If this solution were implemented, it wouldn't guarantee a deadlock occurs.
-
-	In fact, it probably works fine most of the time.
-
-
-	Once, however, we have found one scenario that can lead to deadlock, there is no need to look for other failure cases.
-
-	We can replace this solution with a better one.
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{P-C Example}
-
-	\begin{lstlisting}[language=C]
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <semaphore.h>
-
-#define BUFFER_SIZE 20
-sem_t spaces;
-sem_t items;
-int counter = 0;
-int* buffer;
-
-int produce() {
-  ++counter;
-  return counter;
-} 
-
-void consume( int value ) {
-  printf("Consumed %d.\n", value);
-}
-\end{lstlisting}
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{P-C Example}
-
-	\begin{lstlisting}[language=C]
-void* producer( void* arg ) {
-  int pindex = 0;
-  while( counter < 10000 ) {
-    int v = produce();
-    sem_wait( &spaces );
-    buffer[pindex] = v;
-    pindex = (pindex + 1) % BUFFER_SIZE;
-    sem_post( &items );
-  }
-  pthread_exit( NULL );
-}
-
-void* consumer( void* arg ) {
-  int cindex = 0;
-  int ctotal = 0;
-  while( ctotal < 10000 ) {
-    sem_wait( &items );
-    int temp = buffer[cindex];
-    buffer[cindex] = -1;
-    cindex = (cindex + 1) % BUFFER_SIZE;
-    sem_post( &spaces );
-    consume( temp );
-    ++ctotal;
-  }
-  pthread_exit( NULL );
-}
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{P-C Example}
-
-	\begin{lstlisting}[language=C]
-int main( int argc, char** argv ) {
-  buffer = malloc( BUFFER_SIZE * sizeof( int ) );
-  for ( int i = 0; i < BUFFER_SIZE; i++ ) {
-    buffer[i] = -1;
-  }  
-  sem_init( &spaces, 0, BUFFER_SIZE );
-  sem_init( &items, 0, 0 );
-
-  pthread_t prod;
-  pthread_t con;
-
-  pthread_create( &prod, NULL, producer, NULL );
-  pthread_create( &con, NULL, consumer, NULL );
-  pthread_join( prod, NULL );
-  pthread_join( con, NULL );
-
-  free( buffer );
-  sem_destroy( &spaces );
-  sem_destroy( &items );
-  pthread_exit( 0 );
-}
-
-\end{lstlisting}
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Before We Go On}
+	This pattern is sometimes called the \alert{light switch}.
 
 	\begin{center}
-		\includegraphics[width=0.5\textwidth]{images/stop-hammertime.jpg}
+		\includegraphics[width=0.6\textwidth]{images/lightswitch.png}
 	\end{center}
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Mutex Syntax}
+	\frametitle{Readers-Writers Solution 1 Analysis}
 
-	We should take a moment to learn about the syntax of the pthread mutex.
+	The reader code has that situation that makes us concerned.\\
+	\quad A wait on \texttt{roomEmpty} inside a critical section controlled by \texttt{mutex}.
 
-	While it is possible, of course, to use a semaphore as a mutex, frequently we will use the more specialized tool for this task.
+	With a bit of reasoning, we can convince ourselves that there is no deadlock.
 
-	In fact, it's generally good practice to use the more specialized tool.
+	A reader waits on \texttt{roomEmpty} only if a writer is currently in its critical section.
 
-\end{frame}
+	As long as the write operation takes finite time, eventually the writer will post the \texttt{roomEmpty} semaphore and the threads can continue.
 
-\begin{frame}[fragile]
-	\frametitle{Mutex Syntax}
-
-	The structure representing the mutex is of type \texttt{pthread\_mutex\_t}.
-
-	\begin{lstlisting}[language=C]
-pthread_mutex_init( pthread_mutex_t *mutex, pthread_mutexattr_t *attributes )
-\end{lstlisting}
-
-	\texttt{mutex}: the mutex to intiialize.
-
-	\texttt{attributes}: the attributes; \texttt{NULL} is fine for defaults.
-
-	Shortcut if you do not want to set attributes:
-
-	\begin{lstlisting}[language=C]
-pthread_mutex_t mymutex = PTHREAD_MUTEX_INITIALIZER;
-\end{lstlisting}
-
-	By default, the mutex is created as unlocked.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Lock and Unlock}
-
-	\begin{lstlisting}[language=C]
-pthread_mutex_lock( pthread_mutex_t *mutex )
-pthread_mutex_trylock( pthread_mutex_t *mutex ) /* Returns 0 on success */
-pthread_mutex_unlock( pthread_mutex_t *mutex )
-\end{lstlisting}
-
-	Unlock is self-explanatory.
-
-	\texttt{pthread\_mutex\_lock} is blocking.
-
-	\texttt{pthread\_mutex\_trylock} is nonblocking.
-
-	Trylock will come up again soon when we look at another classical synchronization problem.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Destroy the Mutex}
-
-	\begin{lstlisting}[language=C]
-pthread_mutex_destroy( pthread_mutex_t *mutex )
-\end{lstlisting}
-
-	Destroy is also self-explanatory.
-
-	An attempt to destroy the mutex may fail if the mutex is currently locked.
-
-	Attempting to destroy a locked one results in undefined behaviour.
+	Deadlock is not a problem.
 
 \end{frame}
 
 
-\begin{frame}[fragile]
-	\frametitle{Multiple Producer-Consumer Example}
-	\begin{lstlisting}[language=C]
-#include <stdlib.h>
-#include <pthread.h>
-#include <stdio.h>
-#include <math.h>
-#include <semaphore.h>
+\begin{frame}
+	\frametitle{Readers-Writers Solution 1 Analysis}
 
-#define BUFFER_SIZE 100
-int buffer[BUFFER_SIZE];
-int pindex = 0;
-int cindex = 0;
-sem_t spaces;
-sem_t items;
+	There is, however, a second problem that we need to be concerned about.
+
+	Suppose some readers are in the room, and a writer arrives.
+
+	The writer must wait until all the readers have left the room.
+
+	When each of the readers is finished, it exits the room.
+
+	In the meantime, more readers arrive and enter the room.
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Readers-Writers Solution 1 Analysis}
+
+	So even though each reader is in the room for only a finite amount of time, there is never a moment when the room has no readers in it.
+
+	This undesirable situation is not deadlock, because the reader threads are not stuck, but the writer (and any subsequent writers) is (are) going to wait forever.
+
+	This is a situation called \alert{starvation}: a thread never gets a chance to run.
+
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Starvation}
+
+	Recall criterion 3 of properties we want in any mutual exclusion solution:\\
+	\quad It must not be possible for a thread to be delayed indefinitely.
+
+	This problem is just as bad as deadlock in that if it is discovered, it eliminates a proposed solution as an acceptable option.
+
+	Even though starvation might only be an unlikely event.
+
+	We must therefore improve on this solution such that there is no longer the possibility that a writer starves.
+
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Readers-Writers Solution 2}
+
+	When a writer arrives, any readers should be permitted to finish their read.\\
+	\quad No new readers should be allowed to start reading.
+
+	Eventually, all the readers currently in the critical section will finish.
+
+	The writer will get a turn, because the room is empty.
+
+	When the writer is done, all the readers that arrived after the writer will be able to enter.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Readers-Writers Solution 2}
+	\begin{multicols}{2}
+		\textbf{Writer}
+		\begin{verbatim}
+	 1. wait( turnstile )
+	 2. wait( roomEmpty )
+	 3. [write data]
+	 4. post( turnstile )
+	 5. post( roomEmpty )
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+  \end{verbatim}
+		\columnbreak
+		\textbf{Reader}
+		\begin{verbatim}
+	 1. wait( turnstile )
+	 2. post( turnstile )
+	 3. wait( mutex )
+	 4. readers++
+	 5. if readers == 1
+	 6.     wait( roomEmpty )
+	 7. end if
+	 8. post( mutex )
+	 9. [read data]
+	10. wait( mutex )
+	11. readers--
+	12. if readers == 0
+	13.     post( roomEmpty )
+	14. end if
+	15. post( mutex )
+  \end{verbatim}
+	\end{multicols}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Readers-Writers Solution 2 Analysis}
+
+	Does this solution satisfy our goals of avoidance of deadlock and starvation?
+
+	Starvation is fairly easy to assess: the first attempt at the solution had one scenario leading to starvation and this solution addresses it.
+
+	You should be able to convince yourself that the solution as described cannot starve the writers or readers.
+
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Readers-Writers Solution 2 Analysis}
+
+	On to deadlock: the reader code is minimally changed from before
+
+	The writer has that dangerous pattern: two waits.
+
+	If the writer is blocked on the \texttt{roomEmpty} semaphore, no readers or writers could advance past the turnstile and no writers.
+
+	If the writer is blocked on that semaphore, there are readers in the room.
+
+	The readers will individually finish and leave (their progress is not impeded).
+
+	So the room will eventually become empty; the writer will be unblocked.
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Readers-Writers Solution 2 Analysis}
+
+	Note that this solution does not give writers any particular priority: when a writer exits it posts on \texttt{turnstile} and that may unblock a reader or a writer.
+
+	If it unblocks a reader, a whole bunch of readers may enter before the next writer is unblocked and locks the turnstile again.
+
+	That may or may not be desirable, depending on the application.
+
+	In any event, it does mean it is possible for readers to proceed even if a writer is queued.
+
+	If there is a need to give writers priority, there are techniques for doing so.
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Business Class Passengers Board in Zone 1}
+
+	\begin{center}
+		\includegraphics[width=0.9\textwidth]{images/priority-boarding.jpg}
+	\end{center}
+	\hfill Image Credit: Tag Along Travel
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Business Class Passengers Board in Zone 1}
+
+	Let's modify the solution so that writers have priority over readers.
+
+	We will probably want to break up the \texttt{roomEmpty} semaphore into \texttt{noReaders} and \texttt{noWriters}.
+
+	A reader in the critical section should hold the \texttt{noReaders} semaphore and a writer should hold \texttt{noWriters} and \texttt{noReaders}.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Writer Priority}
+
+	\begin{multicols}{2}
+		\textbf{Writer}\vspace{-1em}
+		\begin{verbatim}
+     1. wait( writeMutex )
+     2. writers++
+     3. if writers == 1
+     4.     wait( noReaders )
+     5. end if
+     6. post( writeMutex )
+     7. wait ( noWriters )
+     8. [write data]
+     9. post( noWriters ) 
+    10. wait( writeMutex )
+    11. writers--
+    12. if writers == 0
+    13.    post( noReaders )
+    14. end if
+    15. post( writeMutex )     
+  \end{verbatim}
+		\columnbreak
+		\textbf{Reader}\vspace{-2em}
+		\begin{verbatim}
+     1. wait( noReaders )
+     2. wait( readMutex )
+     3. readers++
+     4. if readers == 1
+     5.    wait( noWriters )
+     6. end if
+     7. post( readMutex )
+     8. post( noReaders )
+     9. [read data]
+    10. wait( readMutex )
+    11. readers--
+    12. if readers == 0
+    13.     post( noWriters )
+    14. end if
+    15. post( readMutex )
+\end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Analysis: Writer Priority}
+
+	Yikes! The complexity for the writer increased dramatically.
+
+	The reader is not all that different than it was before.
+
+	The writer now is to some extent the mirror image of the reader.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Too Much Typing?}
+
+	Using the pseudocode as above, we can implement the readers-writers behaviour in a given program using only semaphore and mutex constructs.
+
+	But in the pthread library there is support for readers-writers lock types, meaning we don't have to reinvent the wheel.
+
+	The type for the lock is \texttt{pthread\_rwlock\_t}.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{RW Lock Syntax: Init, Destroy}
+
+	\begin{lstlisting}[language=C]
+pthread_rwlock_init( pthread_rwlock_t * rwlock, pthread_rwlockattr_t * attr )
+\end{lstlisting}
+
+	\texttt{rwlock}: the lock to initialize.
+
+	\texttt{attr}: the attributes (\texttt{NULL} for defaults is fine.)
+
+
+	\begin{lstlisting}[language=C]
+pthread_rwlock_destroy( pthread_rwlock_t * rwlock )
+\end{lstlisting}
+
+	\texttt{rwlock}: the lock to destroy.
+
+
+	Both of these are exactly like the regular mutex.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{RW Lock Syntax: Locking}
+
+	\begin{lstlisting}[language=C]
+pthread_rwlock_rdlock( pthread_rwlock_t * rwlock )
+pthread_rwlock_tryrdlock( pthread_rwlock_t * rwlock )
+pthread_rwlock_wrlock( pthread_rwlock_t * rwlock )
+pthread_rwlock_trywrlock( pthread_rwlock_t  *  rwlock )
+\end{lstlisting}
+
+	We can acquire a read lock, or a write lock.
+
+	Pretty self-explanatory, which is which and when you use what.
+
+	For each of those there is an associated trylock function.
+
+	All four functions take one argument: \texttt{rwlock}, the lock.
+
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{RW Lock Syntax: Unlock}
+
+	\begin{lstlisting}[language=C]
+pthread_rwlock_unlock( pthread_rwlock_t * rwlock )
+\end{lstlisting}
+
+	Unlock works just like the regular mutex unlock.
+
+	We do not need to specify what kind of luck we are releasing.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Writer Priority?}
+
+	As for whether readers or writers get priority, the specification says this is implementation defined.
+
+	If possible, for threads of equal priority, a writer takes precedence over a reader.
+
+	But your system may vary.
+
+
+\end{frame}
+
+
+
+\begin{frame}
+	\frametitle{Mine, Mine, Mine!}
+
+	In theory, the same thread may lock the same rwlock $n$ times.
+
+	Just remember to unlock it $n$ times as well.
+
+	Readers get priority? Implementation defined.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Without RW Locks}
+
+	\begin{multicols}{2}
+		\begin{lstlisting}[language=C]
+int readers;
 pthread_mutex_t mutex;
+sem_t roomEmpty;
 
-int produce( int id ) {
-  int r = rand();
-  printf("Producer %d produced %d.\n", id, r);
-  return r;
-}
-
-void consume( int id, int number ) {
-  printf("Consumer %d consumed %d.\n", id, number);
-}
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Multiple Producer-Consumer Example}
-	\begin{lstlisting}[language=C]
-void* producer( void* arg ) {
-  int* id = (int*) arg;
-  for(int i = 0; i < 10000; ++i) {
-    int num = produce(*id); 
-    sem_wait( &spaces );
-    pthread_mutex_lock( &mutex );
-    buffer[pindex] = num;
-    pindex = (pindex + 1) % BUFFER_SIZE;
-    pthread_mutex_unlock( &mutex );
-    sem_post( &items );
-  }
-  free( arg );
-  pthread_exit( NULL );
-}
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Multiple Producer-Consumer Example}
-	\begin{lstlisting}[language=C]
-
-void* consumer( void* arg ) {
-  int* id = (int*) arg;
-  for(int i = 0; i < 10000; ++i) {
-    sem_wait( &items );
-    pthread_mutex_lock( &mutex );
-    int num = buffer[cindex];
-    buffer[cindex] = -1;
-    cindex = (cindex + 1) % BUFFER_SIZE;
-    pthread_mutex_unlock( &mutex );
-    sem_post( &spaces );
-    consume( *id, num );
-  }
-  free( id );
-  pthread_exit( NULL );
-}
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Multiple Producer-Consumer Example}
-	\begin{lstlisting}[language=C]
-int main( int argc, char** argv ) {
-  sem_init( &spaces, 0, BUFFER_SIZE );
-  sem_init( &items, 0, 0 );  
+void init( ) {
+  readers = 0;
   pthread_mutex_init( &mutex, NULL );
+  sem_init( &roomEmpty, 0, 1 );
+}
 
-  pthread_t threads[20];
-
-  for( int i = 0; i < 10; i++ ) {
-    int* id = malloc(sizeof(int));
-    *id = i;
-    pthread_create(&threads[i], NULL, producer, id);
-  }
-  for( int j = 10; j < 20; j++ ) {
-    int* jd = malloc(sizeof(int));
-    *jd = j-10;
-    pthread_create(&threads[j], NULL, consumer, jd);
-  }
-  for( int k = 0; k < 20; k++ ){  
-    pthread_join(threads[k], NULL);
-  }
-  sem_destroy( &spaces );
-  sem_destroy( &items );
+void cleanup( ) {
   pthread_mutex_destroy( &mutex );
-  pthread_exit( 0 );
+  sem_destroy( &roomEmpty );
+}
+\end{lstlisting}
+
+		\columnbreak
+
+		\begin{lstlisting}[language=C]
+void* writer( void* arg ) {
+  sem_wait( &roomEmpty );
+  write_data( arg );
+  sem_post( &roomEmpty );
+}
+
+void* reader( void* read ) {
+  pthread_mutex_lock( &mutex );
+  readers++;
+  if ( readers == 1 ) {
+    sem_wait( &roomEmpty );
+  }
+  pthread_mutex_unlock( &mutex );
+  read_data( arg );
+  pthread_mutex_lock( &mutex );
+  readers--;
+  if ( readers == 0 ) {
+    sem_post( &roomEmpty );
+  }
+  pthread_mutex_unlock( &mutex );
+}
+\end{lstlisting}
+
+	\end{multicols}
+
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{With RW Locks}
+
+	\begin{multicols}{2}
+		\begin{lstlisting}[language=C]
+pthread_rwlock_t rwlock;
+
+void init( ) {
+  pthread_rwlock_init( &rwlock, NULL );
+}
+
+void cleanup( ) {
+  pthread_rwlock_destroy( &rwlock );
+}
+\end{lstlisting}
+
+		\columnbreak
+
+		\begin{lstlisting}[language=C]
+void* writer( void* arg ) {
+  pthread_rwlock_wrlock( &rwlock );
+  write_data( arg );
+  pthread_rwlock_unlock( &rwlock );
+}
+
+void* reader( void* read ) {
+  pthread_rwlock_rdlock( &rwlock );
+  read_data( arg );
+  pthread_rwlock_unlock( &rwlock );
+}
+\end{lstlisting}
+
+	\end{multicols}
+
+	Conclusion: don't reinvent the wheel!
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Seek and Destroy}
+
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/seek-and-destroy.jpg}
+	\end{center}
+	An extension of the readers-writers problem: the search-insert-delete problem.
+
+	Three kinds of thread: searcher, inserter, deleter.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Searcher Rules}
+
+	\alert{Searchers} merely examine the list; hence they can execute concurrently with each other.
+
+	Searcher threads must call \texttt{void search( void* target )} where the argument to the searcher thread is the element to be found.
+
+	These most closely resemble readers in the readers-writers problem.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Inserter Rules}
+
+	\alert{Inserters} add new items to the end of the list; only one insertion may take place at a time.
+
+	However, one insert can proceed in parallel with any number of searches.
+
+	Inserter threads call \texttt{node* find\_insert\_loc()} to find where to do the insertion.
+
+	Then \texttt{void insert( void* to\_insert, node* after )} where the arguments are the location and the element to be inserted.
+
+	Inserters resemble readers, with restrictions.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Deleter Rules}
+
+	\alert{Deleters} remove items from anywhere in the list. At most one deleter process can access the list at a time.
+
+	When the deleter is accessing the list, no inserters and no searchers may be accessing the list.
+
+	Deleter threads call \texttt{void delete( void* to\_delete )}.
+
+	These resemble writers.
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Let's Get It Done}
+
+	It turns out we don't need to modify things too much to allow for this third kind of thread.
+
+	We need to keep track of when there are ``no inserters'' and ``no searchers''.
+
+	Plus another mutex to go around the actual insertion...
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+	\frametitle{Search-Insert-Delete}
+	\begin{lstlisting}[language=C]
+pthread_mutex_t searcher_mutex;
+pthread_mutex_t inserter_mutex;
+pthread_mutex_t perform_insert;
+sem_t no_searchers;
+sem_t no_inserters;
+int searchers;
+int inserters;
+
+
+void init( ) {
+  pthread_mutex_init( &searcher_mutex, NULL );
+  pthread_mutex_init( &inserter_mutex, NULL );
+  pthread_mutex_init( &perform_insert, NULL );
+  sem_init( &no_inserters, 0, 1 );
+  sem_init( &no_searchers, 0, 1 );
+  searchers = 0;
+  inserters = 0;
 }
 \end{lstlisting}
 \end{frame}
 
+\begin{frame}[fragile]
+	\frametitle{Search-Insert-Delete}
+	\begin{lstlisting}[language=C]
+void* searcher_thread( void *target ) {
+  pthread_mutex_lock( &searcher_mutex );
+  searchers++;
+  if ( searchers == 1 ) {
+    sem_wait( &no_searchers );
+  }
+  pthread_mutex_unlock( &searcher_mutex );
+  
+  search( target );
+  
+  pthread_mutex_lock( &searcher_mutex );
+  searchers--;
+  if ( searchers == 0 ) {
+    sem_post( &no_searchers );
+  }
+  pthread_mutex_unlock( &searcher_mutex );
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Search-Insert-Delete}
+	\begin{lstlisting}[language=C]
+void* deleter_thread( void* to_delete ) {
+  sem_wait( &no_searchers );
+  sem_wait( &no_inserters );
+  
+  delete( to_delete );
+  
+  sem_post( &no_inserters );
+  sem_post( &no_searchers );
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Search-Insert-Delete}
+	\begin{lstlisting}[language=C]
+void* inserter_thread( void *to_insert ) {
+  pthread_mutex_lock( &inserter_mutex );
+  inserters++;
+  if ( inserters == 1 ) {
+    sem_wait( &no_inserters );
+  }
+  pthread_mutex_unlock( &inserter_mutex );
+  
+  node * insert_after = find_insert_location( );
+  pthread_mutex_lock( &perform_insert );
+  insert( to_insert, insert_after );
+  pthread_mutex_unlock( &perform_insert );
+  
+  pthread_mutex_lock( &inserter_mutex );
+  inserters--;
+  if ( inserters == 0 ) {
+    sem_post( &no_inserters );
+  }
+  pthread_mutex_unlock( &inserter_mutex );
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}
+\frametitle{Make It Work}
+
+Could you implement Search-Insert-Delete with a \texttt{pthread\_rwlock\_t} despite there being three kinds of thread?
+
+\end{frame}
 
 
 \end{document}

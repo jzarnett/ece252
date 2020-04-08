@@ -1,6 +1,6 @@
 \input{configuration}
 
-\title{Lecture 22 --- Advanced Concurrency Problems }
+\title{Lecture 22 --- Of Asgard and Hel }
 
 \author{Jeff Zarnett \\ \small \texttt{jzarnett@uwaterloo.ca}}
 \institute{Department of Electrical and Computer Engineering \\
@@ -17,687 +17,339 @@
 
 
 \begin{frame}
-	\frametitle{Get A Pizza This!}
+	\frametitle{Yggdrasil, the World Tree}
+
 	\begin{center}
-		\includegraphics[width=0.7\textwidth]{images/pizza.jpg}
+		\includegraphics[width=0.5\textwidth]{images/Yggdrasil.jpg}
 	\end{center}
-	\hfill Image Credit: Valerio Capello
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{The Pizza Makers Problem}
-
-	Let's consider a more advanced concurrency problem.
-
-	It's also called the ``Cigarette Smokers Problem''.
-
-	But smoking is bad for you.
-
-	Pizza, while not exactly health food, is amazing. Delicious, delicious pizza.
-
-
+	\hfill Image Credit: Rick Riordan, Magnus Chase and the Gods of Asgard
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Iron Chef: Pizza}
-	\begin{center}
-		\includegraphics[width=0.5\textwidth]{images/ironchef.jpg}
-	\end{center}
+	\frametitle{Ginnungagap}
 
-	A new show to be hosted by some famous TV chef personality is being pitched, and you're going to write a simulation of it.
+	Everything came into creation in the gap between fire and ice, and the World Tree (Yggdrasil) connects the nine worlds.
 
-	A pizza requires three ingredients: dough, sauce, and cheese.
+	Asgard is the home of the \AE sir, the Norse gods.
 
-\end{frame}
+	Helheim, or simply Hel, is the underworld where the dead go upon their death.
 
-\begin{frame}
-	\frametitle{This Could Be a Real Show}
-
-	Each contestant has an unlimited supply of one ingredient.
-
-	Contestant A has an unlimited supply of dough, Contestant B has an unlimited supply of sauce, and Contestant C has an unlimited supply of cheese.
-
-	Each contestant needs to get the two ingredients they do not have and then can make a pizza.
-
-	They will continue to (try to) make pizza in a loop until time is up.
+	In Hel or Asgard (it's not clear), there is Valhalla, hall of the honoured dead.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{Start the Show!}
-	At the beginning of the episode, the host places two different random ingredients out.
+	\frametitle{Carry We, Who Die In Battle...}
 
-	Contestants can signal the host to ask for more ingredients, but they should not do so unless they actually need some.
+	Those who die in battle and are judged worthy will be carried to Valhalla by the Valkyries.
 
-	Each time the host is woken up (signalled), he again places two different random ingredients out.
+	There they will reside until they are called upon to aid in Odin's fight with the wolf Fenrir in Ragnar\"ok.
 
-	When an ingredient is placed on the table, the host posts on the associated semaphore.
+	humans live in the ``middle realm'', Midg\aa rd, surrounded by the serpent Jormungand, who will fight against Thor in  Ragnar\"ok.
 
-\end{frame}
-
-\begin{frame}
-	\frametitle{Is this Relevant?}
-
-	In this scenario, there are resources provided by some external system and the contestants are processes that want resources.
-
-	But we shouldn't be wasteful: resources should only be requested when they are needed and processes should take only what they need.
-
-	Applications should only wake up if they can do something useful.
+	Thor will kill the serpent, but the serpent's poison will also finish off Thor.
 
 \end{frame}
 
 \begin{frame}
-	\frametitle{How Hard Do You Want It To Be?}
+	\frametitle{Across the Rainbow Bridge, To Valhalla...}
 
-	There are some restrictions, though, and they could make the problem either impossible or trivial.
+	We're going to examine some very useful tools for programming called Valgrind and Helgrind (also Cachegrind).
 
-	In the impossible version, you can't modify what the host does (which is sensible, because you don't control the other system).
+	Where do they take their names from? Valgrind is the gateway to Valhalla; a gate that only the worthy can pass.
 
-	But you also cannot use conditional (if) statements, which is pretty ridiculous.
-
+	Helgrind is the gateway to, well, Hel.
 \end{frame}
 
+
 \begin{frame}
-	\frametitle{All Too Easy}
-
-	In the trivial version, the host tells which contestants whose turn it is.
-
-	It requires the host system to know too much about the contestants.
-
-	The interesting version has just the restriction that we can't control the host behaviour.
-
-
+	\frametitle{I may be interested in this subject...}
 
 	\begin{center}
-		\includegraphics[width=0.5\textwidth]{images/fieri.jpg}
-	\end{center}
-
-	And he is a TV chef personality, after all, they do wacky things.
-
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Let's Make Some Pizza!}
-	All semaphores start at 0, except for \texttt{host} which starts as 1 (so the host will run the first time). Does this work?
-
-	\begin{multicols}{3}
-		\textbf{Contestant A}
-		\begin{lstlisting}
-wait( sauce )
-get_sauce()
-wait( cheese )
-get_cheese()
-make_pizza( )
-post( host )
-\end{lstlisting}
-		\columnbreak
-		\textbf{Contestant B}
-		\begin{lstlisting}
-wait( dough )
-get_dough()
-wait( cheese )
-get_cheese()
-make_pizza( )
-post( host )
-\end{lstlisting}
-		\columnbreak
-		\textbf{Contestant C}
-		\begin{lstlisting}
-wait( sauce )
-get_sauce()
-wait( dough )
-get_dough()
-make_pizza( )
-post( host )
-\end{lstlisting}
-	\end{multicols}
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Him Again!}
-
-	No. Deadlock can easily occur.
-
-	Suppose the host puts out sauce and dough.
-
-	If contestant B takes the dough and contestant A takes the sauce, then both of them are blocked and nobody can proceed and nobody gets pizza.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{This Isn't What I Ordered...}
-
-	Part of the problem here is that a contestant doesn't have a good way to assess what the ingredients are before going up there.
-
-	And once there, if it finds that the ingredients match someone else's needs, we don't call that contestant over.
-
-	That would be clever, but to make this work we would need a way to ``check'' what ingredients are there and semaphores don't let us do that.
-
-	Can we work with what we have?
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{We Need a Sidekick!}
-	\begin{center}
-		\includegraphics[width=0.4\textwidth]{images/robin.jpg}
-	\end{center}
-
-	Imagine now that each contestant gets a helper.
-
-	The job of the helper is to, well, help their contestant to make pizza by figuring out whose turn it is.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Boolean Variables}
-
-	For this there are boolean variables \texttt{dough\_present}, \texttt{sauce\_present}, and \texttt{cheese\_present}
-
-	They are all initialized to \texttt{false}.
-
-	They are protected by a semaphore (called \texttt{mutex}).
-
-	The helpers update that variable, and based on the information available, signal which contestant should come up to the table and take ingredients.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Working with a Sidekick}
-
-	Each contestant now has a semaphore (such as \texttt{contestantA} for contestant A) which the helpers will post on.
-
-	Contestants are still responsible for telling the host to put out more ingredients.
-
-	\begin{multicols}{3}
-		\textbf{Helper 1}
-		\begin{lstlisting}
-wait( sauce )
-wait( mutex )
-if dough_present  
-  dough_present = false;
-  post( contestantC )
-else if cheese_present
-  cheese_present = false;
-  post( contestantA )
-else
-  sauce_present = true;
-end if  
-post( mutex )
-\end{lstlisting}
-		\columnbreak
-		\textbf{Helper 2}
-		\begin{lstlisting}
-wait( dough )
-wait( mutex )
-if sauce_present  
-  sauce_present = false;
-  post( contestantC )
-else if cheese_present
-  cheese_present = false;
-  post( contestantB )
-else
-  dough_present = true;
-end if  
-post( mutex )
-\end{lstlisting}
-		\columnbreak
-		\textbf{Helper 3}
-		\begin{lstlisting}
-wait( cheese )
-wait( mutex )
-if dough_present  
-  dough_present = false;
-  post( contestantB )
-else if sauce_present
-  sauce_present = false;
-  post( contestantA )
-else
-  cheese_present = true;
-end if  
-post( mutex )
-\end{lstlisting}
-	\end{multicols}
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Analyzing the Helper}
-
-	So let's analyze Helper 1.
-
-	In this case, the helper is woken up when sauce is placed on the table.
-
-	It then locks the mutex so that it can manipulate the shared variables of what ingredients are present.
-
-	Now we decide what to do here.
-
-	Obviously, each of the other helpers will signal the appropriate contestant based on its assessment of the state of the ingredients.
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Working with a Sidekick}
-
-	\begin{multicols}{3}
-		\textbf{Contestant A}
-		\begin{lstlisting}
-wait( contestantA )
-get_sauce()
-get_cheese()
-make_pizza( )
-post( host )
-\end{lstlisting}
-		\columnbreak
-		\textbf{Contestant B}
-		\begin{lstlisting}
-wait( contestantB )
-get_dough()
-get_cheese()
-make_pizza( )
-post( host )
-\end{lstlisting}
-		\columnbreak
-		\textbf{Contestant C}
-		\begin{lstlisting}
-wait( contestantC )
-get_sauce()
-get_dough()
-make_pizza( )
-post( host )
-\end{lstlisting}
-	\end{multicols}
-
-	The contestant code is pretty much trivial now: wait until a helper signals, then go take your ingredients and make a pizza.
-
-	Once the pizza is in the oven, indicate that you are ready for more ingredients.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Rule Change}
-
-	The generalized version of the problem is what happens when the host puts out ingredients periodically, without a need to be signalled to ask for more.
-
-	How do we modify the solution to deal with that?
-
-	If there is no longer a need for the contestants to signal that they want more resources, \texttt{post( host )} in the contestant code has to be removed.
-
-	But what about the helpers?
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{How Many Dough?}
-
-	Instead of boolean variables to indicate the presence or absence of an ingredient what we need instead is an integer counter to know how many there are.
-
-	They are: \texttt{num\_dough}, \texttt{num\_sauce}, and \texttt{num\_cheese}, and they all start as zero.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Updated Sidekick Code}
-
-	\begin{multicols}{3}
-		\textbf{Helper 1}
-		\begin{lstlisting}
-wait( sauce )
-wait( mutex )
-if num_dough > 0  
-  num_dough--
-  post( contestantC )
-else if num_cheese > 0
-  num_cheese--
-  post( contestantA )
-else
-  num_sauce++
-end if  
-post( mutex )
-\end{lstlisting}
-		\columnbreak
-		\textbf{Helper 2}
-		\begin{lstlisting}
-wait( dough )
-wait( mutex )
-if num_sauce > 0  
-  num_sauce--
-  post( contestantC )
-else if num_cheese > 0
-  num_cheese--
-  post( contestantB )
-else
-  num_dough++
-end if  
-post( mutex )
-\end{lstlisting}
-		\columnbreak
-		\textbf{Helper 3}
-		\begin{lstlisting}
-wait( cheese )
-wait( mutex )
-if num_dough > 0 
-  num_dough--
-  post( contestantB )
-else if num_sauce > 0
-  num_sauce--
-  post( contestantA )
-else
-  num_cheese++
-end if  
-post( mutex )
-\end{lstlisting}
-	\end{multicols}
-
-	This pattern is referred to as the ``scoreboard''.
-
-	As threads go about their actions, they take a look at the current state (the scoreboard) and decide how to act based on that.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Barber of Seville}
-
-	\begin{center}
-		\includegraphics[width=0.7\textwidth]{images/rabbitofseville.jpg}
+		\includegraphics[width=0.4\textwidth]{images/Loki.jpg}
 	\end{center}
 
 \end{frame}
 
+
 \begin{frame}
-	\frametitle{The Barbershop Problem}
+	\frametitle{Through the Bifrost}
 
-	Consider the ``Barbershop Problem'', originally proposed by Dijkstra.
+	But all of these are analysis tools for your C and \Cpp programs.
 
-	A barbershop is a place where customers get their hair cut.
+	They are absolute murder on performance, but they are wonderful for finding errors in your program.
 
-	A barbershop consists of a waiting area with $n$ chairs, and a barber chair.
+	To use them, start the tool of your choice and instruct it to invoke your program.
+
+	The target program then runs under the ``supervision'' of the tool.
+
+	Remember to enable debugging symbols in your compile.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Valgrind (memcheck)}
+
+	Valgrind is the base name of the project and by default what it's going to do is run the memcheck tool.
+
+	The purpose of memcheck is to look into all memory reads, writes, and to intercept and analyze every call to \texttt{malloc}/\texttt{free} and \texttt{new}/\texttt{delete}.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Is Your Program Worthy?}
+
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/heimdall-waits.jpg}
+	\end{center}
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{Barbershop Behaviour}
+	\frametitle{Is Your Program Worthy?}
 
-	If there are no customers to be served, the barber goes to sleep.
-
-	If a customer enters the barbershop and all chairs are occupied, then the customer leaves the shop.
-
-	If the barber is busy, but chairs are available, then the customer sits in one of the free chairs.
-
-	If the barber is asleep, the customer wakes up the barber.
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Wake Up!}
-
-	Customer threads should call \texttt{get\_hair\_cut()} when it is their turn.
-
-	If the shop is full, the customer should \texttt{return} (exit/leave).
-
-	The barber thread will call \texttt{cut\_hair}.
-
-	The barber can cut only one person's hair at a time, so there should be exactly one thread calling \texttt{get\_hair\_cut()} concurrently.
-
-	You can assume that external forces cause customers to appear and the barber to keep working.
+	Memcheck can find problems like:
+	\begin{itemize}
+		\item Accessing uninitialized memory
+		\item Reading off the end of an array
+		\item Memory leaks
+		\item Incorrect freeing of memory
+		\item Incorrect use of C standard functions like \texttt{memcpy}
+		\item Using memory after it's been freed.
+		\item Asking for an invalid number of bytes in an allocation
+	\end{itemize}
 
 \end{frame}
-
-
-\begin{frame}
-	\frametitle{Scoreboard Pattern Again}
-
-
-	We need an integer counter for customers waiting called \texttt{customers} that starts at 0.
-
-	We will also have a mutex for controlling access to \texttt{customers} called \texttt{mutex} (it obviously starts at 1).
-
-	Finally, two semaphores, \texttt{customer} and \texttt{barber} that both start at 0.
-
-	Let's write down some outline of the barber and customer code...
-
-\end{frame}
-
 
 \begin{frame}[fragile]
-	\frametitle{Barbershop Solution}
+	\frametitle{Valgrind Output}
+	{\scriptsize
+		\begin{verbatim}
+==8476== All heap blocks were freed -- no leaks are possible
+\end{verbatim}
+	}
+
+That's the ideal. But is this realistic?
+\end{frame}
+
+\begin{frame}
+	\frametitle{Send the Plumbers to the Watergate}
+
+
+	Take the program's suggestion to use the \texttt{--leak-check=full}.
+
+	You get a bit more detail about where you made the mistake.
+
+	In the example below, lines 49 and 24 in the file \texttt{search.c} are the locations of the \texttt{malloc} calls that lack a matching call to \texttt{free}.
+
+	It can't tell you where the call to \texttt{free} should go, only where the memory that isn't freed was allocated.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Reading the Output}
+
+	\begin{itemize}
+		\item \textbf{Definitely lost}
+		\item \textbf{Indirectly lost}
+		\item \textbf{Possibly lost}
+		\item \textbf{Still reachable}
+		\item \textbf{Suppressed}
+	\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Not My Problem?}
+
+It's also important to learn what to ignore (or what's out of our hands). 
+
+Example: it's thread creation or a library or similar. What do we do?
+
+Consider carefully if we can do something about it!
+
+Let's do some examples.
+
+\end{frame}
+
+
+
+\begin{frame}
+	\frametitle{Helheim}
+
+	\begin{center}
+		\includegraphics[width=\textwidth]{images/helheim.jpg}
+	\end{center}
+
+	\hfill Credit: Norse Legends Fandom User OlaTansta
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{What Fresh Hel is This}
+
+	The purpose of Helgrind is to detect errors in the use of POSIX pthreads.
+
+	In a way, Helgrind is a pretty neat tool for improving performance, even though it doesn't actually directly speed anything up.
+
+	When we take single-threaded program and split it off into a multithreaded program, we may introduce a lot of errors.
+
+	Humans are not very good at parallel thinking; we are very much sequential.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{What Fresh Hel is This}
+
+	But a program that is fast and wrong is probably less useful than one that is slow and correct.
+
+	But can we make it faster and still have it be correct?
+
+	That's the goal of Helgrind: determine where, if anywhere, there are concurrency problems.
+
+	It can't prove that your program is correct (if only) but it can at least catch some of the common problems you might introduce when writing a parallel program.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Hel Hath No Fury...}
+
+	Helgrind will categories errors into three basic categories:
+
+	\begin{enumerate}
+		\item Misuses of the pthreads API
+		\item Lock ordering problems
+		\item Data races
+	\end{enumerate}
+
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Misuse of the API}
+
+	The first category does not require much explanation:
+
+
+	\begin{itemize}
+		\item Unlocking a mutex that is unlocked
+		\item Deallocation of memory with a locked mutex in it
+		\item Thread exit while holding a locked lock
+	\end{itemize}
+	... and many more.
+
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Type Two Errors}
+
+	The second category of errors should be familiar to you:
 
 	\begin{multicols}{2}
-		\textbf{Customer}
-		\begin{lstlisting}
-wait( mutex )
-if customers == n+1
-    signal( mutex )
-    return
-end if
-customers++
-signal( mutex )
-
-signal( customer )
-wait( barber )
-get_hair_cut()
-
-wait( mutex )
-customers--
-signal( mutex )
-\end{lstlisting}
+		\textbf{Thread P}
+		\begin{verbatim}
+	 1. wait( a ) 
+	 2. wait( b )
+	 3. [critical section]
+	 4. signal( a )
+	 5. signal( b )
+  \end{verbatim}
 		\columnbreak
-		\textbf{Barber}
-		\begin{lstlisting}
-wait( customer )
-signal( barber )
-cut_hair()
-  \end{lstlisting}
+		\textbf{Thread Q}
+		\begin{verbatim}
+	 1. wait( b ) 
+	 2. wait( a )
+	 3. [critical section]
+	 4. signal( b )
+	 5. signal( a )
+  \end{verbatim}
 	\end{multicols}
+	\vspace{-2em}
 
-	Is there a risk of deadlock?
+	Potential Deadlock!
 
-	Starvation?
+\end{frame}
+
+\begin{frame}
+	\frametitle{Interleaving Leaves Locks}
+
+	Risk of deadlock:thread P holds mutex \texttt{a} and thread Q holds mutex \texttt{b}.
+
+	Each waits for the mutex that the other one has.
+
+	The example is slightly silly, of course, because it's super easy to see.
+
+	There will not necessarily be an obvious (alphabetical) order.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Graph Theory Strikes Back}
+
+
+	Helgrind builds a directed graph of lock acquisitions, so that when a thread acquires a lock, the graph is checked to see if a cycle exists.
+
+	It will report as an error the initial order (the first order seen is the one viewed as ``correct'') and the the ``incorrect'' order that is the source of the potential problem.
+
+	Really, though, all that matters is consistency.
 
 \end{frame}
 
 
 \begin{frame}
-	\frametitle{I WANT TO SPEAK TO A MANAGER}
-	
+	\frametitle{Category 3}
+
+	The third category we have discussed already.
+
+	Recall the earlier definition of a race condition.
+
+	Helgrind looks for when two threads access the same memory location without using locks.
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Behind the Scenes}
+
+	It examines the use of the standard threading primitives - lock, unlock, signal/post, wait...
+
+	Anything that implies there might be an ordering between events is taken and added to a directed acyclic graph that represents these dependencies.
+
+	If memory is accessed from two different threads and there is no path through this directed acyclic graph that indicates an ordering, then a race is reported.
+
+	Although obviously at least one of these accesses must be a write.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Name \& Shame}
+
+	You can ask Helgrind to try to tell you about variable names (if it can) with the command line option \texttt{--read-var-info=yes}.
+
+	\begin{verbatim}
+==10454== Location 0x60104c is 0 bytes inside global var "var"
+==10454== declared at datarace.c:3
+\end{verbatim}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Fixing it Isn't My Problem}
+
+
+	The authors of Helgrind assume that if it tells you where the problem is, you will figure out what variables are affected and how to properly prevent data races.
+
 	\begin{center}
-	\includegraphics[width=0.4\textwidth]{images/manager.jpg}
+		\includegraphics[width=0.3\textwidth]{images/its-your-job.jpg}
 	\end{center}
 
-	We can maybe say that customers who give up in frustration are disappointed.
+	You might find this frustrating.
 
-	Is that better than making them wait forever?
-
-	This is actually a good lesson for services in general.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{SCIENCE!!!}
-
-	\begin{center}
-		\includegraphics[width=0.5\textwidth]{images/h2o2.jpg}
-	\end{center}
-
-
-\end{frame}
-
-\begin{frame}
-	\frametitle{Science!}
-
-	There are two kinds of thread, \texttt{oxygen()} and \texttt{hydrogen()}.
-
-	As you will recall from basic chemistry, water, H$_{2}$O, requires two hydrogen modules and one oxygen module.
-
-	To assemble the desired molecule (water) a group rendezvous pattern is needed to make each thread wait until all ingredients are present in the correct amounts.
-
-	As each thread passes the barrier, it should call the function \texttt{bond()} which makes the water.
-
-	Our solution must function so that all threads for one molecule invoke \texttt{bond()} before any of the threads from the next molecule do.
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Water is Life}
-
-	In the example, we'll assume the \texttt{oxygen} and \texttt{hydrogen} threads are created and started correctly and in the correct proportions.
-
-	The code for the creation of those two types of threads is not shown.
-
-	The reusable two-phase barrier from earlier has also been converted into C code.
-
-	The oxygen queue and hydrogen queue start as ``locked''.
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Water is Life}
-
-	\begin{lstlisting}[language=C]
-int oxygen;
-int hydrogen;
-pthread_mutex_t barrier_mutex;
-sem_t turnstile;
-int barrier_count;
-int barrier_N;
-sem_t bond;
-sem_t oxygen_queue;
-sem_t hydrogen_queue;
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Water is Life}
-
-	\begin{lstlisting}[language=C]
-void barrier_enter( ) {
-  pthread_mutex_lock( &barrier_mutex );
-  barrier_count++;
-  if ( barrier_count == barrier_N ) {
-    sem_post( &turnstile );
-  }
-  pthread_mutex_unlock( &barrier_mutex );
-  sem_wait( &turnstile );
-  sem_post( &turnstile );            
-}
-
-void barrier_exit( ) {
-  pthread_mutex_lock( &barrier_mutex );
-  barrier_count--;
-  if ( barrier_count == 0 ) {
-    sem_wait( &turnstile );
-  }
-  pthread_mutex_unlock( &barrier_mutex );
-}
-\end{lstlisting}
-
-\end{frame}
-
-\begin{frame}[fragile]
-	\frametitle{Water is Life}
-
-	\begin{lstlisting}[language=C]
-void* oxygen( void* ignore ) {
-  sem_wait( &bond );
-  oxygen++;
-  
-  if( hydrogen >= 2 ){
-    sem_post( &hydrogen_queue );
-    sem_post( &hydrogen_queue );
-    hydrogen -= 2;
-    sem_post( &oxygen_queue );
-    oxygen--;
-  } else {
-    sem_post( &bond );
-  }
-  
-  sem_wait( &oxygen_queue );
-  bond();
-
-  barrier_enter();
-  barrier_exit();
-
-  sem_post( &bond );
-  
-  pthread_exit( NULL )
-}
-\end{lstlisting}
-\end{frame}
-
-
-\begin{frame}[fragile]
-	\frametitle{Water is Life}
-	\begin{lstlisting}[language=C]
-void* hydrogen( void* ignore ) {
-  sem_wait( &bond );
-  hydrogen++;
-  
-  if( hydrogen >= 2 && oxygen >= 1 )
-    sem_post( &hydrogen_queue );
-    sem_post( &hydrogen_queue );
-    hydrogen -= 2;
-    sem_post( &oxygen_queue );
-    oxygen--;
-  } else {
-    sem_post( &bond );
-  }
-  
-  sem_wait( &hydrogen_queue );
-  bond();
-  
-  barrier_enter();
-  barrier_exit();
-  
-  pthread_exit( NULL )
-}
-\end{lstlisting}
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Analyzing the Solution}
-
-
-	It is a little strange that the hydrogen threads don't post on \texttt{bond}.
-
-	Isn't this a problem?
-
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Posting Bond?}
-
-	It turns out no, because the oxygen threads post on it unconditionally.
-
-	When a thread arrives but the water molecule cannot be formed, whether it is oxygen or hydrogen, a post on \texttt{bond} takes place.
-
-	Whoever waited on \texttt{bond} does not matter, as long as one of the threads that went into the water molecule posts on it before leaving.
-
-	As the chemical composition of water has one oxygen, the job is assigned to this molecule.
-
-\end{frame}
-
-
-
-\begin{frame}
-	\frametitle{The World is Big}
-
-	These are by no means all the concurrency problems in the world.
-
-	But for now we will leave it here, before  we get into really obscure problems...
+	Let's do some more examples.
 
 \end{frame}
 

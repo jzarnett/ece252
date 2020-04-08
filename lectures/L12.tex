@@ -2,241 +2,204 @@
 
 \begin{document}
 
-\lecture{ 12 --- Threads and Concurrency }{\term}{Jeff Zarnett}
+\lecture{ 12 --- Concurrency: Synchronization and Atomicity }{\term}{Jeff Zarnett}
 
-\section*{More on Threads}
+\section*{Synchronization}
+If a computer only ever did exactly one thing at a time (one process, one thread) we would have no concurrency and therefore no concurrency (co-ordination) problems. We have seen already, however, that in a system with multiple processes or multiple threads we have concurrency: more than one thread or process is making progress. And if the system is multicore, we can have parallelism: more than one thread or process actually executing on a CPU in a given instant. Either or both of these can lead to various problems.
 
-We got a brief introduction to working with threads and learned how to create a new thread, how one exits (returning a value or not) and how to collect a value from it. Let's take a moment to consider cancellation.
+The author of an application does not decide when a thread runs and when a thread switch will occur; these are things the operating system will decide. And the operating system does not usually give much thought to whether it is a convenient or inconvenient time to run a given thread.
 
-\paragraph{Thread Cancellation.}
-Thread cancellation is exactly what it sounds like: a running thread will be terminated before it has finished its work. Once the user presses the cancel button on the file upload, we want to stop the upload task that was in progress. The thread that we are going to cancel is called the \textit{target} (because we shoot targets, I guess) and there are two ways a thread might get cancelled~\cite{osc}:
+The common English usage of the word ``synchronization'' refers to making two or more things happen at exactly the same time, but what we mean when we talk about synchronization in the computer sense is more general: it means we want some relationship between events, and the relationship can be before, during, after~\cite{lbs}. There are two definitions that we need to consider at this point.
+
+The first is \textit{serialization}: we want there to be some sort of order of events. What we would like is to be certain that Event $A$ takes place before Event $B$. We have already examined some examples of this, where we have a thread or process that \texttt{wait}s on another. The merge sort algorithm, if implemented with two threads that sort the sublists and one thread that merges the results, necessarily implies that the merge thread has to wait for the sorting threads to finish. Thus the sorting (event $A$) must take place before the merging (event $B$). Or we could phrase it that $B$ must happen after $A$.
+
+The other thing we often want is \textit{mutual exclusion}: events $C$ and $D$ must not happen at the same time. This is something we've referenced a few times before now, often phrased as the fact that we need some sort of co-ordination. In the discussion of inter-process communication, we said we might have an area of memory that is shared between two processes. If two processes can write to this area, there is some possibility that they both try to access the same place at the same time. If we have mutual exclusion, we are certain that $P_{1}$ writing to the shared area (event $C$) does not happen at the same time as $P_{2}$ tries to read it (event $D$).
+
+
+
+\subsection*{Serialization through Messages}
+
+Suppose we have two people, Alice and Bob (these are the standard names in computer examples...) who work at the Springfield Nuclear Power Plant in Sector 7G, though they work in separate offices and cannot easily see one another. Alice works the day shift and Bob works the night shift. Suppose also that due to safety regulations, that Alice cannot go home until Bob has arrived and begun working. This is a situation where we would like serialization: the event of Bob's arrival must take place before the event of Alice's departure.
+
+How can we get such behaviour? Well, the simple solution is that Alice stays at her desk and will not leave until she gets a call from Bob. Bob doesn't call until he's arrived at the office. This is a very simple scenario, but message passing is a valid solution for a lot of synchronization problems and it's the sort of thing we do in real life all the time: ``Text me when you get here'' or ``Call me when you've finished''.
+
+If we are certain that Bob arrives before Alice departs, we can say that these events are \textit{sequential}, because we know the order of events. At some point during the workday, Alice ate lunch, and at some point before work, Bob ate lunch. But we have no idea who ate lunch first, so we say they ate lunch \textit{concurrently}. The formal, strict definition of concurrent is: two events are concurrent if we cannot tell by looking at the program which will happen first~\cite{lbs}.
+
+In common parlance, when we say something happened concurrently, it means they happened at the same time (Alice and Bob both had lunch at 12:00). In this context, concurrency is not the same as saying that they happened at the exact same time; it's saying that we do not know (and cannot guarantee) an order of events. It's possible that Alice had lunch at 12:00 and Bob had lunch at 13:00 or they both ate at 12:00 or Alice had lunch at 13:30 and Bob had lunch at 12:15. We do not know. The order of concurrent events may change on two runs of the program; this is what we call nondeterminism.
+
+In a non-deterministic program, we cannot tell just by looking at the program what the execution order would be. If we have two concurrent events, one in which the program prints ``1'' to the console and one in which the program prints ``2'' to the console, these could happen in any order. So we might see the output as ``12'' or ``21''. Which one will happen? Without some form of co-ordination, it could be either. This non-determinism makes it difficult to analyze a program. If ``12'' is the correct output but ``21'' occurs only very rarely, finding the cause and fixing it might be very painful~\cite{lbs}.
+
+This is, incidentally, what is referred to as a ``Heisenbug'' (a portmanteau of Heisenberg and Bug). This has nothing to do with the ``Breaking Bad'' TV show, but with Werner Heisenberg (the physicist) and his scientific principle of uncertainty that says: if we precisely know the position of a particle we know nothing about its momentum and vice versa. The Heisenbug is frustrating because the harder we try to track it down, the less likely it is to occur.
+
+
+\subsection*{Shared Data and Atomic Operations}
+We noted earlier that the need for co-ordination in inter-process communication arises from the fact that some area of memory is shared. We also know that all the threads of a process share the same data: in the merge sort algorithm the sorting and merging routines both operate on the same data array. Let's examine a simpler example (from~\cite{lbs}) where a shared variable \texttt{x} is manipulated by two threads $A$ and $B$, in pseudocode:
+
+\begin{multicols}{2}
+	\textbf{Thread A}\vspace{-2em}
+	\begin{verbatim}
+	A1. x = 5
+	A2. print x
+	\end{verbatim}
+	\columnbreak
+	\textbf{Thread B}\vspace{-2em}
+	\begin{verbatim}
+	B1. x = 7
+	
+	\end{verbatim}
+\end{multicols}
+
+This is non-deterministic code: there is no co-ordination mechanism here so we cannot say what order these statements will occur. Some possible outcomes are: 5 is printed out and is the final value; 7 is printed out and is the final value, or 5 is printed out and 7 is the final value. Note that there is no way we can print out 7 and get a final value of 5, because we can be certain that statement A1 executes before A2; the problem is we do not know where in relation to the two A-statements that statement B1 will execute.
+
+This example uses more than one thread, but we do not even need multiple threads to have a concurrency problem; just having interrupts in the system is sufficient.
+
+Consider an application that is used to count occurrences of some event (whatever it is). We will store the count in a variable \texttt{count} and we will provide some facility for the user to reset the counter (the reset button). Each time we detect the event, we increment \texttt{count} with statement of \texttt{count++;} which seems like one single statement.
+
+Even a seemingly simple operation like \texttt{count++;} is broken down into a series of smaller operations. You've just detected an event. Let's assume the current value of the variable is 4. Thus we want to increment the variable, which will require three steps.
 
 \begin{enumerate}
-	\item \textbf{Asynchronous Cancellation:} One thread immediately terminates the target.
-	\item \textbf{Deferred Cancellation:} The target is informed that it is cancelled; the target is responsible for checking regularly if it is terminated, allowing it to clean itself up properly.
+	\item Read the current value of \texttt{count} (read 4)
+	\item Add 1 to the value (now it's 5)
+	\item Write the changed value back to memory (write 5)
 \end{enumerate}
 
-The pthread attributes can be used to set the cancellation type before it is created. A thread can declare its own cancellation type through the use of the function:
+Now imagine an interrupt comes at the worst possible time. The interrupt is generated by the reset button: it's supposed to set the value of count to zero.
+
+\begin{enumerate}
+	\item Read the current value of \texttt{count} (read 4)
+	\item Add 1 to the value (now it's 5)
+	\item INTERRUPT (control goes to the interrupt handler)
+	\item Write 0 to the variable (write 0)
+	\item END INTERRUPT (control returns to where it was before the interrupt)
+	\item Write the changed value back to memory (write 5)
+\end{enumerate}
+
+At the end of this execution sequence, the variable \texttt{count} shows 5, but it should show 0 (or 1), which is certainly wrong. The user pressed the reset button but the count did not reset! If the reset interrupt had occurred before reading the variable, the count would have been reset, and then an event detected and the count goes up to 1. If the interrupt had occurred after writing the value 5 to the variable we would see the count set to 0 as is expected. If it occurred after the read but before the write, there is an error and the changes the interrupt handler made were lost.
+
+This problem arises because the instruction \texttt{count++} is really three things (read, add, write) and can be interrupted at any time. When we are performing an operation that cannot be interrupted, we say it is \textit{atomic}: indivisible. Although since about 1945, we have been able to split the atom (proving that atoms themselves are divisible and that humans are very good at finding ways to make things explode) the use of the word atomic in this context is not about nuclear physics but references the other meaning that stems from Greek word \textit{atomos}, meaning indivisible (or more literally, not-cuttable).
+
+Though there are usually some atomic operations available to us in a given system, we cannot be certain that all operations are indivisible. In fact, the opposite is likely to be true: we can be certain there are some operations that are non-atomic. Therefore we need to make sure at the very least that one operation on the shared variable is finished before the next begins.
+
+A thought: can we do this with serialization? That is, can we make sure that the \texttt{count++} operation completes before the \texttt{count = 0} operation? That would eliminate the problem of the reset being ignored. Unlike the scenario where Alice waits for Bob to get to work before she leaves, in this case there is no obvious order between the events: the user may press the reset button at any time, even if no event has just occurred. Similarly, the event may be detected even if the user is nowhere around and not going to press the reset button. Our concept of serialization requires that there exists a correct order: first this, then that. Here, where both orders are valid, we need the other approach: mutual exclusion (also called \textit{mutex}).
+
+With mutual exclusion, we do not know or enforce any particular order of events, but what we do care about is that we do not have multiple threads trying to update the variable at the same time. It would mean that the action to reset \texttt{count} to zero would have to wait until the \texttt{count++} operation was completely finished (or vice versa) before it gets to execute.
+
+\subsection*{Mutual Exclusion through Flags}
+So we have identified shared data as a potential source of error. A section of code that should be accessed by a maximum of one thread at a time is referred to as a \textit{critical section}. The purpose of mutual exclusion is to ensure that at most one thread is in the critical section at a time. If we ever have more than one thread in the critical section at a time, something has gone terribly wrong. But on the other hand, the critical section is supposed to do something useful, so we cannot solve the problem by not allowing any thread to access it ever.
+
+It is the responsibility of the programmer to identify what critical sections, if any, exist in the program, and to protect them with mutexes. Some analysis tools may exist to identify shared data, but ultimately the best analysis tool is taking a careful look. Critical sections should be as short as possible (but enclose all shared data accesses). The critical section is something that cannot be run in parallel, so it increases the magnitude of the $S$ term in Amdahl's Law, limiting the speed increase we can get from multiple threads and cores. Besides, it would be impolite to make other threads and processes wait unnecessarily.
+
+
+Although we frequently say ``the'' critical section, there are likely to be multiple critical sections in the program, that are protected separately. A thread can be in critical section $X$ while a different thread is in critical section $Y$ and that's fine. For now, we'll consider just one critical section because that is the simplest case, but just remember in the back of your mind that there could be more in the program.
+
+Our first approach then, is to have a variable to indicate if the critical section is currently in use. Suppose we have two threads:
+
+\begin{multicols}{2}
+	\textbf{Thread A}\vspace{-2em}
+	\begin{verbatim}
+	A1. while ( turn != 0 ) {
+	A2.    /* Wait for my turn */
+	A3. }
+	A4. /* critical section */
+	A5. turn = 1;
+	\end{verbatim}
+	\columnbreak
+	\textbf{Thread B}\vspace{-2em}
+	\begin{verbatim}
+	B1. while ( turn != 1 ) {
+	B2.   /* Wait for my turn */
+	B3. }
+	B4. /* critical section */
+	B5. turn = 0;
+	\end{verbatim}
+\end{multicols}
+
+This scheme enforces strict alternation: first it is the turn of thread $A$, then the turn of thread $B$, then back to $A$, and so on. What if thread $A$ is to run more often than $B$? If thread $B$ terminates then thread $A$ will be stuck forever because the variable \texttt{turn} will always be saying that it is thread $B$'s turn. This solution is obviously not satisfactory. Another approach then:
+
+\begin{multicols}{2}
+	\textbf{Thread A}\vspace{-2em}
+	\begin{verbatim}
+	A1. while ( busy == true ) {
+	A2.    /* Wait for my turn */
+	A3. }
+	A4. busy = true;
+	A5. /* critical section */
+	A6. busy = false;
+	\end{verbatim}
+	\columnbreak
+	\textbf{Thread B}\vspace{-2em}
+	\begin{verbatim}
+	B1. while ( busy == true ) {
+	B2.    /* Wait for my turn */
+	B3. }
+	B4. busy = true;
+	B5. /* critical section */
+	B6. busy = false;
+	\end{verbatim}
+\end{multicols}
+
+
+The problem with flags is that when we have a statement like \texttt{while (busy == true)} followed by \texttt{busy = true;} these are two distinct steps: read of \texttt{busy} and write of \texttt{busy} and a process switch could occur between the read and the write, which is the worst possible timing (as far as we are concerned). If the switch happens at the bad time then threads $A$ and $B$ will both be in the critical section at the same time. This solution is also not satisfactory.
+
+What if instead of using one flag variable, we use an array where each thread writes to its own boolean variable?
+
+\begin{multicols}{2}
+	\textbf{Thread A}\vspace{-2em}
+	\begin{verbatim}
+	A1. flag[0] = true;
+	A2. while ( flag[1] ) {
+	A3.    /* Wait for my turn */
+	A4. }
+	A5. /* critical section */
+	A6. flag[0] = false;
+	\end{verbatim}
+	\columnbreak
+	\textbf{Thread B}\vspace{-2em}
+	\begin{verbatim}
+	B1. flag[1] = true;
+	B2. while ( flag[0] ) {
+	B3.    /* Wait for my turn */
+	B4. }
+	B5. /* critical section */
+	B6. flag[1] = false;
+	\end{verbatim}
+\end{multicols}
+
+Once again, this strategy is defeated by an untimely process switch: if statement A1 sets \texttt{flag[0]} to true and there is a switch to thread $B$, setting \texttt{flag[1]} to true, now both processes are stuck. Neither can advance, because each is waiting for the other to set its \texttt{flag} variable to false. This is, perhaps, slightly better than two threads in the critical section, but we have two threads that are permanently stuck now. This is also not satisfactory: although we want to forbid two threads from being in the critical section at the same time, keeping all threads out forever is not a good solution either.
+
+The attempts at solution we have attempted so far have all been foiled by an untimely process switch, which will be triggered by an interrupt. This presents a possible solution: disabling interrupts. If interrupts are disabled, then interrupts generated from the user as well as the normal thread switches the scheduler would perform will not occur. Disabling interrupts is a crude solution, however, because during the time in which interrupts are disabled, the system will be unable to respond to user input or other events (e.g., a fire alarm or detection of an incoming missile!). If an error is encountered in the critical section and the program is terminated, the system is effectively stuck because no other program will be able to run.
+
+It gets worse: if we have multiple processors the disabling interrupts will not be sufficient~\cite{osi}. But maybe we're on the right track by getting hardware involved: the problem is we would like to read and maybe write a variable in such a way that cannot be interrupted. The hardware designers were aware of the problem and have kindly provided a facility to help us out: the \textit{Test-and-Set} instruction.
+
+\subsection*{Test-and-Set}
+The Test-and-Set instruction is a special machine instruction that is performed in a single instruction cycle and is therefore not interruptible. It is therefore an atomic read and write. The idea is that the Test-and-Set instruction returns a boolean value. When run, it will examine the flag variable (in this example, \texttt{i}) and if it is zero, it will set it to 1 and return true. If \texttt{i} is currently set to 1, it will return false. The meaning of the return value is clear: if it is true, it is the current thread's turn to enter the critical section. The Test-and-Set instruction is not actually implemented like this, but a description of its functionality in C is:
+
 \begin{lstlisting}[language=C]
-pthread_setcanceltype( int type, int *oldtype )
-\end{lstlisting}
-
-The first parameter is the new state we'd like this thread to take on, which would be one of the constants \texttt{PTHREAD\_CANCEL\_DEFERRED} or \texttt{PTHREAD\_CANCEL\_ASYNCHRONOUS}. The second parameter will be updated to point to what the previous state was (although we might not care).
-
-In deferred cancellation, a thread is responsible for checking if it has been cancelled, and if so, and stopping its activity and cleaning up (closing open files, etc.) before it terminates. It's possible, though generally poor programming practice (and very difficult), to never check for cancellation.
-
-Given that a thread can effectively ignore a cancellation if it is the deferred cancellation type, why would we ever choose that over asynchronous cancellation? Suppose the thread we are cancelling has some resources. If the thread is terminated in a disorderly fashion, the operating system may not reclaim all resources from that thread. Thus a resource may appear to be in use even though it is not, denying that resource to other threads and processes that may want to use it~\cite{osc}.
-
-The pthread command to cancel a thread is \texttt{pthread\_cancel} and it takes one parameter (the thread identifier). By default, a pthread is set up for deferred cancellation. In the function that runs as a thread, to check if the thread has been cancelled, the function call is \texttt{pthread\_testcancel} which takes no parameters.
-
-Suppose your background task is to upload a bunch of files, consecutively. It is good programming practice to check \texttt{pthread\_testcancel} at the start or end of each iteration of the loop, and if cancellation has been signalled, clean up open files and network connections, and then \texttt{pthread\_exit}. Thus, if the thread has been told to cancel, it will do as it is told within a fairly short period of time.
-
-It is noteworthy that a large number of functions are \textit{cancellation points}; that is, the POSIX specification requires there is an implicit check for cancellation when calling one of those functions. There is an even larger number of functions that are ``potential cancellation points'', where the specification says that they could be cancellation points (but maybe aren't). You'll have to check the spec to see if that is the case for a specific function if there is a scenario where unexpected cancellation is a problem.
-
-\paragraph{Now's not a good time!} With the presence of cancellation points or asynchronous cancellation, sometimes a thread can be terminated before it has cleaned up some resources. This is undesirable. One way that we can guard against this is to register cleanup handlers for that thread. If, say, our thread allocated some memory, it would be wise to register a cleanup handler that deallocates that memory in case the thread should die unceremoniously. The function signatures are:
-
-\begin{lstlisting}[language=C]
-pthread_cleanup_push( void (*routine)(void*), void *argument ); /* Register cleanup handler, with argument */
-pthread_cleanup_pop( int execute ); /* Run if execute is non-zero */
-\end{lstlisting}
-
-To add a cleanup handler, the push function is used. Its two arguments are the function that is supposed to run, and a pointer to the argument that cleanup function will need.
-
-The push function always needs to be paired with the pop function at the same level in your program (where level is defined by the curly braces). You should think of them as being like the opening curly brace at the start of a statement and the closing curly brace at the end; they have to be correctly matched up. The pop function takes one argument: whether it should run or not. If the thread is cancelled, the cleanup function will run; if it continues to the pop function, then you get to choose whether it runs or not.
-
-Consider the following code:
-\begin{lstlisting}[language=C]
-void* do_work( void* argument ) {
-  struct job * j = malloc( sizeof( struct job ) );
-  /* Do something useful with this structure */
-  /* Actual work to do not shown */
-  free( j );
-  pthread_exit( NULL );
-\end{lstlisting}
-
-Suppose that the thread is cancelled during the block operating on \texttt{j} and it is set up for asynchronous cancellation. This means that the code will never get to the \texttt{free()} call, which means that the memory allocated at the beginning is leaked! We can remedy this with application of a cleanup handler:
-\begin{lstlisting}[language=C]
-void cleanup( void* mem ) {
-  free( mem );
-}
-
-void* do_work( void* argument ) {
-  struct job * j = malloc( sizeof( struct job ) );
-  pthread_cleanup_push( cleanup, j );
-  /* Do something useful with this structure */
-  /* Actual work to do not shown */
-  free( j );
-  pthread_cleanup_pop( 0 ); /* Don't run */
-  pthread_exit( NULL );
-\end{lstlisting}
-
-And you may note that you could actually save a line of code by removing the \texttt{free()} call and changing the argument to the pop function to be 1: this means the cleanup function runs and it does free the memory allocated. Nice!
-
-
-\paragraph{Attributes and Using Memory to Pass Data.}
-The earlier example used the return value of a thread. Sometimes, of course, we don't want to do that. One of the advantages of the use of threads is that data can be passed between threads using memory directly. In this case, because there is no return value that we care about, we can use \texttt{NULL} in the call to join. This example also shows how to initialize and the attributes, although it doesn't override any of the defaults.
-
-
-\begin{lstlisting}[language=C]
-#include <pthread.h>
-#include <stdio.h>
-
-int sum; /* Shared Data */
-
-void *runner(void *param);
-
-int main( int argc, char **argv ) {
-
-  pthread_t tid; /* the thread identifier */
-  pthread_attr_t attr; /* set of thread attributes */
-
-  if ( argc != 2 ) {
-    fprintf(stderr,"usage: %s <integer value>\n", argv[0]);
-    return -1;
+boolean test_and_set( int* i ) {
+  if ( *i == 0 ) {
+    *i = 1;
+    return true;
+  } else {
+    return false;
   }
-  if ( atoi( argv[1] ) < 0 ) {
-    fprintf(stderr, "%d must be >= 0\n", atoi(argv[1]));
-    return -1;
-  }
-
-  /* set the default attributes */
-  pthread_attr_init( &attr );
-  /* create the thread */
-  pthread_create( &tid, &attr, runner, argv[1] );
-  pthread_join( tid, NULL );
-  printf( "sum = %d\n", sum );
-	pthread_attr_destroy( &attr );
-  pthread_exit( NULL );
-}
-
-void *runner( void *param ) {
-  int upper = atoi( param );
-  sum = 0;
-  for ( int i = 1; i <= upper; i++ ) {
-    sum += i;
-  }
-  pthread_exit( 0 );
 }
 \end{lstlisting}
 
-In this example, both threads are sharing the global variable \texttt{sum}. We have some form of co-ordination here because the parent thread will join the newly-spawned thread (i.e., wait until it is finished) before it tries to print out the value. If it did not join the spawned thread, the parent thread would print out the sum early.
+Why is it described like this? The problem is that English is both verbose and imprecise. If you wanted me to explain what test-and-set does using just English words, it would be a full paragraph and there might be some questions about the meaning of a particular word or phrase. This is why legalese is so dense: because it's an attempt to make English more rigorous.
 
-
-
-\paragraph{Count to 10...}
-
-Let's do a different take on that program:
+Now, to make use of the \texttt{test\_and\_set} routine. Let us assume we have an integer variable called \texttt{busy} that is initialized at program startup to 0. The implementation is the same for both threads so there is no need to show them side by side.
 
 \begin{lstlisting}[language=C]
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-int sum = 0;
-
-void* runner( void *param ) {
-    int upper = atoi( param );
-    for (int i = 1; i <= upper; i++ ) {
-        sum += i;
-    }
-    pthread_exit( 0 );
+while ( !test_and_set( busy ) ) {
+   /* Wait for my turn */
 }
-
-int main( int argc, char** argv ) {
-
-    pthread_t tid[3];
-
-    if ( argc != 2 ) {
-        printf("An integer value is required as an argument.\n");
-        return -1;
-    }
-    if ( atoi( argv[1]) < 0 ) {
-        printf( "%d must be >= 0.\n", atoi(argv[1]) );
-    }
-
-    for ( int i = 0; i < 3; ++i ) {
-        pthread_create( &tid[i], NULL, runner, argv[1] );
-    }
-    for ( int j = 0; j < 3; ++j ) {
-        pthread_join( tid[j], NULL );
-    }
-    printf( "sum = %d.\n", sum );
-
-    pthread_exit( 0 );
-}
+/* critical section */
+busy = 0;
 \end{lstlisting}
 
-What's going wrong here? For very small values of the argument, nothing, but for a large number we get some strange and inconsistent results. Why? There are three threads that are modifying \texttt{sum}. And, it turns out, that this is a problem -- if threads are trying to write to the same place at the same time, things can go wrong. But what does ``at the same time'' mean in the context of a program? To understand that, we need to think about how the hardware behaves and how the OS schedules the work.
+Finally, we have something that will provide mutual exclusion without the risk that the threads will all get stuck because each thinks another is in the critical section. This is good, but can be improved. The \texttt{while} loop that is constantly checking the value with the Test-and-Set instruction is an example of \textit{busy-waiting}. A given thread is constantly checking and checking and checking the instruction, and this is a waste of time and effort. Thread $A$ will not get into the critical section while thread $B$ is in there and asking constantly does not make $B$ get the job done any faster, just as a child asking ``are we there yet?'' does not improve the speed at which he or she gets to his or her destination.
 
-\section*{Concurrency}
-
-Not that long ago, a typical computer had one processor with one core. It could accordingly do exactly one thing at a time. When we say there is one processor, it's one general purpose processor that executes user processes. There may be additional special-purpose processors in the system (e.g., a RAID controller\footnote{The graphics card seems like a more obvious example, but these days there are various programs that can make use of the powerful GPU to do general purpose computation.}) but there is only one general purpose processor so we call it a uniprocessor system.
-
-Now, desktops, laptops, and even cell phones are almost certainly using multi-core processors. A quad-core processor may be executing four different instructions from four different threads at the same time. In theory, multiple processors may mean that we can get more work done in the same amount of (wall clock) time, but this is not a guarantee.
-
-Terminology note: we often refer to a logical processing unit as a \textit{core}. The term CPU may refer to a physical chip that contains one or more logical processing units. As far as the operating system is concerned, it does not much matter if a system has four cores in four physical chips or four cores in one chip; either way, there are four units that can execute instructions.
-
-If there is exactly one process with one thread running in the system, then it does not matter how many cores are available: at most one core will be used to execute this task. If there are multiple processes, each process can execute on a different core. But what do we do if there are more processes and threads than available cores? We can hope that the processes get blocked frequently enough and long enough so that all processes get to run, but this is not something we can count on.
-
-Our solution is that the CPU should switch between the different tasks via a procedure we call \textit{time slicing}. So thread 1 would execute for a designated period, such as 20 ms, then thread 2 for 20 ms, then thread 3 for 20 ms, then back to thread 1 for 20 ms. To the user, it seems like threads 1, 2, and 3 are being executed in parallel, because 20 ms is fast enough that the user does not notice the difference.
-
-\begin{center}
-	\includegraphics[width=0.85\textwidth]{images/single-core-execution.png}\\
-	Execution of different Threads $T_{1}$ through $T_{4}$ on a single core~\cite{osc}.
-\end{center}
-
-Time slicing of execution will still occur, if necessary. Continuing our example, if there are four threads running on a dual-core system, time slicing is necessary to run all those programs.
-
-\begin{center}
-	\includegraphics[width=0.7\textwidth]{images/dual-core-execution.png}\\
-	Execution of different Threads $T_{1}$ through $T_{4}$ on two cores~\cite{osc}.
-\end{center}
-
-\subsection*{Parallelism and Speedup}
-
-No doubt it has occurred to you that if there are multiple threads running at the same time, it means a task will get completed faster, right? Well... maybe. It depends a lot on what the task is. There is some overhead involved in splitting a task up and re-combining the results (if necessary), but in most circumstances the overhead is negligible compared to the amount of time working on the task.
-
-If a task can be fully parallelized, it means the task can be split up in such a way that adding a second executing thread would double the speed of execution. Imagine painting an apartment. It would take one person 12 hours to paint the whole apartment and two people could complete the job in 6 hours. The pattern continues: three people can complete the job in 4 hours, four people in 3 hours, et cetera. This is the ideal, but in the real world there will be a limit to how many additional workers you can add and continue to have this speedup characteristic. At some point, the overhead of adding more threads is no longer negligible. In theory, you could hire 720 painters and finish the job in 1 minute, but at some point you cannot physically fit any more painters into the room.
-
-If a task can be partially parallelized, it means the task can be divided, but doubling the workers doesn't result in completing the job in half the time. Two chefs working together in a kitchen might take 75\% of the time it would take one chef to cook a meal. Adding the extra worker to the kitchen improved the speed at which food was prepared, but it's not doubled. The chefs can work independently some of the time, but at other times one has to wait for the other; the sauce cannot be put on the chicken until the chicken comes out of the oven.
-
-If a task cannot be parallelized at all, then no amount of extra workers will speed it up. Some tasks can only be done sequentially. You can't cook the steak in one minute by putting it in five ovens (this makes the chef very mad).
-
-Let us consider an example from~\cite{mte241}: Suppose we have a task that can be executed in 5~s and this task contains a loop that can be parallelized. Let us also say initialization and recombination code in this routine requires 400~ms. So with one processor executing, it would take about 4.6~s to execute the loop. If we split it up and execute on two processors it will take about 2.3~s to execute the loop. Add to that the setup and cleanup time of 0.4~s and we get a total time of 2.7~s. Completing the task in 2.7~s rather than 5~s represents a speedup of about~46\%.
-
-A smart fellow by the name of Gene Amdahl came up with a formula for the general case of how much faster a task can be completed based on how many processors we have available. Let us define $S$ as the portion of the application that must be performed serially and $N$ as the number of processing cores available. Amdahl's Law:
-
-\begin{center}
-	speedup $\leq$ {\huge $\frac{1}{S + \frac{1-S}{N}}$}
-\end{center}
-
-This is a math formula, after all, and you can do things like take the limit as $N$ approaches infinity and you will find the speedup converges to $\frac{1}{S}$. So the limiting factor on how much additional processors help is, of course, the size of the $S$ term in the equation. That squares well with our intuition about how this should work. If the task is completely sequential (cannot be parallelized at all), we cannot make it faster and $\frac{1}{1 + 0}$ will produce a maximum speedup of 1; or in other words... no speedup at all.
-
-Applying this formula to the example from earlier, we get the following run times:
-
-\begin{center}
-	\begin{tabular}{l|l}
-		\textbf{Processors} & \textbf{Run Time (s)} \\ \hline
-		1                   & 5                     \\
-		2                   & 2.7                   \\
-		4                   & 1.55                  \\
-		8                   & 0.975                 \\
-		16                  & 0.6875                \\
-		32                  & 0.54375               \\
-		64                  & 0.471875              \\
-		128                 & 0.4359375             \\
-	\end{tabular}
-\end{center}
-
-There are two observations from this data immediately. The first is that we get diminishing returns as we add more processors. Going from 1 to 2 processors reduced the runtime dramatically, but going from 64 to 128 reduced the run time only a very small amount. The second is that as we continue to add more processors we are converging on a run time of 0.4~s, which fits our expectations of what would happen with infinite processors. The serial part will take 0.4~s no matter what, and with infinite processors the parallel part would be (effectively) instant. Again, applying the formula, the most we could speed up this code is by a factor of $\frac{5}{0.4}\approx 12.5$. It is not possible to do better than this. In reality we will never be able to equal the limit either, because nobody has infinite processors available, considering that would take an infinite amount of space and an infinite amount of money...
-
-\paragraph{Merge Sort Example.}
-Recall from data structures and algorithms the concept of merge sort. This is a divide-and-conquer algorithm like binary search. Split the array of values up into smaller pieces, sort those, and then merge the smaller pieces together to have sorted data. To get this done, we might have many threads sorting and one thread merging the sorted lists together into a larger, sorted list. Visually, this looks like:
-
-\begin{center}
-	\includegraphics[width=0.45\textwidth]{images/multithread-sort.png}\\
-	Multithreaded sorting~\cite{osc}.
-\end{center}
+It is less wasteful of resources and effort if the \texttt{while} loop contains some instructions saying it should wait a little while before checking again (a sleep instruction). Serialization was achievable through messages; and they can be used to get mutual exclusion. This is the topic to be examined next.
 
 
 \input{bibliography.tex}

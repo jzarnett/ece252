@@ -9,7 +9,7 @@ NOTES_T := $(NOTES:%.tex=%.pdf)
 
 ENVS := slides
 
-all: $(SLIDES_PO) $(NOTES_T) notebook clean
+all: $(SLIDES_PO) $(NOTES_T) notebook exercises clean
 
 %-slides.pdf: env := slides
 %-slides.pdf: %.tex
@@ -35,6 +35,10 @@ notebook:
 	@bibtex notebook > /dev/null;
 	@pdflatex -interaction=batchmode notebook.tex > /dev/null;
 	@pdflatex -interaction=batchmode notebook.tex > /dev/null;
+	
+exercises:
+	@echo building exercises guide
+	@pdflatex -interaction=batchmode  exercises.tex > /dev/null;
 
 clean:
 	rm -f *.aux *.log *.bbl *.blg *.brf *.cb *.ind *.idx *.ilg *.pdfsync   \

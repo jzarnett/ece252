@@ -2,283 +2,309 @@
 
 \begin{document}
 
-\lecture{ 23 --- Condition Variables, Monitors, Atomic Types }{\term}{Jeff Zarnett}
+\lecture{ 23 --- The Byzantine Generals Problem }{\term}{Jeff Zarnett}
 
-\subsection*{Condition Variables}
-Condition variables are another way to achieve synchronization. Rather than designating critical areas and enforcing rules about how many threads may be in the critical area, a condition variable allows synchronization based on the value of the data. Instead of locking a mutex, checking a variable, and then unlocking the mutex, we could achieve the same goal without constantly polling. We can think of condition variables as ``events'' that occur (like interrupts from hardware when there is new data to read rather than polling to check periodically or constantly).
+\section*{Istanbul was Constantinople}
+Byzantium was an ancient Greek city, rebuilt by Constantine the Great under the name of Constantinople. It is now modern day Turkey. The word Byzantine refers to things relating to the empire based there, but in English has also come to mean a thing that is excessively complicated. But it's the last ``extra'' meaning that we want to talk about: characterized by deviousness. The Byzantine Empire was characterized by deviousness, alright: it was a place where generals and leaders would vie for power in underhanded ways, backstabbing and sabotaging others when they thought it was to their advantage. I guess it was very \textit{Game of Thrones}, now that I think of it.
 
-An event is similar to, but slightly different from, a counting semaphore. We have the option, when an event occurs, to signal either one thread waiting for that event to occur, or to broadcast (signal) to all threads waiting for the event~\cite{mte241}.
+Where this crosses over into the realm of programming is in dealing with the unreliable nature of systems. It's not that we think that somewhere out there one of the processes in the system is malicious and trying to make the system fail... although that could happen... but our normal expectation is that the systems interacting may be faulty or have errors or bugs, not malicious intent.
 
-Consider the condition variable functions:
+However we get here, though, we still need a way to deal with the fact that not everyone agrees and sometimes messages get mixed up. And that is a communication problem, yes, but also a coordination problem as well. And if you've tried to get a group of five people to agree on where to go to lunch you may have found it unexpectedly difficult... now imagine that one person is (unintentionally or otherwise) trying to sabotage the planning so organizing lunch will fail.
 
-\begin{lstlisting}[language=C]
-pthread_cond_init( pthread_cond_t *cv, pthread_condattr_t *attributes );
-pthread_cond_wait( pthread_cond_t *cv, pthread_mutex_t *mutex );
-pthread_cond_signal( pthread_cond_t *cv );
-pthread_cond_broadcast( pthread_cond_t *cv );
-pthread_cond_destroy( pthread_cond_t *cv );
-\end{lstlisting}
+The generic form of the Byzantine Generals problem looks something like this. There is a \textit{General} who is giving the orders. There are also $n$ \textit{Lieutenants} who each are commanding a group of the Empire's troops. The individual troops just do what they're told so there's no further concern for their actions. The lieutenants can communicate with one another through messages, and they get their orders from the general. All of the lieutenants have to work together for their plan to be a success, otherwise there is chaos.
 
-To initialize a \texttt{pthread\_cond\_t} (condition variable type), the function is \texttt{pthread\_cond\_init} and to destroy them, \texttt{pthread\_cond\_destroy}. As with threads and a mutex, we can initialize them with attributes, and there are functions to create and destroy the attribute structures, too. But the default attributes will be fine, at least in this course.
+No problem, you might imagine. The general tells the lieutenants what to do and they do it! And if one of the lieutenants does the wrong thing, that lieutenant is a traitor. But it's not so simple, because the general can be disloyal too. Horrible Bosses: Byzantium!
 
-Condition variables are always used in conjunction with a mutex. To wait on a condition variable, the function \texttt{pthread\_cond\_wait} takes two parameters: the condition variable and the mutex. This routine should be called only while the mutex is locked. It will automatically release the mutex while it waits for the condition; when the condition is true then the mutex will be automatically locked again so the thread may proceed. The programmer then unlocks the mutex when the thread is finished with it~\cite{pthreads}. Obviously, failing to lock and unlock the mutex before and after using the condition variable, respectively, can result in problems.
+Suppose you are a disloyal general. Your Emperor has commanded you to attack, but you want the attack to fail, but also seem like it's not your fault. What do you do? You can issue different orders to different lieutenants, they will be all confused and uncoordinated, and oh gee darn, I guess the attack didn't go as planned! And you can blame the lieutenants who are now dead for going too early, or something, because it's not like they can defend themselves now...
 
-In addition to the expected \texttt{pthread\_cond\_signal} function that signals a provided condition variable, there is also \texttt{pthread\_cond\_broadcast} that signals all threads waiting on that condition variable. It's this ``broadcast'' idea that makes the condition variable more interesting than the simple ``signalling'' pattern we covered much earlier on.
+So a loyal general sends the same message to all lieutenants and a disloyal one sends different messages to different lieutenants. It's key to remember that ``loyal'' really means ``functioning'' and ``disloyal'' means ``faulty''~\cite{mte241}. It's fun to make it seem like human actors are doing things for their own evil-villainy-related reasons, but it is just computer interaction that presumably has no actual malicious intent. It's also worth noting that being in one state or the other is not permanent: a functioning unit can be damaged, a malfunctioning one can be repaired, or a problem can be transient (i.e., some electromagnetic interference flipped a bit here or there) and resolve itself with no further action.
 
+One of the key decisions is about how much disloyalty your system can tolerate. Given enough bad actors, things will go wrong. If everyone is disloyal, utter chaos will result. But is it enough to tolerate one disloyal participant? Two? The line will have to be drawn somewhere... But at the very least we don't want to let one disloyal individual ruin things for everyone, even if that disloyal individual is the boss.
 
-Let us now examine a code example from~\cite{pthreads} which has been cut down a bit to make it more readable:
+\subsection*{Should I Stay or Should I Go Now?}
+In the examples that we will discuss there are two kinds of command: attack and retreat. In a real system the options don't have to be quite so binary (we could give any orders) but for the purpose of demonstration and coming to grips with this problem we'll use the binary example. Attack or retreat.
 
-\begin{lstlisting}[language=C]
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
+It is possible that our system produces a tie (no matter how many participants or possible actions we have). This usually necessitates a default action be selected. So if we cannot come to a decision, we take the default choice. Usually we say that the default choice is to retreat.
 
-#define NUM_THREADS  3
-#define COUNT_LIMIT 12
-
-int count = 0;
-pthread_mutex_t count_mutex;
-pthread_cond_t count_threshold_cv;
-
-void* inc_count( void* arg ) {
-  for (int i = 0; i < 10; i++ ) {
-    pthread_mutex_lock( &count_mutex );
-    count++;
-    if ( count == COUNT_LIMIT ) {
-      printf( "Condition Fulfilled!\n" );
-      pthread_cond_signal( &count_threshold_cv );
-      printf( "Sent signal.\n" );
-    }
-    pthread_mutex_unlock( &count_mutex );
-  }
-  pthread_exit( NULL );
-}
-
-void* watch_count( void *arg ) {
-  pthread_mutex_lock( &count_mutex );  
-  if ( count < COUNT_LIMIT ) {
-    pthread_cond_wait( &count_threshold_cv, &count_mutex );
-    printf( "Watcher has woken up.\n" );
-    /* Do something useful here now that condition is fulfilled. */
-  }
-  pthread_mutex_unlock( &count_mutex );
-  pthread_exit( NULL );
-}
-
-int main( int argc, char **argv ) {
-  pthread_t threads[3];
-
-  pthread_mutex_init( &count_mutex, NULL );
-  pthread_cond_init ( &count_threshold_cv, NULL );
-
-  pthread_create( &threads[0], NULL, watch_count, NULL );
-  pthread_create( &threads[1], NULL, inc_count, NULL );
-  pthread_create( &threads[2], NULL, inc_count, NULL );
-
-  for ( int i = 0; i < NUM_THREADS; i++ ) {
-    pthread_join(threads[i], NULL);
-  }
-  
-  pthread_mutex_destroy( &count_mutex );
-  pthread_cond_destroy( &count_threshold_cv );
-  pthread_exit( NULL );
-}
-\end{lstlisting}
-
-It should be noted that if a thread signals a condition variable that an event has occurred, but no thread is waiting for that event, the event is ``lost''.  Because an event that takes place when no thread is listening is simply lost, it is (almost always) a logical error to signal or broadcast on a condition variable before some thread is waiting on it. This is sometimes called the ``lost wakeup problem'', because threads don't get woken up if they weren't waiting for this. Maybe it's not as dire as that, however, because sometimes an event is broadcast but nobody is interested and that's fine.
-
-The condition variable with broadcast can be used to replace some of the synchronization constructs we've seen already. Consider the barrier pattern from earlier. There are $n$ threads and we wait for the last one to arrive. Then the last thread signals to unlock the barrier and then each thread calls post to unblock the next thread until all of them are through. This is a lot of calls and maybe it would be better to make it a broadcast instead. Remember the simple barrier (one phase rather than two), on the left, and then the condition variable on the right:
-
-\begin{multicols}{2}
-	\begin{verbatim}
-	1. wait( mutex )
-	2. count++
-	3. if count == n
-	4.     post( barrier )
-	5. end if
-	6. post( mutex )
-	7. wait( barrier )
-	8. post( barrier )
-  \end{verbatim}
-	\columnbreak
-	\begin{verbatim}
-	1. wait( mutex )
-	2. count++
-	3. if count < n
-	4.     cond_wait( barrier, mutex )
-	5. else 
-	6.     cond_broadcast( barrier )
-	7. end if
-	8. post( mutex )
-  \end{verbatim}
-\end{multicols}
-
-The \texttt{wait} takes place before the post on \texttt{mutex}. That looks strange, doesn't it? What's important to remember is that we give up the mutex \texttt{lock} when we wait on the condition variable so the fact that we don't get to the unlock statement first does not cause a problem. So we are alright. The last thread doesn't wait on the condition at all because there's no need to: it knows that it is last and there's nothing to wait for so it should proceed.
-
-Okay, let's think about how to put that to use in an actual code example. Assume that \texttt{count}, \texttt{lock} and \texttt{cv} are initialized correctly as they should be.
-
-\begin{lstlisting}[language=C]
-int count;
-pthread_mutex_t lock;
-pthread_cond_t cv; 
-
-void barrier( ) {
-  pthread_mutex_lock( &lock );
-  count++;
-  if ( count < NUM_THREADS ) {
-    pthread_cond_wait( &cv, &lock );
-  } else {
-    pthread_cond_broadcast( &cv );
-  }
-  pthread_mutex_unlock( &lock );
-}
-\end{lstlisting}
-
-If every thread calls \texttt{barrier()} before going on to whatever is next, they will wait until the last thread arrives -- as they should. Broadcast wakes up all the other threads. It's possible to use a for loop to signal on the condition variable $n$ times but that mostly defeats the purpose of using the condition variable instead of a regular semaphore, doesn't it?
-
-\subsection*{Monitors}
-A condition variable can be used to create a \textit{monitor}, a higher level synchronization construct. Just as in object-oriented programming we package up data and functions inside a class to make errors less likely and to improve the design, when we use a monitor we are packaging up the shared data and operations on that data to avoid problems of synchronization and concurrency.
-
-The objective of the monitor is to make it so that programmers do not need to code the synchronization part directly, making it less likely a programmer makes an error. There are numerous steps where you can get it wrong in a typical program. Look at:
-
-\begin{lstlisting}[language=C]
-void foo( ) {
-  pthread_mutex_lock( &l );
-  /* Read some data */
-  if ( condition ) {
-    printf( "Cannot continue due to reasons...\n" );
-    return;
-  }
-  /* More stuff */
-   
-  pthread_mutex_unlock( &l );
-}
-\end{lstlisting}
-
-In this case, there is control flow that could lead to exiting this function \texttt{foo} without unlocking the mutex \texttt{l}. Sure, when I cut the remaining code out and just replace it with some comments so the control flow that causes the problem here is obvious, but in a real code example the function in question is likely to be in the hundreds of lines and it's easy to overlook something.
-
-The idea of monitors should be familiar to you if you have used Java synchronization constructs, notably the \texttt{synchronized} keyword. In Java we can declare a method to be \texttt{synchronized}, adding it after the access modifier keyword (public, private, etc) in the function definition, and then there is a lock created around that method. Only one thread can be inside that method at a time; if a second would like to call that method on the same instance, it will be placed in the entry set for the lock: a set of threads waiting for the lock to become available~\cite{osc}.
-
-\begin{lstlisting}[language=Java]
-public synchronized void doSomething() {
-    // Synchronized area
-}
-\end{lstlisting}
-
-
-Note that in Java we can make a method \texttt{synchronized} or define a block as synchronized:
-
-\begin{lstlisting}[language=Java]
-public void exampleMethod() {
-    synchronized( object ) { // Lock must be acquired to enter this block
-           // Critical section 
-    } // Lock is automatically released.
-}
-\end{lstlisting}
-
-This sort of ``automatic'' locking and releasing is intended to simplify the process of writing multithreaded code and abstract away some of the details of mutual exclusion.
-
-Monitors don't have to be written in Java (or a similar language) but they very commonly appear in object-oriented programming languages because of the goal of packaging up your data with the associated synchronization constructs looks a lot like Object-Oriented Programming: package up the data with its associated functions. Moreover, in an object-oriented language thanks to things like encapsulation (i.e., \texttt{private} variables), it's somewhat easier to ``force'' all access to be through the appropriate monitor.
-
-\subsection*{Atomic Types}
-
-Frequently we have a code pattern that looks something like this:
-
-\begin{lstlisting}[language=C]
-pthread_mutex_lock( lock );
-shared_var++;
-pthread_mutex_unlock( lock );
-\end{lstlisting}
-
-While is is fully correct, if this happens frequently there is a lot of locking and unlocking on the same mutex, just to do the increment. So there's a fair amount of overhead on this. Thinking back to the ``test and set'' type of instruction from earlier, wouldn't it be nice if we could do that sort of thing for something like incrementing a variable? We can!
-
-The GNU (Linux) standard C library (\texttt{glibc}) provides operations that are guaranteed to execute atomically, to avoid simple race conditions. Where possible, the compiler will try to turn these into uninterruptible hardware instructions; otherwise a function that has locking will be used to implement the atomic nature.
-
-The kernel itself contains an atomic type, \texttt{atomic\_t}, but this is not intended for use outside of the kernel.
-
-The following function listings are an overview of the atomic operations, from~\cite{gccatomic}. These are, however, \texttt{glibc} specific, and not necessarily available in a general system. In the C11 (2011) standard, atomic types were finally introduced as part of the language specification itself. But before this we just had implementation-specific options. In the specification, we see \texttt{type} as the type, but that's of course not a real type. In its place you would use an \texttt{int} for an integer. A valid type is one that 1, 2, 4, or 8 bytes in length, if it's an integral type or a pointer.
-
-The following function is used to assign a new value, and returns the old value. However, the name is unfortunate, because it conflicts with the hardware instruction test-and-set which we discussed earlier. But this atomically sets the value of the variable as expected:
-
-\begin{lstlisting}[language=C]
-type __sync_lock_test_and_set( type *ptr, type value );
-\end{lstlisting}
-
-
-The following functions are used to swap two values, only if the old value matches the expected (i.e., what was provided as the second argument):
-
-\begin{lstlisting}[language=C]
-bool __sync_bool_compare_and_swap( type *ptr, type oldval, type newval );
-type __sync_val_compare_and_swap( type *ptr, type oldval, type newval );
-\end{lstlisting}
-
-
-The following functions perform the operation and return the \textit{old} value:
-\begin{lstlisting}[language=C]
-type __sync_fetch_and_add( type *ptr, type value );
-type __sync_fetch_and_sub( type *ptr, type value );
-type __sync_fetch_and_or( type *ptr, type value );
-type __sync_fetch_and_and( type *ptr, type value );
-type __sync_fetch_and_xor( type *ptr, type value );
-type __sync_fetch_and_nand( type *ptr, type value );
-\end{lstlisting}
-
-The following functions perform the operation and return the \textit{new} value:
-\begin{lstlisting}[language=C]
-type __sync_add_and_fetch( type *ptr, type value );
-type __sync_sub_and_fetch( type *ptr, type value );
-type __sync_or_and_fetch( type *ptr, type value );
-type __sync_and_and_fetch( type *ptr, type value );
-type __sync_xor_and_fetch( type *ptr, type value );
-type __sync_nand_and_fetch( type *ptr, type value );
-\end{lstlisting}
-
-
-
-Interestingly, for x86 there is no atomic read operation. The (normal) read itself is atomic for 32-bit-aligned data. This behaviour is specific to x86 and we have mostly tried to avoid relying on anything that is implementation-specific behaviour... If we do rely on this, however, we could get an out-of-date value. If you want to really be sure you did get the latest, you can use one of the above functions and add or subtract 0. And that would be a bit more portable as well. But for true portability you will need to use C11 or a semaphore/mutex.
-
-Atomic operations are helpful for scenarios like a single variable being modified and read. But atomic operations are not always ideal. Consider this:
-
-\begin{lstlisting}[language=C]
-struct point {
-  volatile int x;
-  volatile int y;
-};
-__sync_lock_test_and_set( p1->x, 0 );
-__sync_lock_test_and_set( p1->y, 0 );
-
-/* Somewhere else in the program */
-__sync_lock_test_and_set( p1->x, 25 );
-__sync_lock_test_and_set( p1->y, 30 );
-\end{lstlisting}
-
-Although the set of each of \texttt{x} and \texttt{y} is atomic, the operation as a whole is not. The write of \texttt{x} could succeed and then a read of both in a different thread could take place before the write of \texttt{y}, meaning that a reader would see (25, 0) when that's probably not valid. Similarly, the state could be totally corrupted if another thread did atomic writes of (10, 15) in between the two, leading to a final state of (10, 30).
-
-When a number of writes need to take place as a ``package'', then a mutex type is the appropriate choice.
-
-\paragraph{Spinlocks.}
-Another common technique for protecting a critical section in Linux is the \textit{spinlock}. This is a handy way to implement constant checking to acquire a lock. Unlike semaphores where the process is blocked if it fails to acquire the lock, a thread will constantly try to acquire the lock. The implementation is an integer that is checked by a thread; if the value is 0, the thread can lock it (set the value to 1) and continue; if it is nonzero, it constantly checks the value until the value becomes 0. As you know, this is very inefficient; it would be better to let another thread execute, except in the circumstances where the amount of time waiting on the lock might be less than it would take to block the process, switch to another, and unblock it when the value changes~\cite{osi}.
-
-\begin{lstlisting}[language=C]
-spin_lock( &lock )
-    /* Critical Section */
-spin_unlock( &lock )
-\end{lstlisting}
-
-In addition to the regular spinlock, there are \textit{reader-writer-spinlocks}. Like the readers-writers problem discussed earlier, the goal is to allow multiple readers but give exclusive access to a writer. This is implemented as a 24-bit reader counter and an unlock flag, with the meaning defined as follows~\cite{osi}.
+Consider the  diagram below where we have a disloyal general, and two loyal lieutenants. In our examples in this section we'll use G for generals, L for lieutenants, and we'll make disloyal participants red and loyal ones grey.
 
 \begin{center}
-	\begin{tabular}{l|l|l}
-		\textbf{Counter} & \textbf{Flag} & \textbf{Interpretation}                                     \\\hline
-		0                & 1             & The spinlock is released and available.                     \\
-		0                & 0             & The spinlock has been acquired for writing.                 \\
-		$n$ ($n > 0$)    & 0             & The spin lock has been acquired for reading by $n$ threads. \\
-		$n$ ($n > 0$)    & 1             & Invalid state.                                              \\
+	\begin{tikzpicture}
+		\node[circle,draw,fill=red, minimum size=0.5] (G) at (0, 0) {G};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L1) at (-1, -2) {L};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L2) at (1, -2) {L};
+		\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack};
+		\draw[-latex', thick] (G) -- (L2) node[midway, right]{Retreat};
+	\end{tikzpicture}
+\end{center}
+
+What are lieutenants to do? In the imperfect world of Byzantium the lieutenants can try to figure out if they're about to be mismanaged to literal death by communicating with one another. If they are all on the same page then they can do what they're supposed to do; if they're not, then they will fall back on the default option.
+
+Unfortunately, though, letting the lieutenants communicate is not a complete solution. Because lieutenants can lie, even if the general doesn't.
+
+\begin{center}
+	\begin{tikzpicture}
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (G) at (0, 0) {G};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L1) at (-1, -2) {L};
+		\node[circle,draw,fill=red, minimum size=0.5] (L2) at (1, -2) {L};
+		\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack};
+		\draw[-latex', thick] (G) -- (L2) node[midway, right]{Attack};
+		\draw[-latex', thick] (L2) -- (L1) node[midway, below]{Retreat};
+	\end{tikzpicture}
+\end{center}
+
+In general if there are $d$ disloyal participants, we will need there to be more than $3d$ participants for the loyal lieutenants to agree on what to do. If the general is loyal, then at least $2d$ loyal lieutenants are needed to obey the orders; if the general is disloyal then $2d+1$ loyal lieutenants are needed so they can come up with a course of action~\cite{mte241}.
+
+Let's imagine that there is at most one disloyal participant. If that's the case then all lieutenants should compare notes and decide on the majority course of action. Each lieutenant compiles a little table (or array or vector, whatever) of the data received and then decide on what the majority cause of action is. It might be simpler to just count the total number of votes, but it would make it harder to figure out later who the traitor is (if there is one).
+
+What if we can have two disloyal participants? Each lieutenant sending its messages and using a majority-wins vote isn't necessarily going to work here. It can happen that the general is disloyal and one of the lieutenants is a collaborator. Consider this scenario below from~\cite{mte241} where the general is disloyal and sends mixed instructions. What can the collaborating lieutenant do to make sure that the other lieutenants don't come to an agreement?
+
+\begin{center}
+	\begin{tikzpicture}
+		\node[circle,draw,fill=red, minimum size=0.5] (G) at (0, 0) {G};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L1) at (-3, -2) {L};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L2) at (-2, -2) {L};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L3) at (-1, -2) {L};
+		\node[circle,draw,fill=red, minimum size=0.5] (L4) at (0, -2) {L};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L5) at (1, -2) {L};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L6) at (2, -2) {L};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L7) at (3, -2) {L};
+
+		\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack~~~};
+		\draw[-latex', thick] (G) -- (L2);
+		\draw[-latex', thick] (G) -- (L3);
+		\draw[-latex', thick] (G) -- (L4);
+		\draw[-latex', thick] (G) -- (L5);
+		\draw[-latex', thick] (G) -- (L6);
+		\draw[-latex', thick] (G) -- (L7) node[midway, right]{~~Retreat};
+	\end{tikzpicture}
+\end{center}
+
+The lieutenants all send one another their instructions. Each of the loyal lieutenants sends its received command and received the honest answer from three other lieutenants. The score is 3 attack and 3 retreat. The disloyal lieutenant sends one message to half the other participants, and a different message to the other half.
+
+\begin{center}
+	\begin{tikzpicture}
+		\node[circle,draw,fill=red, minimum size=0.5] (G) at (0, 0) {G};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L1) at (-3, -2) {L};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L2) at (-2, -2) {L};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L3) at (-1, -2) {L};
+		\node[circle,draw,fill=red, minimum size=0.5] (L4) at (0, -2) {L};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L5) at (1, -2) {L};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L6) at (2, -2) {L};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L7) at (3, -2) {L};
+
+		\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack~~~};
+		\draw[-latex', thick] (G) -- (L2);
+		\draw[-latex', thick] (G) -- (L3);
+		\draw[-latex', thick] (G) -- (L4);
+		\draw[-latex', thick] (G) -- (L5);
+		\draw[-latex', thick] (G) -- (L6);
+		\draw[-latex', thick] (G) -- (L7) node[midway, right]{~~Retreat};
+		\draw[-latex', thick] (L4.south) to [bend right] (L7.south);
+		\draw[-latex', thick] (L4.south) to [bend right] (L6.south);
+		\draw[-latex', thick] (L4.south) to [bend right] (L5.south);
+		\draw[-latex', thick] (L4.south) to [bend left] (L3.south);
+		\draw[-latex', thick] (L4.south) to [bend left] (L2.south);
+		\draw[-latex', thick] (L4.south) to [bend left] (L1.south);
+
+		\node at(-1.5, -3) {Attack};
+		\node at(1.5, -3) {Retreat};
+	\end{tikzpicture}
+\end{center}
+
+Now we're in trouble because half the participants think the majority action is attack and half the participants think the majority action is retreat. Summing up what we heard is not sufficient. Lieutenants should also talk about what they heard from one another. After the general issues instructions, each lieutenant should then communicate with every other to hear what the general said to them. Then by reviewing this information, they can decide what to do.
+
+Consider a simple example where the general is loyal and we have two traitorous lieutenants with a total of seven participants. The general issued an order to attack.
+
+\begin{center}
+	\begin{tikzpicture}
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (G) at (-0.33, 0) {G};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L1) at (-3, -2) {L};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L2) at (-2, -2) {L};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L3) at (-1, -2) {L};
+		\node[circle,draw,fill=gray!20, minimum size=0.5] (L4) at (0, -2) {L};
+		\node[circle,draw,fill=red, minimum size=0.5] (L5) at (1, -2) {L};
+		\node[circle,draw,fill=red, minimum size=0.5] (L6) at (2, -2) {L};
+
+		\draw[-latex', thick] (G) -- (L1) node[midway, left]{Attack~~~};
+		\draw[-latex', thick] (G) -- (L2);
+		\draw[-latex', thick] (G) -- (L3);
+		\draw[-latex', thick] (G) -- (L4);
+		\draw[-latex', thick] (G) -- (L5);
+		\draw[-latex', thick] (G) -- (L6) node[midway, right]{~~Attack};
+	\end{tikzpicture}
+\end{center}
+
+
+So each lieutenant constructs the following vector. We're not sure if the general is a traitor, but we'll take notes from every other participant, and see what they report. The general form is as follows, where $v_{x}$ is the forwarded order we received from lieutenant $x$:
+
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1      & L2      & L3      & L4      & L5      & L6      \\
+		\hline
+		?       & $v_{1}$ & $v_{2}$ & $v_{3}$ & $v_{4}$ & $v_{5}$ & $v_{6}$ \\
+		\hline
 	\end{tabular}
 \end{center}
 
-There are further additional details related to use of spinlocks, which can of course be explored by reading the Linux kernel documentation.
+So if we are lieutenant 1, we complete the table as below. The value for L1 is what we received from the general, but we get the remaining values from the other lieutenants.
 
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 \\
+		\hline
+		?       & A  & A  & A  & A  & R  & R  \\
+		\hline
+	\end{tabular}
+\end{center}
+
+
+Then the lieutenants just compare notes on this subject as well! They send to one another their vectors and assemble them into a table. Whatever lieutenant $x$ received in the first round forms row $x$ of the table, and the other rows are added from this second round of communication. In the table each value $v_{i,j}$ is interpreted as ``Lieutenant $i$ says that Lieutenant $j$ reports the general said $v$''. The entries on the diagonal are redundant because of course each lieutenant agrees with itself:
+
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1        & L2        & L3        & L4        & L5        & L6        \\
+		\hline
+		?       & $v_{1,1}$ & $v_{1,2}$ & $v_{1,3}$ & $v_{1,4}$ & $v_{1,5}$ & $v_{1,6}$ \\\hline
+		?       & $v_{2,1}$ & $v_{2,2}$ & $v_{2,3}$ & $v_{2,4}$ & $v_{2,5}$ & $v_{2,6}$ \\\hline
+		?       & $v_{3,1}$ & $v_{3,2}$ & $v_{3,3}$ & $v_{3,4}$ & $v_{3,5}$ & $v_{3,6}$ \\\hline
+		?       & $v_{4,1}$ & $v_{4,2}$ & $v_{4,3}$ & $v_{4,4}$ & $v_{4,5}$ & $v_{4,6}$ \\\hline
+		?       & $v_{5,1}$ & $v_{5,2}$ & $v_{5,3}$ & $v_{5,4}$ & $v_{5,5}$ & $v_{5,6}$ \\\hline
+		?       & $v_{6,1}$ & $v_{6,2}$ & $v_{6,3}$ & $v_{6,4}$ & $v_{6,5}$ & $v_{6,6}$ \\\hline
+	\end{tabular}
+\end{center}
+
+Those ``redundant'' entries (the ones on the diagonal) need to be removed from the table. From the point of view of lieutenant 1, let's imagine the table looks like this (filling in for the sake of the example that L5 and L6 always say retreat).
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 \\
+		\hline
+		?       & ~  & A  & A  & A  & R  & R  \\ \hline
+		?       & A  & ~  & A  & A  & R  & R  \\ \hline
+		?       & A  & A  & ~  & A  & R  & R  \\ \hline
+		?       & A  & A  & A  & ~  & R  & R  \\ \hline
+		?       & R  & R  & R  & R  & ~  & R  \\ \hline
+		?       & R  & R  & R  & R  & R  & ~  \\ \hline
+	\end{tabular}
+\end{center}
+
+One the thing we can do, however, is fill in the first column: lieutenant 1 does not care what other people THINK they said; so the whole column can be replaced with what was actually said:
+
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 \\
+		\hline
+		?       & ~  & A  & A  & A  & R  & R  \\ \hline
+		?       & A  & ~  & A  & A  & R  & R  \\ \hline
+		?       & A  & A  & ~  & A  & R  & R  \\ \hline
+		?       & A  & A  & A  & ~  & R  & R  \\ \hline
+		?       & A  & R  & R  & R  & ~  & R  \\ \hline
+		?       & A  & R  & R  & R  & R  & ~  \\ \hline
+	\end{tabular}
+\end{center}
+
+Then we'll try to figure out the majority vote for each $j$ in the table. So sum up each column:
+
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 \\
+		\hline
+		?       & A  & A  & A  & A  & R  & R  \\
+		\hline
+	\end{tabular}
+\end{center}
+
+And we have four lieutenants who think the general said attack and two who think the general said retreat. The majority wins and the attack proceeds. Onward to victory, brothers and sisters!
+
+If there was one less loyal lieutenant, though, we could have a tie here which would result in picking the default value. If the general ordered something other than the default value (e.g., default is retreat and the order was attack) the general will not be happy about this...
+
+You may have figured out that since disloyal participants can lie at any step of the equation, we can't rely on their data at all. That's true! In the examples in the course we know that two participants are traitors and I've said they are L5 and L6. Therefore we could replace whatever they say with a question mark in the able rather than any particular answer, because they are liars. In real life though, \textit{some} message is received -- attack or retreat -- and it's only later we could identify which participants are the traitors.
+
+Let's go back to the example of having eight participants: one general and seven lieutenants. So if we are lieutenant 1, we complete the table as below. The value for L1 is what we received from the general, but we get the remaining values from the other lieutenants.
+
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
+		\hline
+		?       & A  & A  & A  & A  & R  & R  & R  \\
+		\hline
+	\end{tabular}
+\end{center}
+
+However, if we are lieutenant 7 our vector looks like this instead:
+
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
+		\hline
+		?       & A  & A  & A  & R  & R  & R  & R  \\
+		\hline
+	\end{tabular}
+\end{center}
+
+From the point of view of lieutenant 1 the table is formed then as follows:
+
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
+		\hline
+		?       & ~  & A  & A  & A  & R  & R  & R  \\ \hline
+		?       & A  & ~  & A  & A  & R  & R  & R  \\ \hline
+		?       & A  & A  & ~  & A  & R  & R  & R  \\ \hline
+		?       & ?  & ?  & ?  & ~  & ?  & ?  & ?  \\ \hline
+		?       & A  & A  & A  & R  & ~  & R  & R  \\ \hline
+		?       & A  & A  & A  & R  & R  & ~  & R  \\ \hline
+		?       & A  & A  & A  & R  & R  & R  & ~  \\ \hline
+	\end{tabular}
+\end{center}
+
+The fourth row is shown as all question marks. Why? Lieutenant 4 is the traitor and could also lie about what the other lieutenants said. Then replace the first column.
+
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
+		\hline
+		?       & ~  & A  & A  & A  & R  & R  & R  \\ \hline
+		?       & A  & ~  & A  & A  & R  & R  & R  \\ \hline
+		?       & A  & A  & ~  & A  & R  & R  & R  \\ \hline
+		?       & A  & ?  & ?  & ~  & ?  & ?  & ?  \\ \hline
+		?       & A  & A  & A  & R  & ~  & R  & R  \\ \hline
+		?       & A  & A  & A  & R  & R  & ~  & R  \\ \hline
+		?       & A  & A  & A  & R  & R  & R  & ~  \\ \hline
+	\end{tabular}
+\end{center}
+
+Sum up each column:
+
+\begin{center}
+	\begin{tabular}{|l|l|l|l|l|l|l|l|}
+		\hline
+		General & L1 & L2 & L3 & L4 & L5 & L6 & L7 \\
+		\hline
+		?       & A  & A  & A  & ?  & R  & R  & R  \\
+		\hline
+	\end{tabular}
+\end{center}
+
+Each of the lieutenants figures out that we have a draw and we then choose the default choice. Well, that's grim, but it makes sense: the general issued contradictory orders and the collaborating lieutenant did the same. But now instead of half the lieutenants charging in and dying while the others hang back and watch, everyone takes the same action, even if it's not the one that helps the Empire the most.
+
+If three disloyal participants can exist in the system there's another round of data exchange that needs to take place. Each lieutenant sends the table formed in the second round to all other lieutenants. The more disloyalty there could be in the system, the more rounds the process will go on. As you may have identified, for $n$ participants the communication grows at $n^{2}$ (well, actually worst case $dn^{2}$~\cite{mte241}) and even worse than that, as the number of participants and rounds increases, the amount of data to be sent also increases. For this reason it is somewhat impractical to tolerate a large number of disloyal participants.
+
+That is, however, still a design decision...
+
+Part of the difficulty comes from the fact that lieutenants can lie about what the general said.  In the time of Byzantium, wax seals were used (hot wax is poured and then a stamp or ring was used to make an imprint on it). In modern times messages can be signed using public-key cryptography. Then participants can check whether the received message was genuine. An order that does not appear genuine can be disregarded, reducing the ability of disloyal lieutenants to cause confusion.
+
+The Byzantine Generals Problem has applicability in all kinds of systems, from space flight to cryptocurrency. Whenever we have multiple ``agents'' of some sort that come to their own conclusions about what to do, we can face this issue. As long as we know this, we can design our system with this in mind, because pretending it's not going to happen is not a real solution...
 
 \input{bibliography.tex}
 
