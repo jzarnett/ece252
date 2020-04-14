@@ -206,7 +206,7 @@ server_addr.sin_addr.s_addr = htonl( INADDR_ANY );
 
 bind( socketfd, (struct sockaddr*) &server_addr, sizeof( server_addr ));
 listen( socketfd, 5 );
-newsockfd = accept( socktfd, (struct sockaddr*) &client_addr, &client_addr_size );
+newsockfd = accept( socketfd, (struct sockaddr*) &client_addr, &client_addr_size );
 
 /* Do something useful */
 
@@ -231,7 +231,7 @@ server_addr.sin_addr.s_addr = htonl( INADDR_ANY );
 
 bind( socketfd, (struct sockaddr*) &server_addr, sizeof( server_addr ));
 listen( socketfd, 5 );
-newsockfd = accept( socktfd, NULL, NULL );
+newsockfd = accept( socketfd, NULL, NULL );
 /* Do something useful */
 
 close( newsockfd );
