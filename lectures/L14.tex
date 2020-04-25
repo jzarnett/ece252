@@ -31,7 +31,7 @@ If $B$ gets to the \texttt{wait} statement first, it will be blocked (as the sem
 Note that this is a situation where it makes sense for a thread to post a semaphore even if it is not the thread that waited on that semaphore. Thus, sometimes, the semaphore is appropriate and the mutex structure is not necessary in every circumstance.
 
 \subsection*{Rendezvous}
-The rendezvous is an expansion of the post pattern so that it works both ways: two threads should be at the same point before either of them may proceed (they ``meet up''). Given the following code:
+The rendezvous is an expansion of the signalling pattern so that it works both ways: two threads should be at the same point before either of them may proceed (they ``meet up''). Given the following code:
 
 \begin{multicols}{2}
 	\textbf{Thread A}\vspace{-2em}

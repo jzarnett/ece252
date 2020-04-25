@@ -280,6 +280,113 @@
 
 \end{frame}
 
+\begin{frame}[fragile]
+	\frametitle{Rendezvous of 3 Threads}
+
+	Let's add C to the party:
+
+	\begin{multicols}{3}
+		\textbf{Thread A}
+		\begin{verbatim}
+	1. Statement A1
+	2. post( aArrived )
+	3. wait( bArrived )
+	4. wait( cArrived )
+	5. Statement A2
+  \end{verbatim}
+		\columnbreak
+		\textbf{Thread B}
+		\begin{verbatim}
+	1. Statement B1
+	2. post( bArrived )
+	3. wait( aArrived )
+	4. wait( cArrived )
+	5. Statement B2
+  \end{verbatim}
+  		\columnbreak
+		\textbf{Thread C}
+		\begin{verbatim}
+	1. Statement C1
+	2. post( cArrived )
+	3. wait( aArrived )
+	4. wait( bArrived )
+	5. Statement C2
+  \end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
+
+Does this work?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Too Much Waiting}
+
+No -- this will also lead to a deadlock. 
+
+A \texttt{post( aArrived )} unblocks one thread waiting for A...\\
+\quad But now there are two threads waiting for it!
+
+
+Analysis tool: look at the number of wait and post statements.\\
+\quad Here, they are not in balance.
+
+\end{frame}
+
+\begin{frame}[fragile]
+	\frametitle{Rendezvous of 3 Threads, Again}
+
+	Let's try again to add C to the party:
+
+	\begin{multicols}{3}
+		\textbf{Thread A}
+		\begin{verbatim}
+	1. Statement A1
+	2. post( aArrived )
+	3. post( aArrived )
+	4. wait( bArrived )
+	5. wait( cArrived )
+	6. Statement A2
+  \end{verbatim}
+		\columnbreak
+		\textbf{Thread B}
+		\begin{verbatim}
+	1. Statement B1
+	2. post( bArrived )
+	3. post( bArrived )
+	4. wait( aArrived )
+	5. wait( cArrived )
+	6. Statement B2
+  \end{verbatim}
+  		\columnbreak
+		\textbf{Thread C}
+		\begin{verbatim}
+	1. Statement C1
+	2. post( cArrived )
+	3. post( cArrived )
+	4. wait( aArrived )
+	5. wait( bArrived )
+	6. Statement C2
+  \end{verbatim}
+	\end{multicols}
+	\vspace{-2em}
+
+How about now?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Three, Being the Third Number...}
+
+This works! Our wait and post statements are balanced.
+
+You can imagine that the complexity increases if there are more threads... 
+
+And adding thread D would mean changing A, B, C as well... Not ideal...
+
+\end{frame}
 
 
 \begin{frame}
