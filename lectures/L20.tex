@@ -250,7 +250,63 @@ We can maybe say that customers who give up in frustration are disappointed but 
 This is actually a good lesson for services in general. They have a certain capacity, and when things are overloaded it's helpful to tell clients that they are unable to take any more requests right now. Clients can then choose what to do (and it's usually either ``wait a while and try again'' or ``go to a different service''). And you can! If the game that you want to play requires a server and all servers are busy, you can play a different game (or go outside, or who knows what!).
 
 
-\subsection*{Chemistry: Building H$_{2}$O}
+\subsection*{Escape from Hoth and Chemistry: Building H$_{2}$O}
+Where we want to go with this is the building H$_{2}$O problem. But for right now, we need to take a slight detour to the ice planet of Hoth! The chemistry problem is somewhat complicated, so the best way to approach it is by starting with an easier variant and then moving on.
+
+The Rebel Alliance is trying desperately to escape the ice planet Hoth before Darth Vader can put an end to the rebellion once and for all. The rebels want to evacuate the base with transports; transports are escorted by a pair of X-Wing fighters. Transports have no hope of surviving if they are not escorted, so the fighters must stay with their assigned transport. Normally, central command would tell the fighters and transports when to launch, but the base is under assault. Thus, the transports and fighters must organize themselves. Only one group of fighters and transports can launch at a time. In this problem,  a pair of fighters is a single unit.
+
+If a transport is ready, but fighters are not, the transport has to wait for the next fighters. If the fighters are ready but the transport is not, then the fighters have to wait for the next transport. When the fighters and transport are ready, they can both use the \texttt{launch()} function and they are off! The transport is the slower one to launch, so the next group should not proceed until the transport has finished the \texttt{launch()} process.
+
+Assume there are an appropriate number of fighters and transports so that nobody is left behind. The setup and creation of each kind of thread is something we will assume is handled externally and we can just focus on the behaviour of each kind of thread.
+
+We will need an integer counter for the number of ready fighters, called \texttt{fighters}, an integer counter for the number of ready transports called \texttt{transports}, and three semaphores: \texttt{mutex}, \texttt{fighter\_queue}, \texttt{transport\_queue}.
+
+
+Initial values: \texttt{mutex = 1} and \texttt{fighter\_queue = 0} and \texttt{transport\_queue = 0}.
+
+\begin{multicols}{2}
+\textbf{Fighters}\vspace{-2em}
+\begin{verbatim}
+wait( mutex )
+if transports > 0
+  transports--
+  post( transport_queue )
+else 
+  fighters++
+  post( mutex )
+  wait( fighter_queue )
+end if  
+launch()
+\end{verbatim}
+\columnbreak
+
+\textbf{Transport}\vspace{-1em}
+\begin{verbatim}
+wait( mutex )
+if fighters > 0
+  fighters--
+  signal( fighter_queue )
+else
+  transports++
+  post( mutex )
+  wait( transport_queue )
+end if
+launch()
+post( mutex )
+\end{verbatim}
+\end{multicols}
+
+Let's start with the fighters. As you might have guessed, this is also a scoreboard kind of problem. When the fighters arrive, if transports is greater than 0, then post on the queue for transports and let's launch. Otherwise, increment the number of fighters, post on the mutex, and wait in the queue to get called by a transport. Whether they proceeded directly or waited for a transport, they launch.
+
+It is a little strange that the fighters don't post on \texttt{mutex} if there is a transport ready. Isn't this a problem? It turns out no, because the transport threads post on it unconditionally. The mutex does two jobs here, really; it will prevent concurrent modification of the \texttt{fighters} and \texttt{transports} variables, but it also makes sure that only one group can call \texttt{launch()} concurrently.
+
+The transport code is pretty straightforward with that in mind: wait on the \texttt{mutex}, check if fighters is greater than 0, and if so decrement the count and tell the fighters to proceed; otherwise increment the number of transports, wait on the transport queue. Either way, the transport launches and then posts on \texttt{mutex}. 
+
+Is there a risk of deadlock here? For one thing, there are no nested waits; each kind of thread is careful to post on \texttt{mutex} before waiting on their associated queue semaphore. So nothing there. The only way fighters can get blocked is if no transports are presently ready (and more will soon arrive); the only way that transports can get blocked is if no fighters are ready (and they will also be ready soon). 
+
+How about starvation? As long as there are an appropriate number of fighters and transports, they will successfully match up with one another and can eventually launch. 
+
+\paragraph{On to the Chemistry...}
 There are two kinds of thread, \texttt{oxygen()} and \texttt{hydrogen()}. As you will recall from basic chemistry, water, H$_{2}$O, requires two hydrogen modules and one oxygen module. To assemble the desired molecule (water) a group rendezvous pattern is needed to make each thread wait until all ingredients are present in the correct amounts. As each thread passes the barrier, it should call the function \texttt{bond()} which makes the water. Our solution must function so that all threads for one molecule invoke \texttt{bond()} before any of the threads from the next molecule do.
 
 To clarify, if an oxygen thread arrives at the barrier when no hydrogen threads are present, it has to wait for two hydrogen threads to arrive. If a hydrogen thread arrives a the barrier when no other threads are waiting, it has to wait for an oxygen thread and another hydrogen thread. It is not necessary for the threads to know what other threads they are matched with, as long as the correct elements are present in the correct proportions.
@@ -386,7 +442,7 @@ When threads are released from the oxygen queue and hydrogen queue respectively,
 
 Now it may be that when a thread arrives it unblocks some thread ahead of it in line. So if the oxygen that arrives is the 2nd oxygen and there is already one waiting ahead of it, that first one proceeds. That's okay -- one molecule of water is as good as any other so we don't really care which oxygen ends up in its composition.
 
-It is a little strange that the hydrogen threads don't post on \texttt{bond}. Isn't this a problem? It turns out no, because the oxygen threads post on it unconditionally. The reasoning on this is not too complicated. When a thread arrives but the water molecule cannot be formed, whether it is oxygen or hydrogen, a post on \texttt{bond} takes place. If, however, the thread arriving is the last one necessary for bonding to take place, then one oxygen and two hydrogen proceed. Whoever waited on \texttt{bond} does not matter, as long as one of the threads that went into the water molecule posts on it before leaving. As the chemical composition of water has one oxygen, the job is assigned to this molecule. If we put it in hydrogen we might post on it twice.
+Why does only the Oxygen thread post on \texttt{bond} but hydrogen threads do not? Same idea as the fighters. When a thread arrives but the water molecule cannot be formed, whether it is oxygen or hydrogen, a post on \texttt{bond} takes place. If, however, the thread arriving is the last one necessary for bonding to take place, then one oxygen and two hydrogen proceed. Whoever waited on \texttt{bond} does not matter, as long as one of the threads that went into the water molecule posts on it before leaving. As the chemical composition of water has one oxygen, the job is assigned to this molecule. If we put it in hydrogen we might post on it twice.
 
 These are by no means all the concurrency problems in the world. There are many more in~\cite{lbs} that could be considered. But for now we will leave it here, before  we get into really obscure problems...
 

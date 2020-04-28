@@ -533,6 +533,125 @@ cut_hair()
 
 \end{frame}
 
+
+\begin{frame}
+\frametitle{I have a bad feeling about this...}
+
+\begin{center}
+	\includegraphics[width=\textwidth]{images/hoth.jpg}
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Lord Vader, you may start your landing...}
+
+The rebels want to evacuate the base with transports; transports are escorted by a pair of X-Wing fighters. 
+
+Transports have no hope of surviving if they are not escorted, so the fighters must stay with their assigned transport. 
+
+Only one group of fighters and transports can launch at a time. 
+
+In this problem,  a pair of fighters is a single unit.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Wait for it...}
+
+If a transport is ready, but fighters are not, the transport has to wait for the next fighters. 
+
+If the fighters are ready but the transport is not, then the fighters have to wait for the next transport. 
+
+When the fighters and transport are ready, they can both use the \texttt{launch()} function and they are off! 
+
+The transport is the slower one to launch, so the next group should not proceed until the transport has finished the \texttt{launch()} process.
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Leave No-One Behind!}
+
+
+Assume there are an appropriate number of fighters and transports so that nobody is left behind. 
+
+The setup and creation of each kind of thread is something we will assume is handled externally.
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Get Ready}
+
+We will need:
+
+\begin{itemize}
+\item an integer counter for the number of ready fighters, called \texttt{fighters}.
+
+\item an integer counter for the number of ready transports called \texttt{transports}, and 
+\item three semaphores: \texttt{mutex}, \texttt{fighter\_queue}, \texttt{transport\_queue}.
+\end{itemize}
+
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Echo Base...}
+
+Initial values: \texttt{mutex = 1} and \texttt{fighter\_queue = 0} and \texttt{transport\_queue = 0}.
+
+\begin{multicols}{2}
+\textbf{Fighters}\vspace{-2em}
+\begin{verbatim}
+wait( mutex )
+if transports > 0
+  transports--
+  post( transport_queue )
+else 
+  fighters++
+  post( mutex )
+  wait( fighter_queue )
+end if  
+launch()
+\end{verbatim}
+\columnbreak
+
+\textbf{Transport}\vspace{-1em}
+\begin{verbatim}
+wait( mutex )
+if fighters > 0
+  fighters--
+  signal( fighter_queue )
+else
+  transports++
+  post( mutex )
+  wait( transport_queue )
+end if
+launch()
+post( mutex )
+\end{verbatim}
+\end{multicols}
+
+Is there a risk of deadlock here? How about starvation?
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{``Good, our first catch of the day...''}
+
+\begin{center}
+	\includegraphics[width=0.5\textwidth]{images/catch.jpg}
+\end{center}
+
+\end{frame}
+
+
 \begin{frame}
 	\frametitle{Science!}
 
