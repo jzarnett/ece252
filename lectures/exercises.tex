@@ -66,7 +66,7 @@ In the in-class exercise you'll be provided the URL of that exercise. Navigate t
 
 As the gitlab description says: a fork is a copy of a project; forking a repository allows you to make changes without affecting the original project. Fork it into your personal space. This takes a moment, but you should quickly get the message ``The project was successfully forked.'' Then you have your own copy of the project and this is the one that you interact with.
 
-Now you need to update the security settings so nobody else can see your repository, and add the instructor who will evaluate your work. Go to your project settings and click general:
+Now you need to update the security settings so nobody else can see your repository, and add the marker who will evaluate your work (see Piazza for who this will be). Go to your project settings and click general:
 
 \begin{center}
 	\includegraphics[width=0.25\textwidth]{images/gitlab-settings.png}
@@ -126,11 +126,11 @@ You can verify your changes were successfully pushed using the \url{git.uwaterlo
 
 \subsection*{Compiling and Running the Exercise}
 
-The code that has been provided comes with a \texttt{Makefile}. This means that to compile the code all you need to do is run the command \texttt{make} in the directory where the code is checked out. This runs the compiler (\texttt{gcc}) with the correct arguments so that you don't have to type them every time, for your convenience. You don't need to modify the \texttt{Makefile} (most likely).
+The code that has been provided comes with a \texttt{Makefile}. This means that to compile the code all you need to do is run the command \texttt{make} in the directory where the code is checked out. This runs the compiler (\texttt{gcc}) with the correct arguments so that you don't have to type them every time, for your convenience. You don't need to modify the \texttt{Makefile} (most likely), but you can if you wish.
 
 When compiling with \texttt{make} it still runs the compiler and you still see the compiler output on the console. If all goes well, an executable file is generated. If there are errors, then no executable file is generated (and the old one might still exist, if any). If there are warnings but no errors, the executable is still generated, but it is worthwhile to try to resolve the warnings. A quick internet search for the error you're having will help in resolving it.
 
-To run the code, if the executable file is called \texttt{example}, then you start it with \texttt{./example}. The \texttt{./} is important because it means you explicitly indicate you want to run the executable file in the current directory. Without intending to get too far off track, this is a security measure -- it means that if someone also called their program  \texttt{ls} then you might run that one accidentally. Whoops. If the program takes arguments, then they follow on the same line: \texttt{./example argument1 argument2}.
+To run the code, if the executable file is called \texttt{example}, then you start it with \texttt{bin/example}. If you are in the \texttt{bin} directory, then run it with \texttt{./example}. The \texttt{./} is important because it means you explicitly indicate you want to run the executable file in the current directory. Without intending to get too far off track, this is a security measure -- it means that if someone also called their program  \texttt{ls} then you might run that one accidentally. Whoops. If the program takes arguments, then they follow on the same line: \texttt{bin/example argument1 argument2}.
 
 
 \end{document}
