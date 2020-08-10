@@ -180,7 +180,7 @@ The barrier pattern is a generalization of the rendezvous pattern; a way of havi
 
 When the $n$th thread arrives, it unlocks the barrier (posts it) and then may proceed. Unfortunately, this is not a solution, because it will lead to some threads being permanently stuck. If there is more than one thread waiting at the barrier, the first thread will be unblocked when the $n$th thread posts on it. However, after that, there are no other \texttt{post} statements and therefore the other threads waiting are stuck forever, waiting for a post that will never come.
 
-Perhaps the idea occurred to you that the $n$th thread to arrive should post $n-1$ times:
+Perhaps the idea occurred to you that the $n$th thread to arrive should post $n$ times:
 
 \textbf{Thread \textit{K}}\vspace{-2em}
 \begin{verbatim}
