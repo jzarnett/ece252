@@ -218,14 +218,14 @@ Right, so let's say that we want to send some data then:
 int msgsnd( int msqid, const void *ptr, size_t nbytes, int flag );
 \end{lstlisting}
 
-The first parameter is the queue we want to send it to; the second is the message; the third is the data that we want to send. The last parameter is for what happens if the queue is full: normally we just want to wait, so this would be a blocking send, and you can provide 0 as the argument. But if you would prefer, you can use \texttt{IPC\_NOWAIT}, in which case an attempt to add to the full queue will just return with an error instead of blocking.
+The first parameter is the queue we want to send it to; the second is the message; the third is the data that we want to send, excluding \texttt{mtype}. The last parameter is for what happens if the queue is full: normally we just want to wait, so this would be a blocking send, and you can provide 0 as the argument. But if you would prefer, you can use \texttt{IPC\_NOWAIT}, in which case an attempt to add to the full queue will just return with an error instead of blocking.
 
 And to receive:
 \begin{lstlisting}[language=C]
 ssize_t msgrcv( int msqid, void *ptr, size_t nbytes, long type, int flag );
 \end{lstlisting}
 
-The first argument is the queue to receive from as per usual; the second argument is the destination where the message will be copied to; the third argument is the number of bytes. The last parameter, again, can be used to specify that you don't want to wait if there is no message. The fourth parameter, \texttt{type}, is used to specify what kind of message you want. It corresponds to the \texttt{mtype} field in the message~\cite{apunix}:
+The first argument is the queue to receive from as per usual; the second argument is the destination where the message will be copied to; the third argument is the number of bytes, excluding the size of \texttt{mtype}. The last parameter, again, can be used to specify that you don't want to wait if there is no message. The fourth parameter, \texttt{type}, is used to specify what kind of message you want. It corresponds to the \texttt{mtype} field in the message~\cite{apunix}:
 
 \begin{itemize}
 	\item \texttt{type == 0} -- Return the first message on the queue (any type)
@@ -249,9 +249,11 @@ Let's put it together in a simple example where the parent process sends a messa
 #include <sys/msg.h>
 #include <unistd.h>
 
+typedef int msgdata;
+
 struct msg {
   long mtype;
-  int data;
+  msgdata data;
 };
 
 int main( int argc, char** argv ) { 
@@ -262,10 +264,10 @@ int main( int argc, char** argv ) {
         struct msg m;
         m.mtype = 42; 
         m.data = 252;
-        msgsnd( msgqid, &m, sizeof( struct msg ), 0 );
+        msgsnd( msgqid, &m, sizeof( msgdata ), 0 );
     } else if ( pid == 0 ) { /* Child */
        struct msg m2; 
-       msgrcv( msgqid, &m2, sizeof( struct msg ), 42, 0 );
+       msgrcv( msgqid, &m2, sizeof( msgdata ), 42, 0 );
        printf("Received %d!\n", m2.data );
        msgctl( msgqid, IPC_RMID, NULL );
     }   
