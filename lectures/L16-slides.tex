@@ -450,7 +450,7 @@ pthread_rwlock_unlock( pthread_rwlock_t * rwlock )
 
 	Unlock works just like the regular mutex unlock.
 
-	We do not need to specify what kind of luck we are releasing.
+	We do not need to specify what kind of lock we are releasing.
 
 \end{frame}
 
@@ -511,7 +511,7 @@ void* writer( void* arg ) {
   sem_post( &roomEmpty );
 }
 
-void* reader( void* read ) {
+void* reader( void* arg ) {
   pthread_mutex_lock( &mutex );
   readers++;
   if ( readers == 1 ) {
@@ -559,7 +559,7 @@ void* writer( void* arg ) {
   pthread_rwlock_unlock( &rwlock );
 }
 
-void* reader( void* read ) {
+void* reader( void* arg ) {
   pthread_rwlock_rdlock( &rwlock );
   read_data( arg );
   pthread_rwlock_unlock( &rwlock );
