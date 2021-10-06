@@ -605,7 +605,7 @@ while ( !test_and_set( busy ) ) {
    /* Wait for my turn */
 }
 /* critical section */
-busy = 0;
+*busy = 0;
 \end{verbatim}
 
 
