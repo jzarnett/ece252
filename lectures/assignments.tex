@@ -2,14 +2,14 @@
 
 \begin{document}
 
-\section*{ECE 252 Exercises Setup Guide}
+\section*{ECE 252 Assignment Setup Guide}
 
-The exercises are designed and tested using the \texttt{eceubuntu} servers (connection and setup guide below). Although you can develop and test the code on your own laptop, course staff will only support running on \texttt{eceubuntu}, so if you're having problems on your laptop we'll say try it using the ECE servers.
+The assignments are designed and tested using the \texttt{eceubuntu} servers (connection and setup guide below). Although you can develop and test the code on your own laptop, course staff will only support running on \texttt{eceubuntu}, so if you're having problems on your laptop we'll say try it using the ECE servers.
 
-Preferably in advance of the actual first exercise for the term, you should do the following things:
+Preferably in advance of the actual first assignment for the term, you should do the following things:
 \begin{itemize}
 	\item Set up and configure your \url{git.uwaterloo.ca} account.
-	\item Test if you can log in via ssh to \texttt{eceubuntu} servers. If you can't, please contact Eric Praetzel, part of the ECE lab staff,  at \texttt{praetzel@uwaterloo.ca} .
+	\item Test if you can log in via ssh to \texttt{eceubuntu} servers. Being enrolled in an ECE course should get you an account.
 \end{itemize}
 
 \subsection*{Starting with Gitlab}
@@ -43,7 +43,7 @@ You need to add this key (or these keys) to your gitlab account so that when you
 
 \subsection*{Connecting to \texttt{eceubuntu}}
 
-The \texttt{eceubuntu} name refers to a grouping of servers (\texttt{eceubuntu1}, \texttt{eceubuntu2},...). Although the servers have some hardware differences, they are not relevant for the purposes of the exercise. They also share a file system, so any one is as good as any others, and if you find that one server is particularly busy you can move to another one and pick up where you left off. Even if you are not an ECE student, being registered in an ECE course should grant you access to the server.
+The \texttt{eceubuntu} name refers to a grouping of servers (\texttt{eceubuntu1}, \texttt{eceubuntu2},...). Although the servers have some hardware differences, they are not relevant for the purposes of the assignment. They also share a file system, so any one is as good as any others, and if you find that one server is particularly busy you can move to another one and pick up where you left off. Even if you are not an ECE student, being registered in an ECE course should grant you access to the server.
 
 Your login credentials (i.e., username and password) are the same as your WatIAM ones. The server full name is \texttt{eceubuntu.uwaterloo.ca} and most of the other options like port, etc. can be left as the defaults.
 
@@ -53,12 +53,12 @@ If you're using Windows 10, we recommend installing the Windows Subsystem for Li
 
 You can also use a third party client to connect such as PuTTY or MobaXterm or anything else that you like. For space reasons I won't repeat exactly how to configure them, but they are relatively self-explanatory. You can use any client you want to connect.
 
-If you want to transfer files between your local machine and the \texttt{eceubuntu} servers you can use a SFTP (SSH File Transfer Protocol, or Secure File Transfer Protocol) client. If you do the whole exercise on \texttt{eceubuntu} then you don't have to move files.
+If you want to transfer files between your local machine and the \texttt{eceubuntu} servers you can use a SFTP (SSH File Transfer Protocol, or Secure File Transfer Protocol) client. If you do the whole assignment on \texttt{eceubuntu} then you don't have to move files.
 
 If you have everything set up correctly, when you log in you will be presented with a little login message (news and updates and information from the lab staff, which you should read) and be presented with the command prompt. Ready to go!
 
 \subsection*{Forking the Repository}
-In the in-class exercise you'll be provided the URL of that exercise. Navigate to that page and look for the ``Fork'' button. Click it.
+In Piazza you can find the link  to the group that contains all assignments. When you want to start on an assignment, click on it, and look for the ``Fork'' button. Click it.
 
 \begin{center}
 	\includegraphics[width=0.7\textwidth]{images/gitlab-fork.png}
@@ -124,7 +124,7 @@ You need to send any commits you have made back to gitlab using \texttt{git push
 
 You can verify your changes were successfully pushed using the \url{git.uwaterloo.ca} web UI. Check to make sure the files you've changed are up to date there. The course staff sees what is in gitlab so make sure it's correct!
 
-\subsection*{Compiling and Running the Exercise}
+\subsection*{Compiling and Running the Code}
 
 The code that has been provided comes with a \texttt{Makefile}. This means that to compile the code all you need to do is run the command \texttt{make} in the directory where the code is checked out. This runs the compiler (\texttt{gcc}) with the correct arguments so that you don't have to type them every time, for your convenience. You don't need to modify the \texttt{Makefile} (most likely), but you can if you wish.
 
