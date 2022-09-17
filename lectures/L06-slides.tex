@@ -734,7 +734,7 @@ int msgsnd( int msqid, const void *ptr, size_t nbytes, int flag );
 
 \texttt{ptr}: message to send.
 
-\texttt{nbytes}: size of the message.
+\texttt{nbytes}: size of the message (not including \texttt{mtype}).
 
 \texttt{flag}: 0 for blocking, \texttt{IPC\_NOWAIT} for return with error if queue full.
 
@@ -751,7 +751,7 @@ ssize_t msgrcv( int msqid, void *ptr, size_t nbytes, long type, int flag );
 
 \texttt{ptr}: where the message will go.
 
-\texttt{nbytes}: size of the message.
+\texttt{nbytes}: size of the message (not including \texttt{mtype}).
 
 \texttt{type}: kind of message you want.
 
@@ -802,10 +802,10 @@ int main( int argc, char** argv ) {
         struct msg m;
         m.mtype = 42; 
         m.data = 252;
-        msgsnd( msgqid, &m, sizeof( struct msg ), 0 );
+        msgsnd( msgqid, &m, sizeof( int ), 0 );
     } else if ( pid == 0 ) { /* Child */
        struct msg m2; 
-       msgrcv( msgqid, &m2, sizeof( struct msg ), 42, 0 );
+       msgrcv( msgqid, &m2, sizeof( int ), 42, 0 );
        printf("Received %d!\n", m2.data );
        msgctl( msgqid, IPC_RMID, NULL );
     }   

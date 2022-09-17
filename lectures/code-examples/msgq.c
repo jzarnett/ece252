@@ -18,10 +18,10 @@ int main( int argc, char** argv ) {
         struct msg m;
         m.mtype = 42;
         m.data = 252;
-        msgsnd( msgqid, &m, sizeof( struct msg ), 0 );
+        msgsnd( msgqid, &m, sizeof( int ), 0 );
     } else if ( pid == 0 ) { /* Child */
        struct msg m2;
-       msgrcv( msgqid, &m2, sizeof( struct msg ), 42, 0 );
+       msgrcv( msgqid, &m2, sizeof( int ), 42, 0 );
        printf("Received %d!\n", m2.data );
        msgctl( msgqid, IPC_RMID, NULL );
     }
