@@ -106,7 +106,7 @@ close( fd );
 	But we can change that behaviour on a socket if we wish, by setting the socket to be nonblocking:
 
 	\begin{lstlisting}[language=C]
-sockfd = socket( PF_INET, SOCK_STREAM, 0 );
+sockfd = socket( AF_INET, SOCK_STREAM, 0 );
 fcntl( sockfd, F_SETFL, O_NONBLOCK );
 \end{lstlisting}
 
