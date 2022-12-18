@@ -250,7 +250,7 @@ int listen( int sockfd, int backlog );
 int accept( int sockfd, struct sockaddr *addr, socklen_t *len );
 int send( int sockfd, const void* msg, int length, int flags );
 int recv( int sockfd, void * buffer, int length, int flags );
-int sendto( int sfd, const void* msg, int len, unsigned int flags, const struct sockaddr* to, socklen_t token );
+int sendto( int sfd, const void* msg, int len, unsigned int flags, const struct sockaddr* to, socklen_t tolength );
 int recvfrom( int sfd, void* buffer, int len, unsigned int flags, struct sockaddr* from, int* fromlength );
 
 CURLcode curl_global_init( long flags ); /* use CURL_GLOBAL_DEFAULT as flags */
