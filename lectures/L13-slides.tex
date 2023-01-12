@@ -25,6 +25,13 @@
 		\item Mutual exclusion must apply.
 		\item A thread that halts outside the critical section must not interfere with other threads.
 		\item It must not be possible for a thread requiring access to a critical section to be delayed indefinitely.
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Mutual Exclusion through Messages}
+	There are additional desirable properties that will be used to evaluate any solution:
+	\begin{itemize}
 		\item When no thread is in the critical section, a thread that requests access should be allowed to enter right away.
 		\item No assumptions are made about what the threads will do or the number of processors in the system.
 		\item A thread remains inside the critical section for a finite time only.
@@ -67,6 +74,10 @@
 	If Charlie does not answer, Alice will know he is not at his desk.\\
 	\quad Therefore she cannot leave at the moment.
 
+\end{frame}
+
+\begin{frame}
+	\frametitle{At the Power Plant}
 	She can call again, constantly, until she reaches Charlie (busy-waiting), but this ties up a phone line nonstop and is effort intensive for Alice.
 
 	If she doesn't want to do that, at this point she has two options:\\
@@ -86,6 +97,11 @@
 	It wastes CPU time that another thread could be putting to productive use.
 
 	The approach of ``wait 15 minutes and try again'' might be adequate for Alice as a human, but for the computer it is not ideal.
+	
+\end{frame}
+
+\begin{frame}
+	\frametitle{At the Power Plant}
 
 	If $A$ fails to get in, then sleeps for 2000~ms before trying again, if $B$ is finished after 20 ms, then thread $A$ waits unnecessarily for 1980~ms.
 

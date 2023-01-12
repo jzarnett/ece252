@@ -538,7 +538,7 @@ struct data {
 	\frametitle{Callback Example}
 
 	\begin{lstlisting}[language=C]
-#include <stdio.h>
+
 size_t read_callback( void *dest, size_t size, size_t nmemb, void *userp ) {
   struct data *d = (struct data *) userp;
   size_t buffer_size = size * nmemb;

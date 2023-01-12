@@ -52,6 +52,7 @@ void* do_work( void* argument ) {
   /* Actual work to do not shown */
   free( j );
   pthread_exit( NULL );
+}
 \end{lstlisting}
 
 Suppose that the thread is cancelled during the block operating on \texttt{j} and it is set up for asynchronous cancellation. This means that the code will never get to the \texttt{free()} call, which means that the memory allocated at the beginning is leaked! We can remedy this with application of a cleanup handler:
@@ -68,6 +69,7 @@ void* do_work( void* argument ) {
   free( j );
   pthread_cleanup_pop( 0 ); /* Don't run */
   pthread_exit( NULL );
+}
 \end{lstlisting}
 
 And you may note that you could actually save a line of code by removing the \texttt{free()} call and changing the argument to the pop function to be 1: this means the cleanup function runs and it does free the memory allocated. Nice!
@@ -105,7 +107,7 @@ int main( int argc, char **argv ) {
   pthread_create( &tid, &attr, runner, argv[1] );
   pthread_join( tid, NULL );
   printf( "sum = %d\n", sum );
-	pthread_attr_destroy( &attr );
+  pthread_attr_destroy( &attr );
   pthread_exit( NULL );
 }
 

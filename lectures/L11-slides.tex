@@ -115,6 +115,7 @@ void* do_work( void* argument ) {
   /* Actual work to do not shown */
   free( j );
   pthread_exit( NULL );
+}
 \end{lstlisting}
 
 
@@ -138,6 +139,7 @@ void* do_work( void* argument ) {
   free( j );
   pthread_cleanup_pop( 0 ); /* Don't run */
   pthread_exit( NULL );
+}
 \end{lstlisting}
 
 
@@ -188,7 +190,7 @@ int main( int argc, char **argv ) {
   pthread_create( &tid, &attr, runner, argv[1] ); /* create the thread */
   pthread_join( tid, NULL );
   printf( "sum = %d\n", sum );
-	pthread_attr_destroy( &attr );
+  pthread_attr_destroy( &attr );
   pthread_exit( NULL );
 }
 \end{lstlisting}
