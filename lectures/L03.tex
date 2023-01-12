@@ -1,4 +1,4 @@
-\include{header}
+\input{../common/header}
 
 \begin{document}
 
@@ -64,15 +64,15 @@ Repeatedly opening and closing the same file is unnecessary and inefficient. If 
 \paragraph{Truncating a File.} If a file should be erased but its attributes maintained (e.g., all the metadata), we can truncate it: cut off all the contents. The file length is reset to zero and its data area is marked as free, but the rest of the attributes remain the same.
 
 
-It turns out that creating, reading, writing, and truncating all involve the open call. The call is \texttt{FILE * fopen( const char* filename, const char* mode )}. In addition to the filename as the first parameter, the function is called with the mode as the second parameter. In the last example, the mode we provided was a string literal of \texttt{r}. The modes are:
+It turns out that creating, reading, writing, and truncating all involve the open call. The call is \texttt{FILE * fopen( const char* filename, const char* mode )}. In addition to the filename as the first parameter, the function is called with the mode as the second parameter. In the last example, the mode we provided was a string literal of \texttt{r}. The modes are, according to the man7 page:
 
 \begin{itemize}
-	\item \texttt{r} -- Open the file for reading only.
-	\item \texttt{w} -- Open the file for writing. If a file with the name exists, it's overwritten.
-	\item \texttt{a} -- Open the file, writing data at the end of the file.
-	\item \texttt{r+} -- Open for read and update (the file must exist).
-	\item \texttt{w+} -- Create a file and open it for update; if the file exists it's overwritten.
-	\item \texttt{a+} -- Open a file for update, with new output operations at the end of the file.
+	\item \texttt{r} -- Open text file for reading. The stream is positioned at the beginning of the file.
+	\item \texttt{w} --Truncate file to zero length or create text file for writing. The stream is positioned at the beginning of the file.
+	\item \texttt{a} -- Open for appending (writing at end of file). The file is created if it does not exist. The stream is positioned at the end of the file.
+	\item \texttt{r+} -- Open for reading and writing. The stream is positioned at the beginning of the file.
+	\item \texttt{w+} -- Open for reading and writing. The file is created if it does not exist, otherwise it is truncated. The stream is positioned at the beginning of the file.
+	\item \texttt{a+} -- Open for reading and appending (writing at end of file). The file is created if it does not exist. Output is always appended to the end of the file. POSIX is silent on what the initial read position is when using this mode. For glibc, the initial file position for reading is at the beginning of the file, but for Android/BSD/MacOS, the initial file position for reading is at the end of the file.
 \end{itemize}
 
 If we combine this with a \texttt{b}, such as \texttt{rb} then we are opening the file as a binary file. Also, as of the C 2011 standard, there is a new add-on \texttt{x} which can be used to make any write operation fail if the file exists.
