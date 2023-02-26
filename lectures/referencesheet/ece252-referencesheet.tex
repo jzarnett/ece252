@@ -120,8 +120,8 @@ int rename( const char *old_filename, const char *new_filename ); /* Returns 0 o
 int close( int file_descriptor ); 
 FILE* fopen( const char *filename, const char *mode );
 int fclose( FILE* f );
-size_t fread( void* buffer, size_t size, size_t numbytes, FILE* f );
-size_t fwrite( const void *ptr, size_t size, size_t numbytes, FILE* f);
+size_t fread(void *restrict ptr, size_t size, size_t nmemb, FILE *restrict stream);
+size_t fwrite(const void *restrict ptr, size_t size, size_t nmemb, FILE *restrict stream);
 int fprintf( FILE* f, const char* format, ... ); /* Arguments go in the ...  */
 int fscanf( FILE* f, const char* format, ... ); /* Arguments go in the ...  */
 int fileno( FILE* f ); /* Convert FILE* to file descriptor */
@@ -237,7 +237,7 @@ int munmap( void* address, size_t length );
 \subsubsection*{Network}
 
 \begin{lstlisting}[language=C]
-int socket( int domain, int type, int protocol );
+int socket( int domain, int type, int protocol ); /* domain = AF_INET for IPv4 */
 uint32_t htonl( uint32_t hostint32 ); /* Translate 4 byte int to network format */ 
 uint16_t htons( uint16_t hostint16 ); /* Translate 2 byte int to network format */ 
 uint32_t ntohl( uint32_t netint32 ); /* Translate 4 byte int to host format */ 
@@ -295,7 +295,7 @@ pthread_join( pthread_t thread, void **returnValue );
 pthread_detach( pthread_t thread );
 pthread_cancel( pthread_t thread );
 pthread_testcancel( ); /* If the thread is cancelled, this function does not return (thread terminated) */
-pthread_setcanceltype( int type, int *oldtype );
+pthread_setcanceltype( int type, int *oldtype ); /* PTHREAD_CANCEL_DEFERRED or PTHREAD_CANCEL_ASYNCHRONOUS */
 pthread_cleanup_push( void (*routine)(void*), void *argument ); /* Register cleanup handler, with argument */ 
 pthread_cleanup_pop( int execute ); /* Run if execute is non-zero */
 pthread_exit( void *value );
