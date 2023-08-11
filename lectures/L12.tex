@@ -194,7 +194,7 @@ while ( !test_and_set( busy ) ) {
    /* Wait for my turn */
 }
 /* critical section */
-busy = 0;
+*busy = 0;
 \end{lstlisting}
 
 Finally, we have something that will provide mutual exclusion without the risk that the threads will all get stuck because each thinks another is in the critical section. This is good, but can be improved. The \texttt{while} loop that is constantly checking the value with the Test-and-Set instruction is an example of \textit{busy-waiting}. A given thread is constantly checking and checking and checking the instruction, and this is a waste of time and effort. Thread $A$ will not get into the critical section while thread $B$ is in there and asking constantly does not make $B$ get the job done any faster, just as a child asking ``are we there yet?'' does not improve the speed at which he or she gets to his or her destination.
