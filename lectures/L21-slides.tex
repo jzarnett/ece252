@@ -431,7 +431,7 @@ type __sync_lock_test_and_set( type *ptr, type value );
 \end{lstlisting}
 
 
-The following functions are used to swap two values, only if the old value matches the expected (i.e., what was provided as the second argument):
+The following functions are used to swap two values, that is, if the current value of *ptr is oldval, then write newval into *ptr:
 
 \begin{lstlisting}[language=C]
 bool __sync_bool_compare_and_swap( type *ptr, type oldval, type newval );
